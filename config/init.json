@@ -1,0 +1,12 @@
+{
+  "web1":{
+    "ip":"192.168.1.173", 
+    "root_passord":"dreamsoftt", 
+    "port":22
+  }, 
+  "web2":{
+    "ip":"192.168.1.174", 
+    "root_passord":"dreamsoftt", 
+    "port":22
+  }
+}
