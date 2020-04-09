@@ -3,89 +3,101 @@
 # sky
 
 import paramiko
-import socket, os
+import os
 
-class client(object):
-    def __init__(self, ip, port, username="root"):
-        self.ip=ip
-        self.port=port
-        self.user=username
+class Client(object):
+    def __init__(self):
         self.ssh=paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
+        self.key_dir="/root/.ssh"
+        self.key_file=f"{self.key_dir}/id_rsa"
+        self.key_pub_file=f"{self.key_dir}/id_rsa.pub"
 
-    def password_conn(self, password): 
+    def password_conn(self, ip, port, password, user='root'): 
         try:
-            self.ssh.connect(self.ip, port=self.port, username=self.user, password=password, timeout=1)     # 正常连接
+            self.ssh.connect(ip, port=port, username=user, password=password, timeout=1)     # 正常连接
             status=0
+            msg="正常连接"
         except paramiko.ssh_exception.NoValidConnectionsError as e:                                         # 端口无法连接
             status=1
+            msg="端口无法连接"
         except paramiko.ssh_exception.AuthenticationException as e:                                         # 密码错误
             status=2
+            msg="密码错误"
         except Exception as e:                                                                              # 未知错误
             status=3
+            msg="未知错误, 无法连接"
         self.ssh.close()
-        return status
+        return status, msg
 
     def gen_keys(self):
         """生成公私钥对"""
-        pkey_file="~/.ssh/id_rsa"
-        pkey_pub_file="~/.ssh/id_rsa.pub"
 
-        if os.path.exists(pkey_file) and os.path.exists(pkey_pub_file):
-            pass
+        if not os.path.exists(self.key_dir):
+            os.mkdir(self.key_dir)
+            os.chmod(self.key_dir, 0o700)
+
+        if os.path.exists(self.key_file) and os.path.exists(self.key_pub_file):
+            return 0
         else:
             # 生成私钥文件
             key=paramiko.rsakey.RSAKey.generate(2048)
-            key.write_private_key_file(pkey_file)
+            key.write_private_key_file(self.key_file)
             # 生成公钥文件
-            pub_key_file=key.get_base64()
-            pub_key_sign="%s%s" % (" ".join(["ssh-rsa", pub_key_file]), "\n")
-            with open(pkey_pub_file, "w") as f:
-                f.write(pub_key_sign)
-            self.__log.log("info", "已生成公私钥")
+            key_pub=key.get_base64()
+            key_pub_and_sign="%s%s" % (" ".join(["ssh-rsa", key_pub]), "\n")
+            with open(self.key_pub_file, "w") as f:
+                f.write(key_pub_and_sign)
+            return 1
 
-    def key_conn(self, hostname, password):
-        pub_key_file="%s/sky_pkey.pub" % self.__key_dir
+    def exec(self, ip, port, commands, user='root'):
+        self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=1)
+        stdin, stdout, stderr=self.ssh.exec_command(commands)
+        return stdout
 
-        with open(pub_key_file, "r") as f:
-            pub_key=f.read()
+    def free_pass_set(self, ip, port, password, user='root'):
+        "ssh-copy-id"
 
-        self.__ssh.connect(hostname, port=self.__port, username=self.__user, password=password, timeout=1)
-        self.__ssh.exec_command("setenforce 0; mkdir -p ~/.ssh; chmod 700 ~/.ssh")
-        
-        sftp=self.__ssh.open_sftp()
-        sftp_file=sftp.file("./.ssh/authorized_keys", "a")
-        sftp_file.write(pub_key)
+        with open(self.key_pub_file, "r") as f:
+            key_pub=f.read()
+
+        self.ssh.connect(ip, port=port, username=user, password=password, timeout=1)
+        #self.ssh.exec_command("mkdir -p ~/.ssh; chmod 700 ~/.ssh")
+        sftp=self.ssh.open_sftp()
+        ssh_dir="/root/.ssh"
+        try:
+            sftp.stat(ssh_dir)
+        except FileNotFoundError as e:
+            sftp.mkdir(ssh_dir, 0o700)
+
+        sftp_file=sftp.file(f"{ssh_dir}/authorized_keys", "a")
+        sftp_file.write(key_pub)
         sftp_file.chmod(384)
         sftp_file.close()
         sftp.close()
-        self.__log.log("info", "%s 已完成免密码通信" % hostname)
 
-    def exec(self, hostname, commands):
-        pkey_file="%s/sky_pkey" % self.__key_dir
-        self.__ssh.connect(hostname, port=self.__port, username=self.__user, key_filename=pkey_file, timeout=1)
-        self.__ssh.exec_command(commands)
-        
-    def transfer(self, hostname, local_file, remote_file, remote_path):
-        pkey_file="%s/sky_pkey" % self.__key_dir
-        self.__ssh.connect(hostname, port=self.__port, username=self.__user, key_filename=pkey_file, timeout=1)
-        sftp=self.__ssh.open_sftp()
+    def scp(self, ip, port, user, local_file, remote_file):
+        self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=1)
+        sftp=self.ssh.open_sftp()
         sftp.put(local_file, remote_file, confirm=True)
-        self.__log.log("info", "安装包传输至%s:%s" % (hostname, remote_path))
+        """
         tar_command="tar -xf %s -C %s" % (local_file, remote_path)
         self.__ssh.exec_command(tar_command)
         self.__log.log("info", "%s上的安装包解压至%s" % (hostname, remote_path))
-       sftp.close()
+        """
+        sftp.close()
 
     def __del__(self):
-        self.__ssh.close()
+        self.ssh.close()
 
 if __name__ == "__main__":
-    #a={"192.168.1.122":"test1", "192.168.1.123":'test2'}
-    #b=password_conn(a, username="test1")
-    #print(b)
+    a=Client()
 
     #gen_keys()
-    gen_keys()
-    key_conn("192.168.1.123", "root", "111111")
+    a.gen_keys()
+    #status=a.password_conn("192.168.1.174", 22, "dreamsoft")
+    a.free_pass_set("192.168.1.174", 22, "dreamsoft")
+    #a.free_pass_set("192.168.1.173", 22, "dreamsoft")
+    #msg=a.exec("192.168.1.174", 22, "df -h")
+    #a.scp("192.168.1.174", 22, "root", "/tmp/b", "/root/b")
 
