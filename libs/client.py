@@ -52,8 +52,12 @@ class Client(object):
 
     def exec(self, ip, port, commands, user='root'):
         self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=1)
+        """
         stdin, stdout, stderr=self.ssh.exec_command(commands)
-        return stdout
+        return stdin, stdout, stderr
+        """
+        status=self.ssh.exec_command(commands)
+        return status
 
     def free_pass_set(self, ip, port, password, user='root'):
         "ssh-copy-id"

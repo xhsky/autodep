@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/python3/bin/python3
 # *-* coding:utf8 *-*
 # sky
 
@@ -54,14 +54,14 @@ def host_info():
 def main():
     info=host_info()
 
-    msg=f"""主机名: {info[0]}
-        发行版: \t{info[1]}
-        内核版本: \t{info[2]}
-        CPU核心数: \t{info[3]}({info[4]}%)
-        内存大小: \t{format_size(info[5])}({info[6]}%)"""
+    msg=f"主机名: {info[0]}\n"\
+            f"发行版: \t{info[1]}\n"\
+            f"内核版本: \t{info[2]}\n"\
+            f"CPU核心数: \t{info[3]}({info[4]}%)\n"\
+            f"内存大小: \t{format_size(info[5])}({info[6]}%)"
     print(msg)
     for i in info[7]:
-        print(f"\t磁盘({i[0]}): \t{format_size(i[1])}({i[2]}%)")
+        print(f"磁盘({i[0]}): \t{format_size(i[1])}({i[2]}%)")
 
 if __name__ == "__main__":
     main()
