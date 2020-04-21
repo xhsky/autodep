@@ -5,18 +5,31 @@
 from libs import client
 
 class soft(object):
-    def  __init__(self):
-        self.obj=client.Client()
+    def  __init__(self, ip, port):
+        self.ssh=client.Client()
+        self.ip=ip
+        self.port=port
 
+    """
     def tar_install(self, soft_name, ip, port, install_dir):
         remote_file=f"/tmp/{soft_name.split('/')[-1]}"
         self.obj.scp(ip, port, "root", soft_name, remote_file)
         command=f"tar -xf {remote_file} -C {install_dir} && echo 0"
         status=self.obj.exec(ip, port, command)
         return status
+    """
 
-    def pkg_install(self):
-        pass
+    def install(self, soft_name, weight, soft_file, json_info):
+        install_file=f"./bin/{soft_name}.py"
+        install_pkg=soft_file.split("/")[-1]
+
+        self.ssh.scp(self.ip, self.port, "root", install_file, f"/tmp/{soft_name}.py")
+        self.ssh.scp(self.ip, self.port, "root", soft_file, f"/tmp/{install_pkg}")
+
+        command=f"/opt/python3/bin/python3 /tmp/{soft_name}.py {weight} /tmp/{install_pkg} {json_info}"
+        #print(f"{command}")
+        status=self.ssh.exec(self.ip, self.port, command)
+        return status
 
     def control(self, action):
         install_dir=self.__res["base_dir"]
@@ -53,31 +66,6 @@ class soft(object):
                 
         else:
             self.__log.log("error", "action: %s" % action)
-
-def soft_install():
-    log=logger.logger()
-    db_client=db.get_redis_conn()
-    ip=common.host_ip()
-
-
-    log.log("info", "安装程序开始准备接收安装信息...")
-    subs=db_client.subscribe(define.soft_install_info_key)
-    for i in subs.listen():
-        if i["type"]=="message":
-            args=json.loads(i["data"])
-            if args["ip"]==ip:
-                # 安装
-                if args["type"]=="install":
-                    for soft_name in args["soft_name"]:
-                        local_soft_obj=local_soft(soft_name)
-                        local_soft_obj.local_install()
-                # 控制
-                elif args["type"]=="control":
-                    local_soft_obj=local_soft(args["soft_name"])
-                    local_soft_obj.local_control(args["action"])
-                # 其它
-                else:
-                    pass
 
 
 if __name__ == "__main__":
