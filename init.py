@@ -38,7 +38,6 @@ def host_init(host_dict, conf_dict):
     """
 
     host=Client()
-    soft_install=soft()
     if host.gen_keys():
         print("本机生成密钥对\n")
     else:
@@ -46,7 +45,7 @@ def host_init(host_dict, conf_dict):
 
     hosts={}
     hosts_str="\n"
-    python3_path=conf_dict.get("python3")
+    local_python3_file=conf_dict.get("python3")
     for i in host_dict.keys():
         if i != "local_name":
             hosts_str=f"{hosts_str}{host_dict[i].get('ip')}\t{i}\n"
@@ -57,6 +56,7 @@ def host_init(host_dict, conf_dict):
             ip=host_dict[i].get("ip")
             port=host_dict[i].get("port")
             password=host_dict[i].get("root_password")
+            soft_install=soft(ip, port)
 
             hostname=f"{i}.dream.org"
             hostname_cmd=f"hostnamectl set-hostname {hostname}"
@@ -79,7 +79,10 @@ def host_init(host_dict, conf_dict):
             host.exec(ip, port, hosts_cmd)
             print(f"{i}添加hosts")
 
-            status=soft_install.tar_install(python3_path, ip, port, "/opt")
+            remote_python3_file=f"/tmp/{local_python3_file.split('/')[-1]}"
+            host.scp(ip, port, "root", local_python3_file, remote_python3_file)
+            command=f"tar -xf {remote_python3_file} -C /opt/ && echo 0"
+            status=host.exec(ip, port, command)
             flag=status[1].read().decode('utf8').strip()
             if flag!='0':
                 print("Python3安装报错: status[2].read().decode('utf8')")
