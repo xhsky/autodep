@@ -46,7 +46,7 @@ def main():
             print(f"\n安装并配置{j}...")
             port=init_dict[i].get("port")
             soft_obj=soft(i, port)
-            status=soft_obj.install(j, weight, conf_dict.get(j), f"'{json.dumps(arch_dict.get(i))}'")
+            status=soft_obj.install(j, weight, conf_dict["location"].get(j), f"'{json.dumps(arch_dict.get(i))}'")
 
             for line in status[1]:
                 if line is not None:
