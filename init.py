@@ -13,7 +13,7 @@ def connect_test(host_dict):
 
     flag=1
     return_msg={}
-    for i in host_dict.keys():
+    for i in host_dict:
         if i != "local_name":
             host=Client()
             ip=host_dict[i].get("ip")
@@ -45,12 +45,12 @@ def host_init(host_dict, conf_dict):
 
     hosts={}
     hosts_str="\n"
-    local_python3_file=conf_dict.get("python3")
-    for i in host_dict.keys():
+    local_python3_file=conf_dict["location"].get("python3")
+    for i in host_dict:
         if i != "local_name":
             hosts_str=f"{hosts_str}{host_dict[i].get('ip')}\t{i}\n"
 
-    for i in host_dict.keys():
+    for i in host_dict:
         if i != "local_name":
             print(f"主机{i}环境初始化...")
             ip=host_dict[i].get("ip")
@@ -96,7 +96,7 @@ def host_msg(host_dict):
     """
     host=Client()
     get_msg_py="./bin/host.py"
-    for i in host_dict.keys():
+    for i in host_dict:
         if i != "local_name":
             ip=host_dict[i].get("ip")
             port=host_dict[i].get("port")
