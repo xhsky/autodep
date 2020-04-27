@@ -17,7 +17,9 @@ def install(soft_file, located):
 
     # 安装rpm依赖
     pkgs=" ".join(os.listdir(f"{located}/ffmpeg/deps/"))
-    if os.system(f"cd {located}/ffmpeg/deps &> /dev/null && rpm -Uvh {pkgs} &> /dev/null") == 0:
+    result=os.system(f"cd {located}/ffmpeg/deps &> /dev/null && rpm -Uvh {pkgs} &> /dev/null")
+    # 768 为重新安装返回码
+    if  result == 0 or result == 768:
         return 1, "ok"
     else:
         return 0, "依赖包安装失败"
