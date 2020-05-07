@@ -92,32 +92,39 @@ def install(soft_file, located):
         return 1, "ok"
     except Exception as e:
         return 0, e
-
 def main():
-    weight, soft_file, conf_json=sys.argv[1:4]
+    action, weight, soft_file, conf_json=sys.argv[1:5]
     conf_dict=json.loads(conf_json)
-    #print(f"{soft_file=}, {data_dict=}")
+    located=conf_dict.get("located")
 
     # 安装
-    located=conf_dict.get("located")
-    value, msg=install(soft_file, located)
-    if value==1:
-        print("nginx安装完成")
-    else:
-        print(f"Error: 解压安装包失败: {msg}")
-        return 
+    if action=="install":
+        value, msg=install(soft_file, located)
+        if value==1:
+            print("nginx安装完成")
+        else:
+            print(f"Error: 解压安装包失败: {msg}")
+            return 
 
-    # 配置
-    cpu_count=int(psutil.cpu_count() * float(weight))
-    tomcat_servers=""
-    for i in conf_dict.get("nginx_info").get("proxy_hosts"):
-        tomcat_servers=f"{tomcat_servers}server {i}:8080;\n\t"
-    webapp=conf_dict.get("nginx_info").get("proxy_webapp")
-    value=config(located, cpu_count, tomcat_servers, webapp)
-    if value==0:
-        print("nginx配置优化完成")
-    else:
-        print(f"nginx配置优化失败:{value}")
+        # 配置
+        cpu_count=int(psutil.cpu_count() * float(weight))
+        tomcat_servers=""
+        for i in conf_dict.get("nginx_info").get("proxy_hosts"):
+            tomcat_servers=f"{tomcat_servers}server {i}:8080;\n\t"
+        webapp=conf_dict.get("nginx_info").get("proxy_webapp")
+        value=config(located, cpu_count, tomcat_servers, webapp)
+        if value==0:
+            print("nginx配置优化完成")
+        else:
+            print(f"nginx配置优化失败:{value}")
+    elif action=="start":
+        start_command=f"cd {located}/nginx ;./sbin/nginx &> /dev/null"
+        result=os.system(start_command)
+        if result==0:
+            print(f"nginx启动完成")
+        else:
+            print(f"Error: nginx启动失败")
+
 
 if __name__ == "__main__":
     main()

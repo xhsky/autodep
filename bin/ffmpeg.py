@@ -25,16 +25,20 @@ def install(soft_file, located):
         return 0, "依赖包安装失败"
 
 def main():
-    weight, soft_file, conf_json=sys.argv[1:4]
+    action, weight, soft_file, conf_json=sys.argv[1:5]
     conf_dict=json.loads(conf_json)
 
     # 安装
-    located=conf_dict.get("located")
-    value, msg=install(soft_file, located)
-    if value==1:
-        print("ffmpeg安装完成")
-    else:
-        print(f"Error: 安装失败: {msg}")
+    if action=="install":
+        located=conf_dict.get("located")
+        value, msg=install(soft_file, located)
+        if value==1:
+            print("ffmpeg安装完成")
+        else:
+            print(f"Error: 安装失败: {msg}")
+
+    elif action=="start":
+            print("ffmpeg无须启动")
 
 if __name__ == "__main__":
     main()

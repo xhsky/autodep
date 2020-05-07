@@ -16,33 +16,36 @@ def install(soft_file, located):
         return 0, e
 
 def main():
-    weight, soft_file, conf_json=sys.argv[1:4]
+    action, weight, soft_file, conf_json=sys.argv[1:5]
     conf_dict=json.loads(conf_json)
-    #print(f"{soft_file=}, {data_dict=}")
 
     # 安装
-    located=conf_dict.get("located")
-    value, msg=install(soft_file, located)
-    if value==1:
-        print("jdk安装完成")
-    else:
-        print(f"Error: 解压安装包失败: {msg}")
-        return 
+    if action=="install":
+        located=conf_dict.get("located")
+        value, msg=install(soft_file, located)
+        if value==1:
+            print("jdk安装完成")
+        else:
+            print(f"Error: 解压安装包失败: {msg}")
+            return 
 
-    # 配置
-    for i in os.listdir(located):
-        if i.startswith("jdk"):
-            src=f"{located}/{i}"
-    try:
-        dst=f"{located}/jdk"
-        os.symlink(src, dst)
-        path=f"export JAVA_HOME={dst}\nexport PATH=$JAVA_HOME/bin:$PATH\n"
-        with open("/etc/profile.d/jdk.sh", "w") as f:
-            f.write(path)
-    except Exception as e:
-        print(f"Error: jdk配置出错: {e}")
-    else:
-        print(f"jdk配置完成")
+        # 配置
+        for i in os.listdir(located):
+            if i.startswith("jdk"):
+                src=f"{located}/{i}"
+        try:
+            dst=f"{located}/jdk"
+            os.symlink(src, dst)
+            path=f"export JAVA_HOME={dst}\nexport PATH=$JAVA_HOME/bin:$PATH\n"
+            with open("/etc/profile.d/jdk.sh", "w") as f:
+                f.write(path)
+        except Exception as e:
+            print(f"Error: jdk配置出错: {e}")
+        else:
+            print(f"jdk配置完成")
+
+    if action=="start":
+        print(f"jdk无须启动")
 
 if __name__ == "__main__":
     main()

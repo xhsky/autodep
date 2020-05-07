@@ -19,18 +19,20 @@ class soft(object):
         return status
     """
 
-    def install(self, soft_name, weight, soft_file, json_info):
-        install_file=f"./bin/{soft_name}.py"
-        install_pkg=soft_file.split("/")[-1]
+    def control(self, soft_name, action, weight, soft_file, json_info):
+        py_file=f"./bin/{soft_name}.py"
+        install_pkg_name=soft_file.split("/")[-1]
 
-        self.ssh.scp(self.ip, self.port, "root", install_file, f"/tmp/{soft_name}.py")
-        self.ssh.scp(self.ip, self.port, "root", soft_file, f"/tmp/{install_pkg}")
+        if action=="install":
+            self.ssh.scp(self.ip, self.port, "root", py_file, f"/tmp/{soft_name}.py")
+            self.ssh.scp(self.ip, self.port, "root", soft_file, f"/tmp/{install_pkg_name}")
 
-        command=f"/opt/python3/bin/python3 /tmp/{soft_name}.py {weight} /tmp/{install_pkg} {json_info}"
+        command=f"/opt/python3/bin/python3 /tmp/{soft_name}.py {action} {weight} /tmp/{install_pkg_name} {json_info}"
         #print(f"{command}")
         status=self.ssh.exec(self.ip, self.port, command)
         return status
 
+    """
     def control(self, action):
         install_dir=self.__res["base_dir"]
         user=self.__res["run_user"]
@@ -66,7 +68,7 @@ class soft(object):
                 
         else:
             self.__log.log("error", "action: %s" % action)
-
+    """
 
 if __name__ == "__main__":
     pass

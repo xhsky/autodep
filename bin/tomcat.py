@@ -2,7 +2,7 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, os, json
+import sys, os, json, time
 import tarfile
 import psutil
 import shutil
@@ -208,7 +208,7 @@ CATALINA_PID=$CATALINA_HOME/bin/catalina.pid
         server_f.write(server_xml)
         setenv_f.write(setevn_sh)
 
-    command=f"f{located}/tomcat/bin/catalina.sh configtest &> /dev/null"
+    command=f"{located}/tomcat/bin/catalina.sh configtest &> /dev/null"
     return os.system(command)
 
 def install(soft_file, located):
@@ -222,51 +222,59 @@ def install(soft_file, located):
         return 0, e
 
 def main():
-    weight, soft_file, conf_json=sys.argv[1:4]
+    action, weight, soft_file, conf_json=sys.argv[1:5]
     conf_dict=json.loads(conf_json)
-    #print(f"{soft_file=}, {data_dict=}")
+    located=conf_dict.get("located")
 
     # 安装
-    located=conf_dict.get("located")
-    value, msg=install(soft_file, located)
-    if value==1:
-        print("Tomcat安装完成")
-    else:
-        print(f"Error: 解压安装包失败: {msg}")
-        return 
+    if action=="install":
+        value, msg=install(soft_file, located)
+        if value==1:
+            print("Tomcat安装完成")
+        else:
+            print(f"Error: 解压安装包失败: {msg}")
+            return 
 
-    # 配置
-    for i in os.listdir(located):
-        if i.startswith("apache-tomcat-"):
-            src=f"{located}/{i}"
-    try:
-        dst=f"{located}/tomcat"
-        # 建立软连接
-        os.symlink(src, dst)
+        # 配置
+        for i in os.listdir(located):
+            if i.startswith("apache-tomcat-"):
+                src=f"{located}/{i}"
+        try:
+            dst=f"{located}/tomcat"
+            # 建立软连接
+            os.symlink(src, dst)
 
-        # 写入系统变量
-        path=f"export CATALINA_HOME={located}/tomcat\nexport PATH=$CATALINA_HOME/bin:$PATH\n"
-        with open("/etc/profile.d/tomcat.sh",  "w") as f:
-            f.write(path)
-        
-        # 删除tomcat原有程序目录
-        webapps_dir=f"{located}/tomcat/webapps"
-        for i in os.listdir(webapps_dir):
-            shutil.rmtree(f"{webapps_dir}/{i}")
-    except Exception as e:
-        print(f"Error: Tomcat配置环境变量出错: {e}")
-    else:
-        print(f"Tomcat配置环境变量完成")
+            # 写入系统变量
+            path=f"export CATALINA_HOME={located}/tomcat\nexport PATH=$CATALINA_HOME/bin:$PATH\n"
+            with open("/etc/profile.d/tomcat.sh",  "w") as f:
+                f.write(path)
+            
+            # 删除tomcat原有程序目录
+            webapps_dir=f"{located}/tomcat/webapps"
+            for i in os.listdir(webapps_dir):
+                shutil.rmtree(f"{webapps_dir}/{i}")
+        except Exception as e:
+            print(f"Error: Tomcat配置环境变量出错: {e}")
+        else:
+            print(f"Tomcat配置环境变量完成")
 
-    mem=psutil.virtual_memory()
-    jvm_mem=int(mem[0] * float(weight) /1024/1024)
-    #cpu_count=int(psutil.cpu_count() * float(weight))
-    value=config(located, jvm_mem, jvm_mem)
-    # 返回值23512为apr未安装报错, 忽略
-    if value==0 or value==32512:
-        print("Tomcat配置优化完成")
-    else:
-        print(f"Tomcat配置优化失败:{value}")
+        mem=psutil.virtual_memory()
+        jvm_mem=int(mem[0] * float(weight) /1024/1024)
+        #cpu_count=int(psutil.cpu_count() * float(weight))
+        value=config(located, jvm_mem, jvm_mem)
+        # 返回值32512为apr未安装报错, 忽略
+        if value==0 or value==32512:
+            print("Tomcat配置优化完成")
+        else:
+            print(f"Tomcat配置优化失败:{value}")
+
+    elif action=="start":
+        command=f"set -m ; {located}/tomcat/bin/catalina.sh start &> /dev/null" 
+        result=os.system(command)
+        if result==0:
+            print("Tomcat启动完成")
+        else:
+            print(f"Error: Tomcat启动启动失败")
 
 if __name__ == "__main__":
     main()

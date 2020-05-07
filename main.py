@@ -37,16 +37,19 @@ def main():
 
     json_ana()
 
-    # 安装
+    # 部署
     print("开始集群部署...")
-    for i in arch_dict.keys():
-        weight=get_weight()
+
+    # 安装
+    for i in arch_dict:
         print(f"\n{i}部署...")
+        weight=get_weight()
+        action="install"
         for j in arch_dict[i].get("software"):
             print(f"\n安装并配置{j}...")
             port=init_dict[i].get("port")
             soft_obj=soft(i, port)
-            status=soft_obj.install(j, weight, conf_dict["location"].get(j), f"'{json.dumps(arch_dict.get(i))}'")
+            status=soft_obj.control(j, action, weight, conf_dict["location"].get(j), f"'{json.dumps(arch_dict.get(i))}'")
 
             for line in status[1]:
                 if line is not None:
@@ -56,6 +59,21 @@ def main():
                     print(line.strip("\n"))
 
     # 启动
+    for i in arch_dict:
+        print(f"\n{i}部署...")
+        action="start"
+        for j in arch_dict[i].get("software"):
+            print(f"\n启动并配置{j}...")
+            port=init_dict[i].get("port")
+            soft_obj=soft(i, port)
+            status=soft_obj.control(j, action, weight, conf_dict["location"].get(j), f"'{json.dumps(arch_dict.get(i))}'")
+
+            for line in status[1]:
+                if line is not None:
+                    print(line.strip("\n"))
+            for line in status[2]:
+                if line is not None:
+                    print(line.strip("\n"))
 
 
 
