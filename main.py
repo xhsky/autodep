@@ -38,10 +38,10 @@ def main():
     json_ana()
 
     # 安装
-    print("开始集群部署...\n")
+    print("开始集群部署...")
     for i in arch_dict.keys():
         weight=get_weight()
-        print(f"{i}部署...")
+        print(f"\n{i}部署...")
         for j in arch_dict[i].get("software"):
             print(f"\n安装并配置{j}...")
             port=init_dict[i].get("port")
