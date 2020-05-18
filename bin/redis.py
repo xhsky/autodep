@@ -5,7 +5,6 @@
 import sys, os, json
 import tarfile
 import psutil
-import shutil
 
 def redis_config(located, password, mem, slaveof_master_port): 
     redis_conf=f"""# Redis configuration file example.
@@ -1316,7 +1315,7 @@ aof-rewrite-incremental-fsync yes
         return 0, e
 
 def sentinel_conf(located, password, master):
-    sentienl_conf=f"""
+    sentinel_conf=f"""
 # Example sentinel.conf
 
 # *** IMPORTANT ***
@@ -1522,7 +1521,7 @@ sentinel down-after-milliseconds mymaster 5000
     try:
         sentinel_conf_file=f"{located}/redis/conf/sentinel.conf"
         with open(sentinel_conf_file, "w") as f:
-            f.write(sentienl_conf)
+            f.write(sentinel_conf)
         return 1, "ok"
     except Exception as e:
         return 0, e
@@ -1538,62 +1537,85 @@ def install(soft_file, located):
         return 0, e
 
 def main():
-    weight, soft_file, conf_json=sys.argv[1:4]
+    action, weight, soft_file, conf_json=sys.argv[1:5]
     conf_dict=json.loads(conf_json)
-    #print(f"{soft_file=}, {data_dict=}")
 
-    # 安装
     located=conf_dict.get("located")
-    value, msg=install(soft_file, located)
-    if value==1:
-        print("Redis安装完成")
-    else:
-        print(f"Error: 解压安装包失败: {msg}")
-        return 
-
-    # 配置
-    try:
-        with open("/etc/sysctl.d/redis.conf", "w") as sysctl_f, open("/etc/rc.local", "a") as rc_f:
-            sysctl_f.write("net.core.somaxconn=1024\nvm.overcommit_memory=1")
-            rc_f.write("echo never > /sys/kernel/mm/transparent_hugepage/enabled")
-
-        result=os.system("sysctl -p /etc/sysctl.d/redis.conf &> /dev/null && echo never > /sys/kernel/mm/transparent_hugepage/enabled")
-        if result!=0:
-            print(f"Error: Redis配置环境变量出错: {e}")
-    except Exception as e:
-        print(f"Error: Redis配置环境变量出错: {e}")
-    else:
-        print(f"Redis配置环境变量完成")
-
-    password=conf_dict.get("redis_info").get("db_info").get("redis_password")
-    mem=psutil.virtual_memory()
-    mem=int(mem[0] * float(weight) /1024/1024)
-
-    # 配置sentinel文件
-    cluster_info_dict=conf_dict.get("redis_info").get("cluster_info")
-    if cluster_info_dict is not None:
-        role=cluster_info_dict.get("role")
-        master_host=cluster_info_dict.get("master_host")
-        result, msg=sentinel_conf(located, password, master_host)
-        if result==1:
-            print("Sentinel安装配置完成")
+    if action=="install":
+        # 安装
+        value, msg=install(soft_file, located)
+        if value==1:
+            print("Redis安装完成")
         else:
-            print(f"Error: Sentinel配置失败: {msg}")
-    else:
-        role="master"
-        master_host=""
+            print(f"Error: 解压安装包失败: {msg}")
+            return 
 
-    # 根据主从配置redis文件
-    if role=="master":
-        slaveof_master_port=""
-    elif role=="slave":
-        slaveof_master_port=f"slaveof {master_host} 6379"
-    result, msg=redis_config(located, password, mem, slaveof_master_port)
-    if result==1:
-        print(f"Redis({role})配置优化完成")
-    else:
-        print(f"Error: Redis{role}配置优化失败: {msg}")
+        # 配置
+        try:
+            with open("/etc/sysctl.d/redis.conf", "w") as sysctl_f, open("/etc/rc.local", "a") as rc_f:
+                sysctl_f.write("net.core.somaxconn=1024\nvm.overcommit_memory=1")
+                rc_f.write("echo never > /sys/kernel/mm/transparent_hugepage/enabled")
 
+            result=os.system("sysctl -p /etc/sysctl.d/redis.conf &> /dev/null && echo never > /sys/kernel/mm/transparent_hugepage/enabled")
+            if result!=0:
+                print(f"Error: Redis配置环境变量出错: {e}")
+        except Exception as e:
+            print(f"Error: Redis配置环境变量出错: {e}")
+        else:
+            print(f"Redis配置环境变量完成")
+
+        password=conf_dict.get("redis_info").get("db_info").get("redis_password")
+        mem=psutil.virtual_memory()
+        mem=int(mem[0] * float(weight) /1024/1024)
+
+        # 配置sentinel文件
+        # 若存在集群设置, 则配置sentinel
+        cluster_info_dict=conf_dict.get("redis_info").get("cluster_info")
+        if cluster_info_dict is not None:
+            role=cluster_info_dict.get("role")
+            master_host=cluster_info_dict.get("master_host")
+            result, msg=sentinel_conf(located, password, master_host)
+            if result==1:
+                print("Sentinel安装配置完成")
+            else:
+                print(f"Error: Sentinel配置失败: {msg}")
+        else:
+            role="master"
+            master_host=""
+
+        # 根据主从配置redis文件
+        if role=="master":
+            slaveof_master_port=""
+        elif role=="slave":
+            slaveof_master_port=f"slaveof {master_host} 6379"
+        result, msg=redis_config(located, password, mem, slaveof_master_port)
+        if result==1:
+            print(f"Redis({role})配置优化完成")
+        else:
+            print(f"Error: Redis{role}配置优化失败: {msg}")
+
+    elif action=="start":
+        cluster_info_dict=conf_dict.get("redis_info").get("cluster_info")
+        cluster_flag=0
+        role="单机"
+        if cluster_info_dict is not None:
+            cluster_flag=1
+            role=cluster_info_dict.get("role")
+
+        redis_start_command=f"cd {located}/redis && bin/redis-server conf/redis.conf"
+        result=os.system(redis_start_command)
+        if result==0:
+            print(f"Redis({role})启动成功")
+        else:
+            print(f"Error: Redis{role}启动失败")
+
+        if cluster_flag:
+            sentinel_start_command=f"cd {located}/redis && bin/redis-sentinel conf/sentinel.conf"
+            result=os.system(sentinel_start_command)
+            if result==0:
+                print(f"Sentinel启动成功")
+            else:
+                print(f"Error: Sentinel启动失败")
 
 if __name__ == "__main__":
     main()
