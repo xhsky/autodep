@@ -5,7 +5,6 @@
 import sys, os, json
 import tarfile
 import psutil
-import shutil
 
 def install(soft_file, located):
     os.makedirs(located, exist_ok=1)
@@ -17,8 +16,8 @@ def install(soft_file, located):
         pkgs=" ".join(os.listdir(f"{located}/glusterfs_pkgs/"))
         command=f"cd {located}/glusterfs_pkgs/ &> /dev/null && rpm -Uvh {pkgs} &> /dev/null"
         result=os.system(command)
-        # 4864为重新安装rpm返回值
-        if result==0 or result==4864:
+        # 5120为重新安装rpm返回值
+        if result==0 or result==5120:
             return 1, "ok"
         else:
             return 0, "GlusterFS rpm包安装失败"
@@ -26,78 +25,54 @@ def install(soft_file, located):
         return 0, e
 
 def main():
-    weight, soft_file, conf_json=sys.argv[1:4]
+    action, weight, soft_file, conf_json=sys.argv[1:5]
     conf_dict=json.loads(conf_json)
 
     # 安装
-    located=conf_dict.get("located")
-    value, msg=install(soft_file, located)
-    if value==1:
-        print("GlusterFS安装完成")
-    else:
-        print(f"Error: GlusterFS安装失败: {msg}")
-        return 
+    if action=="install":
+        located=conf_dict.get("located")
+        value, msg=install(soft_file, located)
+        if value==1:
+            print("GlusterFS安装完成")
+        else:
+            print(f"Error: GlusterFS安装失败: {msg}")
 
     # 配置
+    if action=="start":
+        gluster_info=conf_dict.get("glusterfs_info")
+        volume_dir=gluster_info.get("volume_dir")
+        members=gluster_info.get("members")
+        mounted_dict=gluster_info.get("mounted")
 
-    gluster_info=conf_dict.get("glusterfs_info")
+        os.makedirs(volume_dir, exist_ok=1)
+        command="systemctl enable glusterd &> /dev/null && systemctl start glusterd"
+        result=os.system(command)
+        if result==0:
+            print(f"GlusterFS初始化启动完成")
 
-    volume_dir=gluster_info.get("volume_dir")
-    members=gluster_info.get("members")
-    mounted_dict=gluster_info.get("mounted")
+            # 配置集群
+            result_list=[]
+            create_volume_command=""
 
-    result=os.system("systemctl enable glusterd &> /dev/null && systemctl start glusterd")
-    if result==0:
-        print(f"GlusterFS初始化启动完成")
-    return 0
+            for i in members:
+                create_volume_command=f"{create_volume_command} {i}:{volume_dir} "
+                add_peer_command=f"gluster peer probe {i} &> /dev/null"
+                result=os.system(add_peer_command)
+                result_list.append(result)
 
-    # 获取密码
-    try:
-        with open(f"{located}/mysql/mylog/mysqld.log", "r") as f:
-            for i in f.readlines():
-                if "temporary password" in i:
-                    pass_line=i.split(" ")
-                    init_password=pass_line[-1].strip()
-                    break
-    except Exception as e:
-        print(f"Error: MySQL初始化失败: {e}")
-        exit()
-
-    root_password=db_info.get("root_password")
-    change_pass_command=f"mysqladmin  -uroot -p'{init_password}' password {root_password} &> /dev/null"
-    value=os.system(f"{change_pass_command}")
-    if value==0:
-        print("MySQL更改初始密码完成")
-    else:
-        print(f"MySQL更改初始密码失败:{value}")
-        exit()
-    
-    # 创建自定义用户和数据库
-    init_sql_list=[]
-    for db_name, user_name, user_password in zip(db_info.get("business_db"), db_info.get("business_user"), db_info.get("business_password")):
-        db_sql=f"create database {db_name};"
-        use_sql=f"use {db_name};"
-        user_sql=f"create user '{user_name}'@'%' identified by '{user_password}';"
-        grant_sql=f"grant all on {db_name}.* to '{user_name}'@'%';"
-        init_sql_list.append(db_sql)
-        init_sql_list.append(user_sql)
-        init_sql_list.append(grant_sql)
-    init_sql=" ".join(init_sql_list)
-    init_commands=f'export MYSQL_PWD="{root_password}" ; echo "{init_sql}" | mysql -uroot'
-    value=os.system(init_commands)
-    if value==0:
-        print("MySQL用户配置完成")
-    else:
-        print(f"MySQL用户配置失败:{value}")
-
-    # 集群
-    if cluster_flag==1:
-        cluster_commands=f'export MYSQL_PWD="{root_password}" ; echo "{sync_sql}" | mysql -uroot'
-        value=os.system(cluster_commands)
-        if value==0:
-            print(f"MySQL({role})配置完成")
+            if sum(result_list)==0:
+                volume_name="g_data"
+                N=len(members)
+                create_volume_command=f"gluster volume create {volume_name} replica {N} {create_volume_command} force &> /dev/null"
+                result=os.system(create_volume_command)
+                if result==0:
+                    start_volume_command=f"gluster volume start {volume_name} &> /dev/null"
+                    result=os.system(start_volume_command)
+                    if result==0:
+                        print("GlusterFS共享存储创建成功")
         else:
-            print(f"MySQL({role})配置失败:{value}")
+            print(f"Error: GlusterFS初始化启动失败")
+
 
 
 if __name__ == "__main__":
