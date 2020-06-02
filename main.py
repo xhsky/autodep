@@ -7,9 +7,17 @@ from libs.client import Client
 from libs.install import soft
 from itertools import zip_longest
 
-def get_weight():
-    pass
-    return 0.8
+def get_weight(soft_weight_dict, soft_install_list):
+    """ 返回各软件占服务器的权重
+    """
+    soft_install_dict={}
+    for i in soft_install_list:
+        soft_install_dict[i]=soft_weight_dict[i]
+    weight_sum=sum(soft_install_dict.values())+1		# 1为系统权重
+    
+    for i in soft_install_dict:
+        soft_install_dict[i]=round(soft_install_dict[i]/weight_sum, 2)
+    return soft_install_dict
 
 def json_ana():
     pass
@@ -43,12 +51,14 @@ def main():
     # 安装
     for i in arch_dict:
         print(f"\n{i}部署...")
-        weight=get_weight()
+        soft_install_dict=get_weight(conf_dict["software"], arch_dict[i].get("software"))
         action="install"
-        for j in arch_dict[i].get("software"):
+        #for j in arch_dict[i].get("software"):
+        for j in soft_install_dict:
             print(f"\n安装并配置{j}...")
             port=init_dict[i].get("port")
             soft_obj=soft(i, port)
+            weight=soft_install_dict[j]
             status=soft_obj.control(j, action, weight, conf_dict["location"].get(j), f"'{json.dumps(arch_dict.get(i))}'")
 
             for line in status[1]:
