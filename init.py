@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!../ext/python3/bin/python3
 # *-* coding:utf8 *-*
 # sky
 
@@ -118,11 +118,12 @@ def main():
             except json.decoder.JSONDecodeError:
                 print(f"Error: 配置文件({conf_file})json格式不正确")
             else:
+                print(f"检测配置文件中账号端口等信息, 请稍后")
                 flag, connect_msg=connect_test(init_dict)
                 if flag==0:
                     print(f"Error: 配置文件({init_file})有误, 请根据返回信息重新配置并初始化\n")
                     for i in connect_msg:
-                        print(f"{i}: {connect_msg[i]}")
+                        print(f"{i}:\t{connect_msg[i]}")
                     exit()
                 print("主机初始化..")
                 host_init(init_dict, conf_dict)
