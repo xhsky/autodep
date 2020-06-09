@@ -5,7 +5,7 @@
 import json
 #from libs import abc
 from libs.client import Client
-from libs.install import soft
+#from libs.install import soft
 
 def connect_test(host_dict):
     """ 判断主机配置信息是否正确
@@ -35,6 +35,7 @@ def host_init(host_dict, conf_dict):
         * 关闭firewalld
         * 关闭selinux
         * 配置Python3环境
+        * nproc nofile
     """
 
     host=Client()
@@ -44,50 +45,47 @@ def host_init(host_dict, conf_dict):
         print("本机已存在密钥对\n")
 
     hosts={}
+    init_py="./bin/init.py"
     hosts_str="\n"
     local_python3_file=conf_dict["location"].get("python3")
+
+    # 获取所有hosts
     for i in host_dict:
         if i != "local_name":
-            hosts_str=f"{hosts_str}{host_dict[i].get('ip')}\t{i}\n"
-
+            hosts_str=f"{hosts_str}{host_dict[i].get('ip')} {i}\n"
+    # 初始化
     for i in host_dict:
         if i != "local_name":
             print(f"主机{i}环境初始化...")
             ip=host_dict[i].get("ip")
             port=host_dict[i].get("port")
             password=host_dict[i].get("root_password")
-            soft_install=soft(ip, port)
-
-            hostname=f"{i}.dream.org"
-            hostname_cmd=f"hostnamectl set-hostname {hostname}"
-            firewalld_cmd=f"systemctl disable firewalld; systemctl stop firewalld"
-            selinux_cmd=f"setenforce 0"
-            hosts_cmd=f"echo '{hosts_str}' >> /etc/hosts"
 
             host.free_pass_set(ip, port, password)
-            print(f"{i}免密码登录设置完成")
-
-            host.exec(ip, port, hostname_cmd)
-            print(f"{i}设置主机名为{hostname}")
-
-            host.exec(ip, port, firewalld_cmd)
-            print(f"{i}已关闭防火墙")
-
-            host.exec(ip, port, selinux_cmd)
-            print(f"{i}已关闭SELinux")
-
-            host.exec(ip, port, hosts_cmd)
-            print(f"{i}添加hosts")
-
+            print(f"免密码登录设置完成")
+            
+            # 传输Python
             remote_python3_file=f"/tmp/{local_python3_file.split('/')[-1]}"
             host.scp(ip, port, "root", local_python3_file, remote_python3_file)
             command=f"tar -xf {remote_python3_file} -C /opt/ && echo 0"
             status=host.exec(ip, port, command)
             flag=status[1].read().decode('utf8').strip()
             if flag!='0':
-                print("Python3安装报错: status[2].read().decode('utf8')")
+                print(f"Python3安装报错: status[2].read().decode('utf8')")
+                exit()
             else:
-                print(f"{i}配置Python3环境")
+                print(f"配置Python3环境完成")
+
+            # 执行init.py
+            host.scp(ip, port, "root", init_py, "/tmp/init.py")
+            status=host.exec(ip, port, f"/opt/python3/bin/python3 /tmp/init.py {i} '{hosts_str}'")
+
+            for line in status[1]:
+                 if line is not None:
+                     print(line.strip("\n"))
+            for line in status[2]:
+                 if line is not None:
+                     print(line.strip("\n"))
 
             print("")
 
