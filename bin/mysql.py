@@ -191,6 +191,7 @@ def main():
             user_sql=f"create user '{user_name}'@'%' identified by '{user_password}';"
             grant_sql=f"grant all on {db_name}.* to '{user_name}'@'%';"
             init_sql_list.append(db_sql)
+            init_sql_list.append(use_sql)
             init_sql_list.append(user_sql)
             init_sql_list.append(grant_sql)
         init_sql=" ".join(init_sql_list)
