@@ -6,7 +6,7 @@ import sys, os, json
 import tarfile
 import psutil
 
-def config(located, cpu_count, tomcat_servers, webapp):
+def config(located, cpu_count, tomcat_servers):
     nginx_conf=f'''\
 user  nginx;
 worker_processes  {cpu_count};
@@ -66,7 +66,7 @@ http {{
         #access_log  logs/host.access.log  main;
 
         location / {{
-          proxy_pass http://tomcat_servers{webapp};
+          proxy_pass http://tomcat_servers;
           proxy_set_header Host $host; 
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -111,8 +111,8 @@ def main():
         tomcat_servers=""
         for i in conf_dict.get("nginx_info").get("proxy_hosts"):
             tomcat_servers=f"{tomcat_servers}server {i}:8080;\n\t"
-        webapp=conf_dict.get("nginx_info").get("proxy_webapp")
-        value=config(located, cpu_count, tomcat_servers, webapp)
+        #webapp=conf_dict.get("nginx_info").get("proxy_webapp")
+        value=config(located, cpu_count, tomcat_servers)
         if value==0:
             print("nginx配置优化完成")
         else:

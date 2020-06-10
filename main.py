@@ -65,8 +65,7 @@ def check(arch_dict, soft_list, init_host_list):
                 if j == "nginx":
                     format_list=[
                             ["nginx_info", dict], 
-                            ["nginx_info.proxy_hosts", list], 
-                            ["nginx_info.proxy_webapp", str]
+                            ["nginx_info.proxy_hosts", list]
                             ]
                     status, attr_name=check_format(arch_dict[i], format_list)
                     if not status:
