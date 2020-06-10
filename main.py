@@ -177,7 +177,7 @@ def main():
                 if line is not None:
                     print(line.strip("\n"))
 
-    print("开始集群启动...")
+    print("\n\n\n\n\n开始集群启动...")
     # 启动
     for i in arch_dict:
         print(f"\n{i}部署...")
