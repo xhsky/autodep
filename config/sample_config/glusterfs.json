@@ -1,0 +1,31 @@
+{
+  "web2":{
+    "software": ["glusterfs"], 
+    "located": "/data1", 
+    "glusterfs_info":{
+        "server_info":{
+          "volume_dir": "/data_db", 
+          "members":["web2", "web3"]
+        }, 
+        "client_info":{
+          "mounted_host": "web3", 
+          "mounted_dir": "/data_mount"
+        }
+    }
+  }, 
+  "web3":{
+    "software": ["glusterfs"], 
+    "located": "/data1", 
+    "glusterfs_info":{
+        "server_info":{
+          "volume_dir": "/data_db", 
+          "members":["web2", "web3"]
+        }, 
+        "client_info":{
+          "mounted_host": "web2", 
+          "mounted_dir": "/data_mount"
+        }
+    }
+  }
+}
+

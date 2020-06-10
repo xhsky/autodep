@@ -1,0 +1,28 @@
+{
+  "redis1":{
+    "software": ["redis"], 
+    "located": "/data", 
+		"redis_info":{
+       "db_info":{
+         "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599"
+       }, 
+       "cluster_info":{
+         "role": "master", 
+         "master_host": "redis1"
+       }
+    }
+  }, 
+  "redis2":{
+    "software": ["redis"], 
+    "located": "/data", 
+		"redis_info":{
+       "db_info":{
+         "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599"
+       }, 
+       "cluster_info":{
+         "role": "slave", 
+         "master_host": "redis1"
+       }
+    }
+  } 
+}

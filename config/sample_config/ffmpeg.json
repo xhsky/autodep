@@ -1,0 +1,11 @@
+{
+  "web1":{
+    "software": ["jdk", "tomcat", "ffmpeg"], 
+    "located": "/data/"
+  }, 
+  "web2":{
+    "software": ["jdk", "tomcat", "ffmpeg"], 
+    "located": "/data/"
+  } 
+}
+

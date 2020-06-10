@@ -1,0 +1,23 @@
+{
+  "location":{
+    "python3": "../ext/python3.tar.gz",
+    "nginx": "../ext/nginx-1.17.9-bin.tar.gz",
+    "jdk": "../ext/jdk-8u251-linux-x64.tar.gz", 
+    "tomcat": "../ext/apache-tomcat-8.5.51.tar.gz", 
+    "ffmpeg": "../ext/ffmpeg-4.2.2-bin.tar.gz", 
+    "redis": "../ext/redis-5.0.7-bin.tar.gz", 
+    "mysql": "../ext/mysql-8.0.19-rpm.tar.gz", 
+    "glusterfs": "../ext/glusterfs-7.5-rpm.tar.gz",
+    "glusterfs_client": "../ext/glusterfs-client-7.5-rpm.tar.gz"
+  }, 
+  "software": {
+     "nginx": 1,
+     "jdk": 0, 
+     "tomcat": 2, 
+     "ffmpeg": 1, 
+     "redis": 2, 
+     "mysql": 3, 
+     "glusterfs": 1,
+     "glusterfs_client": 0
+   }
+}

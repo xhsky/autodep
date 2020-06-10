@@ -1,0 +1,8 @@
+{  
+  "web":{
+    "software": ["nginx"], 
+    "located": "/data/", 
+    "nginx_info":{
+      "proxy_hosts": ["web1", "web2"]
+     }
+}
