@@ -78,55 +78,104 @@ def check(arch_dict, soft_list, init_host_list):
                 if j == "ffmpeg":
                     pass
                 if j == "redis":
-                    format_list=[
+                    db_format_list=[
                             ["redis_info", dict], 
                             ["redis_info.db_info", dict], 
-                            ["redis_info.cluster_info", dict], 
-                            ["redis_info.db_info.redis_password", str], 
-                            ["redis_info.cluster_info.role", str], 
-                            ["redis_info.cluster_info.master_host", str]
+                            ["redis_info.db_info.redis_password", str]
+                            ]
+                    status, attr_name=check_format(arch_dict[i], db_format_list)
+                    if not status:
+                        print(f"Error: '{i}.{attr_name}'配置错误")
+                        exit()
+
+                    if arch_dict[i].get("redis_info").get("cluster_info") is not None:
+                        cluster_format_list=[
+                                ["redis_info.cluster_info", dict], 
+                                ["redis_info.cluster_info.role", str], 
+                                ["redis_info.cluster_info.master_host", str]
+                                ]
+                        status, attr_name=check_format(arch_dict[i], cluster_format_list)
+                        if not status:
+                            print(f"Error: '{i}.{attr_name}'配置错误")
+                            exit()
+
+                        role=arch_dict[i].get("redis_info").get("cluster_info").get("role")
+                        if role != "slave" and role != "master":
+                            print(f"Error: '{i}.redis_info.cluster_info.role'配置错误")
+                            exit()
+                if j == "glusterfs":
+                    format_list=[
+                            ["glusterfs_info", dict]
                             ]
                     status, attr_name=check_format(arch_dict[i], format_list)
                     if not status:
                         print(f"Error: '{i}.{attr_name}'配置错误")
                         exit()
 
-                    role=arch_dict[i].get("redis_info").get("cluster_info").get("role")
-                    if role != "slave" and role != "master":
-                        print(f"Error: '{i}.redis_info.cluster_info.role'配置错误")
+                    server_info=arch_dict[i].get("glusterfs_info").get("server_info")
+                    client_info=arch_dict[i].get("glusterfs_info").get("client_info")
+
+                    if server_info is not None or client_info is not None:
+                        if server_info is not None:
+                            server_format_list=[
+                                    ["glusterfs_info.server_info.volume_dir", str], 
+                                    ["glusterfs_info.server_info.members", list]
+                                    ]
+                            status, attr_name=check_format(arch_dict[i], server_format_list)
+                            if not status:
+                                print(f"Error: '{i}.{attr_name}'配置错误")
+                                exit()
+                        if client_info is not None:
+                            client_format_list=[
+                                    ["glusterfs_info.client_info.mounted_host", str], 
+                                    ["glusterfs_info.client_info.mounted_dir", str]
+                                    ]
+                            status, attr_name=check_format(arch_dict[i], client_format_list)
+                            if not status:
+                                print(f"Error: '{i}.{attr_name}'配置错误")
+                                exit()
+                    else:
+                        print(f"Error: '{i}.glusterfs_info.server_info'或'{i}.glusterfs_info.client_info'至少存在一个")
                         exit()
-                if j == "glusterfs":
-                    format_list=[]
                 if j == "mysql":
-                    format_list=[
+                    db_format_list=[
                             ["mysql_info", dict], 
                             ["mysql_info.db_info", dict], 
-                            ["mysql_info.cluster_info", dict], 
                             ["mysql_info.db_info.root_password", str], 
                             ["mysql_info.db_info.server_id", int], 
                             ["mysql_info.db_info.business_db", list], 
                             ["mysql_info.db_info.business_user", list], 
                             ["mysql_info.db_info.business_password", list], 
-                            ["mysql_info.cluster_info.role", str]
                             ]
-                    status, attr_name=check_format(arch_dict[i], format_list)
+                    status, attr_name=check_format(arch_dict[i], db_format_list)
                     if not status:
                         print(f"Error: '{i}.{attr_name}'配置错误")
                         exit()
 
-                    role=arch_dict[i].get("mysql_info").get("cluster_info").get("role")
-                    if role != "slave" and role != "master":
-                        print(f"Error: '{i}.mysql_info.cluster_info.role'配置错误")
-                        exit()
-                    if role == "slave":
-                        sync_format_list=[
-                                ["mysql_info.cluster_info.sync_host", str], 
-                                ["mysql_info.cluster_info.sync_dbs", list]
+                    if arch_dict[i].get("mysql_info").get("cluster_info") is not None:
+                        cluster_format_list=[
+                                ["mysql_info.cluster_info", dict], 
+                                ["mysql_info.cluster_info.role", str]
                                 ]
-                        status, attr_name=check_format(arch_dict[i], sync_format_list)
+                        status, attr_name=check_format(arch_dict[i], cluster_format_list)
                         if not status:
                             print(f"Error: '{i}.{attr_name}'配置错误")
                             exit()
+
+                        role=arch_dict[i].get("mysql_info").get("cluster_info").get("role")
+                        role_list=["master", "slave"]
+                        if role not in role_list:
+                            print(f"Error: '{i}.mysql_info.cluster_info.role'配置错误")
+                            exit()
+                        if role == "slave":
+                            sync_format_list=[
+                                    ["mysql_info.cluster_info.sync_host", str], 
+                                    ["mysql_info.cluster_info.sync_dbs", list]
+                                    ]
+                            status, attr_name=check_format(arch_dict[i], sync_format_list)
+                            if not status:
+                                print(f"Error: '{i}.{attr_name}'配置错误")
+                                exit()
             else:
                 print(f"Error: {i}.software中'{j}'不支持")
                 exit()
