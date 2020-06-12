@@ -5,18 +5,320 @@
 1. 本项目基于Centos7系统, x86架构测试, 用于自动安装, 配置, 优化常用软件
 2. 本站点提供的形如`autodep-version-x64.tar.gz`文件为安装包
 3. 本文所有操作均使用root用户
+4. 需要每台主机的`root`用户且主机之间的`sshd`端口(默认22)相互连通
 
 ## 功能
 1. 当前支持软件: nginx, jdk, tomcat, ffmpeg, redis, glusterfs, mysql
 2. 当前支持集群: web集群(nginx+tomcat), redis主从-哨兵集群, glusterfs镜像集群, MySQL主从集群
-3. 支持自动配置, 自动优化, 自动安装
+3. 支持自动安装, 自动配置, 自动优化
+
+## 配置文件
+### 说明
+1. 配置文件均为json格式
+2. 在`autodep-1.0/autodep/config/`目录下有`init.json`和`arch.json`的示例文件, 可自行修改
+3. 在`autodep-1.0/autodep/config/sample_config/`目录下有每个软件的示例文件, 可用来参考配置`arch.json`
+
+### init.json文件
+
+​	初始化配置文件, 格式为json, 用于指定主机信息
+
+#### 格式
+```
+{
+  "local_name": "web",                  // "local_name"用于指定运行安装程序的主机
+  "web":{                               // "web"为下方"ip"所对应的主机域名, 在该集群中唯一, 可自定义
+    "ip":"192.168.1.203",               // "ip"为主机ip
+    "root_password":"111111",           // "root_password"为该主机对应的root密码
+    "port":22                           // "port"为连接该主机的ssh端口
+    }, 
+  "hostname1":{                         // 将集群中每一台主机均按该格式写入
+    ...
+  }, 
+  "hostname2":{
+    ...
+  }, 
+  ...
+}
+```
+
+### arch.json文件
+
+​	安装信息文件, 格式为json, 用于指定部署的集群架构信息
+
+#### 格式
+```
+{
+  "web":{                                                    // 在init.json中定义的主机名称, 有且唯一. 
+    "software": ["nginx", "jdk", "tomcat"],                  // "software"为要在该主机上安装的软件列表, 格式为[]
+    "located": "/data/",                                     // "located"为软件安装目录
+    "nginx_info":{                                           // "nginx_info"为nginx软件的属性信息, 一些软件需要有额外对应的属性信息以便于更好的安装. 具体信息请看软件属性
+      "proxy_hosts": ["web1", "web2"]
+     }, 
+     ...
+  }, 
+  "web1":{                                                    // 在init.json中定义的主机名称
+    "software": ["jdk", "tomcat"],                            // "software"为要在该主机上安装的软件列表, 格式为[]
+    "located": "/data/",                                      // "located"为软件安装目录
+  }, 
+  ...
+}
+```
+
+### 软件属性
+
+#### nginx属性格式
+
+```
+{  
+   "web":{
+     "software": ["nginx"], 
+     "located": "/data/", 
+     "nginx_info":{                                            // nginx属性
+       "proxy_hosts": ["web1", "web2"]                         // "proxy_hosts"指定负载的后端服务器名称
+    }
+}
+```
+
+#### jdk属性格式
+```
+{
+  "web1":{
+    "software": ["jdk"], 
+    "located": "/data/"
+  }
+}
+```
+
+#### tomcat属性格式
+
+```
+{
+  "web1":{
+    "software": ["jdk", "tomcat"], 
+    "located": "/data/"
+  }
+}
+```
+
+#### ffmpeg属性格式
+
+```
+{
+  "web1":{
+    "software": ["jdk", "tomcat", "ffmpeg"], 
+    "located": "/data/"
+  }
+}
+```
+
+#### redis属性格式
+
+##### redis单机属性格式
+
+```
+{
+  "redis":{
+    "software": ["redis"], 
+    "located": "/data",
+    "redis_info":{                                      // redis属性名称          
+       "db_info":{                                      // redis数据库信息
+         "redis_password": "b840fc02d5240454"           // 指定redis密码
+       } 
+    }
+  }
+}
+```
+##### redis主从+哨兵属性格式
+
+```
+{
+  "redis1":{
+    "software": ["redis"], 
+    "located": "/data", 
+    "redis_info":{                                      // redis属性名称
+       "db_info":{
+         "redis_password": "b840fc02d5240454"           // 主从密码需相同
+       }, 
+       "cluster_info":{                                 // redis集群信息
+         "role": "master",                              // 当前redis1主机角色
+         "master_host": "redis1"                        // 指定主从集群中的master主机名
+       }
+    }
+  }, 
+  "redis2":{
+    "software": ["redis"], 
+    "located": "/data", 
+    "redis_info":{
+       "db_info":{
+         "redis_password": "b840fc02d5240454"           // 主从密码需相同
+       }, 
+       "cluster_info":{                                 // redis集群信息
+         "role": "slave",                               // 当前redis1主机角色
+         "master_host": "redis1"                        // 指定主从集群中的master主机名
+       }
+    }
+  } 
+}
+```
+#### glusterfs属性格式
+
+##### glusterfs服务器+客户端属性格式
+
+```
+{
+  "data1":{
+    "software": ["glusterfs"], 
+    "located": "/data", 
+    "glusterfs_info":{                              // glusterfs属性名称
+        "server_info":{                             // glusterfs服务端属性
+          "volume_dir": "/data_db",                 // 指定组成共享存储的服务端目录
+          "members":["data1", "data2"]              // 指定组成共享存储的主机名称
+        }, 
+        "client_info":{                             // glusterfs客户端属性
+          "mounted_host": "data1",                  // 指定要挂载共享存储的主机
+          "mounted_dir": "/data_mount"              // 指定挂载该共享存储的主机目录
+        }
+    }
+  }, 
+  "data2":{
+    "software": ["glusterfs"], 
+    "located": "/data", 
+    "glusterfs_info":{                              // glusterfs属性名称
+        "server_info":{                             // glusterfs服务端属性
+          "volume_dir": "/data_db",                 // 指定组成共享存储的服务端目录
+          "members":["data1", "data2"]              // 指定组成共享存储的主机名称
+        }, 
+        "client_info":{                             // glusterfs客户端属性
+          "mounted_host": "data2",                  // 指定要挂载共享存储的主机
+          "mounted_dir": "/data_mount"              // 指定挂载该共享存储的主机目录
+        }
+    }
+  } 
+}
+```
+##### glusterfs服务器属性格式
+
+```
+{
+  "data1":{
+    "software": ["glusterfs"], 
+    "located": "/data", 
+    "glusterfs_info":{                              // glusterfs属性名称
+        "server_info":{                             // glusterfs服务端属性
+          "volume_dir": "/data_db",                 // 指定组成共享存储的服务端目录
+          "members":["data1", "data2"]              // 指定组成共享存储的主机名称
+        }
+    }
+  }, 
+  "data2":{
+    "software": ["glusterfs"], 
+    "located": "/data", 
+    "glusterfs_info":{                              // glusterfs属性名称
+        "server_info":{                             // glusterfs服务端属性
+          "volume_dir": "/data_db",                 // 指定组成共享存储的服务端目录
+          "members":["data1", "data2"]              // 指定组成共享存储的主机名称
+        }
+    }
+  }
+}
+```
+##### glusterfs客户端属性格式
+
+```
+{
+  "web1":{
+    "software": ["glusterfs"], 
+    "located": "/data", 
+    "glusterfs_info":{                              // glusterfs属性名称
+        "client_info":{                             // glusterfs客户端属性
+          "mounted_host": "web1",                   // 指定要挂载共享存储的主机
+          "mounted_dir": "/data_mount"              // 指定挂载该共享存储的主机目录
+        }
+    }
+  }, 
+  "web2":{
+    "software": ["glusterfs"], 
+    "located": "/data", 
+    "glusterfs_info":{                              // glusterfs属性名称
+        "client_info":{                             // glusterfs客户端属性
+          "mounted_host": "web2",                   // 指定要挂载共享存储的主机
+          "mounted_dir": "/data_mount"              // 指定挂载该共享存储的主机目录
+        }
+    }
+  } 
+}
+```
+
+#### mysql属性格式
+
+##### mysql单机属性格式
+```
+{
+  "mydb":{
+    "software": ["mysql"], 
+    "located": "/data/", 
+    "mysql_info":{                                                 // mysql属性信息
+        "db_info":{                                                // mysql数据库属性信息
+          "root_password": "DreamSoft_135",                        // 指定MySQL的root密码, 需符合密码复杂度策略(至少8位, 包含数字, 字母大小写和特殊符号)
+          "server_id": 1,                                          // 指定MySQL的编号, 不能和其它主机的MySQL编号相同
+          "business_db": ["db1", "db2"],                           // 业务数据库名称, 会自动建立
+          "business_user": ["user1", "user2"],                     // 每个业务数据库对应的用户
+          "business_password": ["Dreamdb_111", "Dreamdb_222"]      // 每个业务用户对应的密码(需符合密码复杂度)
+        }
+    }
+  }
+}
+```
+
+##### mysql主从属性格式
+
+```
+{
+  "mydb1":{
+    "software": ["mysql"], 
+    "located": "/data/", 
+    "mysql_info":{                                                 // mysql属性信息
+        "db_info":{                                                // mysql数据库属性信息
+          "root_password": "DreamSoft_135",                        // 指定MySQL的root密码, 需符合密码复杂度策略(至少8位, 包含数字, 字母大小写和特殊符号)
+          "server_id": 1,                                          // 指定MySQL的编号, 不能和其它主机的MySQL编号相同
+          "business_db": ["db1", "db2"],                           // 业务数据库名称, 会自动建立
+          "business_user": ["user1", "user2"],                     // 每个业务数据库对应的用户
+          "business_password": ["Dreamdb_111", "Dreamdb_222"]      // 每个业务用户对应的密码(需符合密码复杂度)
+        }, 
+        "cluster_info":{                                           // MySQL集群信息
+          "role": "master"                                         // MySQL集群中的角色
+        }
+    }
+  }, 
+  "mydb2":{
+    "software": ["mysql"], 
+    "located": "/data/", 
+    "mysql_info":{                                                 // mysql属性信息
+        "db_info":{                                                // mysql数据库属性信息
+          "root_password": "DreamSoft_135",                        // 指定MySQL的root密码, 需符合密码复杂度策略(至少8位, 包含数字, 字母大小写和特殊符号)
+          "server_id": 2,                                          // 指定MySQL的编号, 不能和其它主机的MySQL编号相同
+          "business_db": ["db3", "db4"],                           // 业务数据库名称, 会自动建立. 此处不能写同步数据库
+          "business_user": ["user3", "user4"],                     // 每个业务数据库对应的用户
+          "business_password": ["Dreamdb_333", "Dreamdb_444"]      // 每个业务用户对应的密码(需符合密码复杂度)
+        }, 
+        "cluster_info":{                                           // MySQL集群信息
+          "role": "slave"                                          // MySQL集群中的角色
+          "sync_host": "mydb1",                                    // 当"role"为"slave"时, 要指定需同步的数据库主机
+          "sync_dbs": ["db1", "db2"]                               // 同时指定需要同步的数据库(在mydb1中指定的业务数据库)
+        }
+    }
+  } 
+}
+```
 
 ## 部署安装
+*以9台服务器为例, 使用nginx+ 2 web + 2 redis(主从哨兵) + 2 mysql(主从) + 2 glusterfs*
+
 1. 将安装包上传至某台服务器上
 2. 解压
 ```
 # tar -xf autodep-1.0-x84.tar.gz
-# cd autodep-1.0/autodep
+# cd autodep/autodep
 ```
 3. 编辑初始化配置文件, 指定集群中各个主机
 ```
@@ -68,13 +370,117 @@
     "root_password":"111111", 
     "port":22
   }
-} 
-
+}
 ```
-
 4. 编辑架构配置文件, 指定集群架构
 ```
 # vim config/arch.json
+{
+  "web":{
+    "software": ["nginx"], 
+    "located": "/data/", 
+    "nginx_info":{
+      "proxy_hosts": ["web1", "web2"]
+     }
+  },
+  "data1":{
+    "software": ["glusterfs"], 
+    "located": "/data", 
+    "glusterfs_info":{
+        "server_info":{
+          "volume_dir": "/data_db", 
+          "members":["data1", "data2"]
+        } 
+    }
+  }, 
+  "data2":{
+    "software": ["glusterfs"], 
+    "located": "/data", 
+    "glusterfs_info":{
+        "server_info":{
+          "volume_dir": "/data_db", 
+          "members":["data1", "data2"]
+        }
+    }
+  },
+  "web1":{
+    "software": ["jdk", "tomcat", "ffmpeg", "glusterfs"], 
+    "located": "/data/", 
+    "glusterfs_info":{
+        "client_info":{
+          "mounted_host": "data1", 
+          "mounted_dir": "/data_mount"
+        }
+    }
+  }, 
+  "web2":{
+    "software": ["jdk", "tomcat", "ffmpeg", "glusterfs"], 
+    "located": "/data/", 
+    "glusterfs_info":{
+        "client_info":{
+          "mounted_host": "data1", 
+          "mounted_dir": "/data_mount"
+        }
+    }
+  },
+  "redis1":{
+    "software": ["redis"], 
+    "located": "/data", 
+		"redis_info":{
+       "db_info":{
+         "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599"
+       }, 
+       "cluster_info":{
+         "role": "master", 
+         "master_host": "redis1"
+       }
+    }
+  }, 
+  "redis2":{
+    "software": ["redis"], 
+    "located": "/data", 
+		"redis_info":{
+       "db_info":{
+         "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599"
+       }, 
+       "cluster_info":{
+         "role": "slave", 
+         "master_host": "redis1"
+       }
+    }
+  },  
+  "db1":{
+    "software": ["mysql"], 
+    "located": "/data/", 
+    "mysql_info":{
+        "db_info":{
+          "root_password": "DreamSoft_135", 
+          "server_id": 1, 
+          "business_db": ["db1", "db2"], 
+          "business_user": ["user1", "user2"], 
+          "business_password": ["Dreamdb_111", "Dreamdb_222"]
+        }
+    }
+  }, 
+  "db2":{
+    "software": ["mysql"], 
+    "located": "/data/", 
+    "mysql_info":{
+        "db_info":{
+          "root_password": "DreamSoft_246", 
+          "server_id": 2, 
+          "business_db": ["db3", "db4"], 
+          "business_user": ["user3", "user4"], 
+          "business_password": ["Dreamdb_333", "Dreamdb_444"]
+        }, 
+        "cluster_info":{
+          "role": "slave" ,
+          "sync_host": "db1",
+          "sync_dbs": ["db1", "db2"] 
+        }
+    }
+  }
+}
 ```
 
 5. 初始化
@@ -253,6 +659,16 @@ web部署...
 安装并配置nginx...                                                                                                                                                            
 nginx安装完成                                                                                                                                                                 
 nginx配置优化完成                                                                                                                                                             
+
+data1部署...
+
+启动并配置glusterfs...
+GlusterFS共享存储创建成功
+
+data2部署...
+
+启动并配置glusterfs...
+Error: 
                                                                                                                                                                               
 web1部署...                                                                                                                                                                   
                                                                                                                                                                               
@@ -267,6 +683,9 @@ Tomcat配置优化完成
                                                                                                                                                                               
 安装并配置ffmpeg...                                                                                                                                                           
 ffmpeg安装完成                                                                                                                                                                
+
+安装并配置glusterfs...
+glusterfs挂载成功
                                                                                                                                                                               
 web2部署...                                                                                                                                                                   
                                                                                                                                                                               
@@ -281,6 +700,9 @@ Tomcat配置优化完成
 
 安装并配置ffmpeg...
 ffmpeg安装完成
+
+安装并配置glusterfs...
+glusterfs挂载成功
 
 redis1部署...
 
@@ -359,18 +781,6 @@ redis2部署...
 Redis(slave)启动成功
 Sentinel启动成功
 
-data1部署...
-
-启动并配置glusterfs...
-GlusterFS共享存储创建成功
-Mounting glusterfs on /data_mount failed.
-Error: GlusterFS客户端挂载失败
-
-data2部署...
-
-启动并配置glusterfs...
-Mounting glusterfs on /data_mount failed.
-Error: GlusterFS客户端挂载失败
 
 db1部署...
 
@@ -388,12 +798,4 @@ MySQL更改初始密码完成
 MySQL用户配置完成
 MySQL(slave)配置完成
 ```
-
-
-## 配置文件信息
-```
-
-```
-
-## 
 
