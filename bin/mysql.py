@@ -11,7 +11,7 @@ def my_cnf_conf(located, N, mem):
     my_cnf=f""" [mysqld]
 # dir
 datadir={located}/mysql/mydata
-secure_file_priv=/var/lib/mysql-files
+#secure_file_priv=/var/lib/mysql-files
 pid_file={located}/mysql/mydata/mysqld.pid
 
 # network
@@ -92,19 +92,28 @@ log_slave_updates=1
         f.write(my_cnf)
 
 def install(soft_file, located):
+    """
+        二进制安装, 需要libaio
+        1.mysql-8.0.19-linux-glibc2.12-x86_64.tar.xz解压
+        2.将liabio放入其中新建的pkg目录
+        3.更改目录名为mysql8并重新压缩
+    """
     os.makedirs(located, exist_ok=1)
 
     try:
+        result=os.system("groupadd mysql && useradd -r -g mysql -s /bin/false mysql")
+        if result != 0:
+            return 0, "MySQL: 创建MySQL用户失败"
+
         t=tarfile.open(soft_file)
         t.extractall(path=located)
-
-        pkgs=" ".join(os.listdir(f"{located}/mysql_pkg/pkgs"))
-        result=os.system(f"cd {located}/mysql_pkg/pkgs &> /dev/null && rpm -Uvh {pkgs} &> /dev/null")
+        libaio_file=os.listdir(f"{located}/mysql8/pkg/")[0]
+        result=os.system(f"cd {located}/mysql8/pkg &> /dev/null && rpm -Uvh {libaio_file} &> /dev/null")
         # 1792为重新安装rpm返回值
         if result==0 or result==1792:
             return 1, "ok"
         else:
-            return 0, "MySQL rpm包安装失败"
+            return 0, "MySQL: libaio安装失败"
     except Exception as e:
         return 0, e
 
@@ -133,7 +142,7 @@ def main():
 
         my_cnf_conf(located, server_id, mem)
 
-        mk_dirs_commands=f"mkdir -p {located}/mysql/{{mydata,mylog}}; mkdir -p {located}/mysql/mylog/{{binlog,redolog,undolog,relay}}; chown -R mysql:mysql {located}/mysql"
+        mk_dirs_commands=f"mkdir -p {located}/mysql/{{mydata,mylog}}; mkdir -p {located}/mysql/mylog/{{binlog,redolog,undolog,relay}}; chown -R mysql:mysql {located}/mysql ; ln -s {located}/mysql8 /usr/local/mysql && \cp -f {located}/mysql8/support-files/mysql.server /etc/init.d/mysqld && systemctl daemon-reload"
         result=os.system(mk_dirs_commands)
         if result==0:
             print("MySQL配置完成")
@@ -161,7 +170,8 @@ def main():
                 sync_sql=f"change master to master_host='{sync_host}',  master_user='repl',  master_password='DreamSoft_123456',  master_auto_position=1; start slave;"
 
         print(f"MySQL初始化中...")
-        os.system("systemctl start mysqld")
+        init_and_start_command=f"{located}/mysql8/bin/mysqld --initialize --user=mysql && systemctl start mysqld"
+        os.system(init_and_start_command)
         # 获取密码
         try:
             with open(f"{located}/mysql/mylog/mysqld.log", "r") as f:
@@ -175,7 +185,7 @@ def main():
             return 1
 
         root_password=db_info.get("root_password")
-        change_pass_command=f"mysqladmin  -uroot -p'{init_password}' password {root_password} &> /dev/null"
+        change_pass_command=f"{located}/mysql8/bin/mysqladmin  -uroot -p'{init_password}' password {root_password} &> /dev/null"
         value=os.system(f"{change_pass_command}")
         if value==0:
             print("MySQL更改初始密码完成")
@@ -195,7 +205,7 @@ def main():
             init_sql_list.append(user_sql)
             init_sql_list.append(grant_sql)
         init_sql=" ".join(init_sql_list)
-        init_commands=f'export MYSQL_PWD="{root_password}" ; echo "{init_sql}" | mysql -uroot'
+        init_commands=f'export MYSQL_PWD="{root_password}" ; echo "{init_sql}" | {located}/mysql8/bin/mysql -uroot'
         value=os.system(init_commands)
         if value==0:
             print("MySQL用户配置完成")
@@ -204,7 +214,7 @@ def main():
 
         # 集群
         if cluster_flag==1:
-            cluster_commands=f'export MYSQL_PWD="{root_password}" ; echo "{sync_sql}" | mysql -uroot'
+            cluster_commands=f'export MYSQL_PWD="{root_password}" ; echo "{sync_sql}" | {located}/mysql8/bin/mysql -uroot'
             value=os.system(cluster_commands)
             if value==0:
                 print(f"MySQL({role})配置完成")
