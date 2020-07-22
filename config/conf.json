@@ -6,7 +6,7 @@
     "tomcat": "../ext/apache-tomcat-8.5.51.tar.gz", 
     "ffmpeg": "../ext/ffmpeg-4.2.2-bin.tar.gz", 
     "redis": "../ext/redis-5.0.7-bin.tar.gz", 
-    "mysql": "../ext/mysql-8.0.19-rpm.tar.gz", 
+    "mysql": "../ext/mysql-8.0.19.tar.gz", 
     "glusterfs": "../ext/glusterfs-7.5-rpm.tar.gz",
     "glusterfs_client": "../ext/glusterfs-client-7.5-rpm.tar.gz"
   }, 
