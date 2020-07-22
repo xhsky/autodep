@@ -91,6 +91,12 @@ class Client(object):
         """
         sftp.close()
 
+    def get(self, ip, port, user, remote_file, local_file):
+        self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=1)
+        sftp=self.ssh.open_sftp()
+        sftp.get(remote_file, local_file)
+        sftp.close()
+
     def __del__(self):
         self.ssh.close()
 
