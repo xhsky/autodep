@@ -1602,7 +1602,8 @@ def main():
             cluster_flag=1
             role=cluster_info_dict.get("role")
 
-        redis_start_command=f"cd {located}/redis && bin/redis-server conf/redis.conf"
+        # exec使用get_pty, redis配置为后台运行, 但未启动完全时, 断开依然会停止, 故使用sleep 2让其完全启动
+        redis_start_command=f"cd {located}/redis && bin/redis-server conf/redis.conf ; sleep 2"
         result=os.system(redis_start_command)
         if result==0:
             print(f"Redis({role})启动成功")
@@ -1610,7 +1611,8 @@ def main():
             print(f"Error: Redis{role}启动失败")
 
         if cluster_flag:
-            sentinel_start_command=f"cd {located}/redis && bin/redis-sentinel conf/sentinel.conf"
+            # exec使用get_pty, sentinel配置为后台运行, 但未启动完全时, 断开依然会停止, 故使用sleep 2让其完全启动
+            sentinel_start_command=f"cd {located}/redis && bin/redis-sentinel conf/sentinel.conf ; sleep 2"
             result=os.system(sentinel_start_command)
             if result==0:
                 print(f"Sentinel启动成功")
