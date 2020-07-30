@@ -108,6 +108,8 @@ def main():
 
         # 配置
         cpu_count=int(psutil.cpu_count() * float(weight))
+        if cpu_count==0:
+            cpu_count=1
         tomcat_servers=""
         for i in conf_dict.get("nginx_info").get("proxy_hosts"):
             tomcat_servers=f"{tomcat_servers}server {i}:8080;\n\t"
