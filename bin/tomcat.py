@@ -199,6 +199,8 @@ JAVA_OPTS="-server -XX:+AggressiveOpts -XX:+UseBiasedLocking -XX:+DisableExplici
 
 JAVA_OPTS="$JAVA_OPTS -Xms{min_mem}M -Xmx{max_mem}M -Xss512k -XX:LargePageSizeInBytes=128M -XX:MaxTenuringThreshold=11 -XX:MetaspaceSize=200m -XX:MaxMetaspaceSize=256m -XX:MaxNewSize=256m"
 
+UMASK=0022
+
 CATALINA_PID=$CATALINA_HOME/bin/catalina.pid
 """
 
