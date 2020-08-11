@@ -109,8 +109,8 @@ def install(soft_file, located):
         t.extractall(path=located)
         libaio_file=os.listdir(f"{located}/mysql8/pkg/")[0]
         result=os.system(f"cd {located}/mysql8/pkg &> /dev/null && rpm -Uvh {libaio_file} &> /dev/null")
-        # 1792为重新安装rpm返回值
-        if result==0 or result==1792:
+        # 256为重新安装rpm返回值
+        if result==0 or result==256:
             return 1, "ok"
         else:
             return 0, "MySQL: libaio安装失败"
