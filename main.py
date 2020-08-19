@@ -9,6 +9,11 @@ from itertools import zip_longest
 
 def get_weight(soft_weight_dict, soft_install_list):
     """ 返回各软件占服务器的权重
+
+        soft_install_dict={
+            "soft_name": weight, 
+            "soft_name": weight, 
+        }
     """
     soft_install_dict={}
     for i in soft_install_list:
@@ -207,17 +212,16 @@ def main():
     print("开始集群部署...")
 
     # 安装
-    for i in arch_dict:
-        print(f"\n{i}部署...")
-        soft_install_dict=get_weight(conf_dict["software"], arch_dict[i].get("software"))
+    for host_name in arch_dict:
+        print(f"\n{host_name}部署...")
+        soft_install_dict=get_weight(conf_dict["software"], arch_dict[host_name].get("software"))
         action="install"
-        #for j in arch_dict[i].get("software"):
-        for j in soft_install_dict:
-            print(f"\n安装并配置{j}...")
-            port=init_dict[i].get("port")
-            soft_obj=soft(i, port)
-            weight=soft_install_dict[j]
-            status=soft_obj.control(j, action, weight, conf_dict["location"].get(j), f"'{json.dumps(arch_dict.get(i))}'")
+        for soft_name in soft_install_dict:
+            print(f"\n安装并配置{soft_name}...")
+            port=init_dict[host_name].get("port")
+            soft_obj=soft(host_name, port)
+            weight=soft_install_dict[soft_name]
+            status=soft_obj.control(soft_name, action, weight, conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(host_name))}'")
 
             for line in status[1]:
                 if line is not None:
@@ -225,17 +229,18 @@ def main():
             for line in status[2]:
                 if line is not None:
                     print(line.strip("\n"))
+    exit()
 
-    print("\n\n\n\n\n开始集群启动...")
     # 启动
-    for i in arch_dict:
-        print(f"\n{i}部署...")
+    print("\n\n\n\n\n开始集群启动...")
+    for host_name in arch_dict:
+        print(f"\n{host_name}部署...")
         action="start"
-        for j in arch_dict[i].get("software"):
-            print(f"\n启动并配置{j}...")
-            port=init_dict[i].get("port")
-            soft_obj=soft(i, port)
-            status=soft_obj.control(j, action, weight, conf_dict["location"].get(j), f"'{json.dumps(arch_dict.get(i))}'")
+        for soft_name in arch_dict[i].get("software"):
+            print(f"\n启动并配置{soft_name}...")
+            port=init_dict[host_name].get("port")
+            soft_obj=soft(host_name, port)
+            status=soft_obj.control(soft_name, action, weight, conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(host_name))}'")
 
             for line in status[1]:
                 if line is not None:
@@ -244,9 +249,5 @@ def main():
                 if line is not None:
                     print(line.strip("\n"))
 
-
-
-    
-    
 if __name__ == "__main__":
     main()
