@@ -92,7 +92,7 @@ def main():
             with open(sysctl_conf, "w+") as f:
                 f.write(sysctl_conf_context)
 
-            os.system(f"chown -R elastic:elastic {src} ; sysctl -p")
+            os.system(f"chown -R elastic:elastic {src} ; sysctl -p {sysctl_conf} &> /dev/null")
 
         except Exception as e:
             print(f"Error: ElasticSearch配置环境变量出错: {e}")
@@ -111,7 +111,7 @@ def main():
             print(f"ElasticSearch配置优化失败:{value}")
 
     elif action=="start":
-        command=f"set -m ; {located}/es/ &> /dev/null" 
+        command=f"su elastic -l -c 'cd {located}/es ; ./bin/elasticsearch -d -p elasticsearch.pid'" 
         result=os.system(command)
         if result==0:
             print("ElasticSearch启动完成")
