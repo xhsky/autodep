@@ -229,14 +229,13 @@ def main():
             for line in status[2]:
                 if line is not None:
                     print(line.strip("\n"))
-    exit()
 
     # 启动
     print("\n\n\n\n\n开始集群启动...")
     for host_name in arch_dict:
         print(f"\n{host_name}部署...")
         action="start"
-        for soft_name in arch_dict[i].get("software"):
+        for soft_name in arch_dict[host_name].get("software"):
             print(f"\n启动并配置{soft_name}...")
             port=init_dict[host_name].get("port")
             soft_obj=soft(host_name, port)
