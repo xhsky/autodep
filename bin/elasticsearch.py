@@ -16,10 +16,12 @@ def config(located, cluster_name, memeber_list, jvm_mem):
                 "node.voting_only: false\n"
                 "node.data: true\n"
                 "node.ingest: true\n"
+                "bootstrap.memory_lock: true\n"
                 "network.host: 0.0.0.0\n"
                 "http.port: 9200\n"
                 f"discovery.seed_hosts: {memeber_list}\n"
                 "transport.tcp.port: 9300\n"
+                f"cluster.initial_master_nodes: {memeber_list}\n"
                 "gateway.recover_after_nodes: 1\n"
                 "action.destructive_requires_name: true\n"
                 )

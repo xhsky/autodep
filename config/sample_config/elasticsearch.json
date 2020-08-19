@@ -1,10 +1,26 @@
 {
-  "test":{
+  "es1":{
     "software": ["elasticsearch"], 
     "located": "/data/", 
     "elasticsearch_info":{
-      "cluster_name": "aaa", 
-      "members":["test"]
+      "cluster_name": "es_cluster", 
+      "members":["es1", "es2", "es3"]
+    } 
+  }, 
+  "es2":{
+    "software": ["elasticsearch"], 
+    "located": "/data/", 
+    "elasticsearch_info":{
+      "cluster_name": "es_cluster", 
+      "members":["es1", "es2", "es3"]
+    }
+  }, 
+  "es3":{
+    "software": ["elasticsearch"], 
+    "located": "/data/", 
+    "elasticsearch_info":{
+      "cluster_name": "es_cluster", 
+      "members":["es1", "es2", "es3"]
     }
   }
 }
