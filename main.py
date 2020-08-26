@@ -221,6 +221,11 @@ def main():
             port=init_dict[host_name].get("port")
             soft_obj=soft(host_name, port)
             weight=soft_install_dict[soft_name]
+            # 去除located结尾的/
+            located_dir=arch_dict[host_name]["located"]
+            if located_dir.endswith("/"):
+                arch_dict[host_name]["located"]=located_dir[0:-1]
+
             status=soft_obj.control(soft_name, action, weight, conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(host_name))}'")
 
             for line in status[1]:
