@@ -1,0 +1,33 @@
+{
+  "mq":{
+    "software": ["rabbitmq"], 
+    "located": "/data/", 
+    "rabbitmq_info":{
+      "cluster_name": "mq_cluster", 
+      "node_type": "disc", 
+      "members": ["mq", "mq1","mq2"], 
+      "vhosts": ["/vhost"], 
+      "users": ["a1"], 
+      "passwords": ["111111"]
+     }
+  }, 
+  "mq1":{
+    "software": ["rabbitmq"], 
+    "located": "/data/", 
+    "rabbitmq_info":{
+      "cluster_name": "mq_cluster", 
+      "node_type": "ram", 
+      "members": ["mq", "mq1","mq2"]
+     }
+  },
+  "mq2":{
+    "software": ["rabbitmq"], 
+    "located": "/data/", 
+    "rabbitmq_info":{
+      "cluster_name": "mq_cluster", 
+      "node_type": "ram", 
+      "members": ["mq", "mq1","mq2"]
+     }
+  }
+}
+
