@@ -2,7 +2,7 @@
 # *-* coding:utf8 *-*
 # sky
 
-import json
+import json, sys
 from libs.client import Client
 from libs.install import soft
 from itertools import zip_longest
@@ -248,7 +248,11 @@ def main():
 
             for line in status[1]:
                 if line is not None:
-                    print(line.strip("\n"))
+                    if line == ".\r\n":
+                        print(".", end="")
+                        sys.stdout.flush()
+                    else:
+                        print(line.strip("\n"))
             for line in status[2]:
                 if line is not None:
                     print(line.strip("\n"))

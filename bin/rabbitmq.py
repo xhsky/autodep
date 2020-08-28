@@ -5,7 +5,7 @@
 
 import sys, os, json
 import tarfile
-import psutil
+import psutil, time
 
 def config(located, cluster_name, member_list, erlang_mem, node_type):
     try:
@@ -61,6 +61,19 @@ def install(soft_file, located):
     except Exception as e:
         return 0, e
 
+def port_exist(port, seconds):
+    N=0
+    while True:
+        time.sleep(1)
+        N=N+1
+        if N >= seconds:
+            return 0
+        for i in psutil.net_connections():
+            if port==i[3][1] and i[6] is not None:
+                print("\n")
+                return 1
+        print(".")
+
 def main():
     """
         将erlang.rpm放入rabbitmq.tar.gz的pkg目录中
@@ -93,7 +106,11 @@ def main():
         command=f"cd {located}/rabbitmq ; ./sbin/rabbitmq-server -detached" 
         result=os.system(command)
         if result==0:
-            print("RabbitMQ启动完成")
+            status=port_exist(5672, 300)
+            if status==1:
+                print("RabbitMQ启动完成")
+            else:
+                print(f"Error: RabbitMQ启动超时")
         else:
             print(f"Error: RabbitMQ启动失败")
 
