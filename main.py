@@ -5,7 +5,6 @@
 import json, sys
 from libs.client import Client
 from libs.install import soft
-from itertools import zip_longest
 
 def get_weight(soft_weight_dict, soft_install_list):
     """ 返回各软件占服务器的权重
@@ -208,54 +207,53 @@ def main():
 
     json_ana(init_dict, conf_dict, arch_dict)
 
-    # 部署
-    print("开始集群部署...")
+    file_name, action=sys.argv[0:2]
+    if action=="install":
+        print("开始集群部署...")
+        for host_name in arch_dict:
+            print(f"\n{host_name}部署...")
+            soft_install_dict=get_weight(conf_dict["software"], arch_dict[host_name].get("software"))
+            for soft_name in soft_install_dict:
+                print(f"\n安装并配置{soft_name}...")
+                port=init_dict[host_name].get("port")
+                soft_obj=soft(host_name, port)
+                weight=soft_install_dict[soft_name]
+                # 去除located结尾的/
+                located_dir=arch_dict[host_name]["located"]
+                if located_dir.endswith("/"):
+                    arch_dict[host_name]["located"]=located_dir[0:-1]
 
-    # 安装
-    for host_name in arch_dict:
-        print(f"\n{host_name}部署...")
-        soft_install_dict=get_weight(conf_dict["software"], arch_dict[host_name].get("software"))
-        action="install"
-        for soft_name in soft_install_dict:
-            print(f"\n安装并配置{soft_name}...")
-            port=init_dict[host_name].get("port")
-            soft_obj=soft(host_name, port)
-            weight=soft_install_dict[soft_name]
-            # 去除located结尾的/
-            located_dir=arch_dict[host_name]["located"]
-            if located_dir.endswith("/"):
-                arch_dict[host_name]["located"]=located_dir[0:-1]
+                Client.scp(host_name, port, "root", "./libs/common.py", "/opt/python3/code/libs/common.py" )
+                status=soft_obj.control(soft_name, action, weight, conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(host_name))}'")
 
-            status=soft_obj.control(soft_name, action, weight, conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(host_name))}'")
-
-            for line in status[1]:
-                if line is not None:
-                    print(line.strip("\n"))
-            for line in status[2]:
-                if line is not None:
-                    print(line.strip("\n"))
-
-    # 启动
-    print("\n\n\n\n\n开始集群启动...")
-    for host_name in arch_dict:
-        print(f"\n{host_name}部署...")
-        action="start"
-        for soft_name in arch_dict[host_name].get("software"):
-            print(f"\n启动并配置{soft_name}...")
-            port=init_dict[host_name].get("port")
-            soft_obj=soft(host_name, port)
-            status=soft_obj.control(soft_name, action, weight, conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(host_name))}'")
-
-            for line in status[1]:
-                if line is not None:
-                    if line == ".\r\n":
-                        print(".", end="")
-                        sys.stdout.flush()
-                    else:
+                for line in status[1]:
+                    if line is not None:
                         print(line.strip("\n"))
-            for line in status[2]:
-                if line is not None:
-                    print(line.strip("\n"))
+                for line in status[2]:
+                    if line is not None:
+                        print(line.strip("\n"))
+    elif action=="start":
+        print("开始集群启动...")
+        for host_name in arch_dict:
+            print(f"\n{host_name}启动...")
+            for soft_name in arch_dict[host_name].get("software"):
+                print(f"\n启动并配置{soft_name}...")
+                port=init_dict[host_name].get("port")
+                soft_obj=soft(host_name, port)
+                status=soft_obj.control(soft_name, action, weight, conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(host_name))}'")
+
+                for line in status[1]:
+                    if line is not None:
+                        if line == ".\r\n":
+                            print(".", end="")
+                            sys.stdout.flush()
+                        else:
+                            print(line.strip("\n"))
+                for line in status[2]:
+                    if line is not None:
+                        print(line.strip("\n"))
+    else:
+        print(f"Usage: {file_name} install|start")
 
 if __name__ == "__main__":
     main()

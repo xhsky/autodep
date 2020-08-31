@@ -3,9 +3,7 @@
 # sky
 
 import json
-#from libs import abc
 from libs.client import Client
-#from libs.install import soft
 
 def connect_test(host_dict):
     """ 判断主机配置信息是否正确
