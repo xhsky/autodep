@@ -23,52 +23,17 @@ class soft(object):
         py_file=f"./bin/{soft_name}.py"
         install_pkg_name=soft_file.split("/")[-1]
 
+        code_dir="/opt/python3/code"
+
         if action=="install":
-            self.ssh.scp(self.ip, self.port, "root", py_file, f"/tmp/{soft_name}.py")
+            self.ssh.scp(self.ip, self.port, "root", py_file, f"{code_dir}/{soft_name}.py")
             self.ssh.scp(self.ip, self.port, "root", soft_file, f"/tmp/{install_pkg_name}")
 
-        command=f"/opt/python3/bin/python3 /tmp/{soft_name}.py {action} {weight} /tmp/{install_pkg_name} {json_info}"
+        command=f"/opt/python3/bin/python3 {code_dir}/{soft_name}.py {action} {weight} /tmp/{install_pkg_name} {json_info}"
         #print(f"{command}")
         status=self.ssh.exec(self.ip, self.port, command)
         return status
 
-    """
-    def control(self, action):
-        install_dir=self.__res["base_dir"]
-        user=self.__res["run_user"]
-        sw=soft.install(user, self.__soft_name, install_dir)
-        # 获取已安装软件信息
-        key=common.host_ip()
-        soft_info=self.__db_client.hget(define.host_soft_info_key, key)
-        soft_info_dict=json.loads(soft_info)
-
-        pid=soft_info_dict[self.__soft_name]
-        if action=="start":
-            if self.__soft_name in soft_info_dict and pid=="0":
-                sw.set_env()
-                pid=sw.start()
-                if pid!=0:
-                    soft_info_dict[self.__soft_name]=pid
-                    soft_info=json.dumps(soft_info_dict)
-                    self.__db_client.hset(define.host_soft_info_key, key, soft_info)
-                else:
-                    self.__log.log("error", "无法启动, 请查看%s状态" % self.__soft_name)
-            else:
-                self.__log.log("error", "%s 是启动状态" % self.__soft_name)
-                
-        elif action=="stop":
-            if self.__soft_name in soft_info_dict and pid!="0":
-                res=sw.stop(pid)
-                if res==0:
-                    soft_info_dict[self.__soft_name]="0"
-                    soft_info=json.dumps(soft_info_dict)
-                    self.__db_client.hset(define.host_soft_info_key, key, soft_info)
-            else:
-                self.__log.log("error", "%s 未启动" % self.__soft_name)
-                
-        else:
-            self.__log.log("error", "action: %s" % action)
-    """
 
 if __name__ == "__main__":
     pass
