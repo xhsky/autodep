@@ -3,47 +3,43 @@
 # sky
 
 import sys, os, json
-import tarfile
-import psutil
-
-def install(soft_file, located, server_flag):
-    os.makedirs(located, exist_ok=1)
-    try:
-        t=tarfile.open(soft_file)
-        t.extractall(path=located)
-
-        pkgs=" ".join(os.listdir(f"{located}/glusterfs_{server_flag}/"))
-        #command=f"cd {located}/glusterfs_{server_flag}/ &> /dev/null && rpm -Uvh {pkgs} &> /dev/null"
-        command=f"cd {located}/glusterfs_{server_flag}/ &> /dev/null && yum install -y {pkgs} &> /dev/null"
-        result=os.system(command)
-        # 256为重新安装rpm返回值
-        if result==0 or result==256:
-            return 1, "ok"
-        else:
-            return 0, "GlusterFS rpm包安装失败"
-    except Exception as e:
-        return 0, e
+from libs import common
 
 def main():
     action, weight, soft_file, conf_json=sys.argv[1:5]
     conf_dict=json.loads(conf_json)
+    soft_name="GlusterFS"
+
+    log=common.Logger(None, "info", "remote")
 
     # 安装
     if action=="install":
         located=conf_dict.get("located")
         server_flag="server"
+        link_src="glusterfs-"
+        link_dst="glusterfs"
         if conf_dict.get("glusterfs_info").get("server_info") is None:
             server_flag="client"
-        value, msg=install(soft_file, located, server_flag)
+            link_src="glusterfs_client-"
+            link_dst="glusterfs_client"
+
+        value, msg=common.install(soft_file, link_src, link_dst, ".", located)
+
         if value==1:
             if server_flag == "server":
                 command="systemctl enable glusterd &> /dev/null && systemctl start glusterd"
                 result=os.system(command)
-                print("GlusterFS安装完成")
+                if result==0:
+                    if common.port_exist(24007, 300):
+                        log.logger.info(f"{soft_name}初始化完成")
+                    else:
+                        log.logger.error(f"{soft_name}初始化超时")
+                else:
+                    log.logger.error(f"{soft_name}初始化失败: {msg}")
             else:
-                print("GlusterFS客户端安装完成")
+                log.logger.info(f"{soft_name}客户端安装完成")
         else:
-            print(f"Error: GlusterFS安装失败: {msg}")
+            log.logger.error(f"{soft_name}安装失败: {msg}")
 
     # 配置
     if action=="start":
@@ -68,13 +64,21 @@ def main():
             if sum(result_list)==0:
                 volume_name="g_data"
                 N=len(members)
-                create_volume_command=f"gluster volume create {volume_name} replica {N} {create_volume_command} force &> /dev/null"
-                result=os.system(create_volume_command)
-                if result==0:
-                    start_volume_command=f"gluster volume start {volume_name} &> /dev/null"
-                    result=os.system(start_volume_command)
+                volume_exist_command=f"gluster volume info {volume_name} &> /dev/null"
+                if os.system(volume_exist_command) != 0:
+                    create_volume_command=f"gluster volume create {volume_name} replica {N} {create_volume_command} force &> /dev/null"
+                    result=os.system(create_volume_command)
                     if result==0:
-                        print("GlusterFS共享存储创建成功")
+                        log.logger.info("创建volume成功")
+                        start_volume_command=f"gluster volume start {volume_name} &> /dev/null"
+                        result=os.system(start_volume_command)
+                        if result==0:
+                            if common.port_exist(49152, 300):
+                                log.logger.info(f"{soft_name}共享存储启动成功")
+                        else:
+                            log.logger.error("启动volume失败")
+                    else:
+                        log.logger.error(f"创建volume失败: {result}")
         if conf_dict.get("glusterfs_info").get("client_info") is not None:
             gluster_client_info=conf_dict.get("glusterfs_info").get("client_info")
             mounted_host=gluster_client_info.get("mounted_host")
@@ -87,12 +91,12 @@ def main():
                  if mounted_str not in text:
                      f.write(mounted_str)
 
-            command="mount -a"
+            command="mount -a &> /dev/null"
             result=os.system(command)
             if result==0:
-                print(f"GlusterFS客户端挂载完成")
+                log.logger.info(f"{soft_name}客户端挂载完成")
             else:
-                print(f"Error: GlusterFS客户端挂载失败")
+                log.logger.error(f"{soft_name}客户端挂载失败: {result}")
 
 if __name__ == "__main__":
     main()

@@ -2,43 +2,30 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, os, json
-import tarfile
-
-def install(soft_file, located):
-    os.makedirs(located, exist_ok=1)
-
-    try:
-        # 解压安装包
-        t=tarfile.open(soft_file)
-        t.extractall(path=located)
-    except Exception as e:
-        return 0, e
-
-    # 安装rpm依赖
-    pkgs=" ".join(os.listdir(f"{located}/ffmpeg/deps/"))
-    result=os.system(f"cd {located}/ffmpeg/deps &> /dev/null && rpm -Uvh {pkgs} &> /dev/null")
-    # 768 为重新安装返回码
-    if  result == 0 or result == 768:
-        return 1, "ok"
-    else:
-        return 0, "依赖包安装失败"
+import sys, json
+from libs import common
 
 def main():
+    """
+        将libXau, libxcb, SDL2安装包放入编译好的ffmpeg下的deps目录
+    """
     action, weight, soft_file, conf_json=sys.argv[1:5]
     conf_dict=json.loads(conf_json)
+    soft_name="ffmpeg"
+
+    log=common.Logger(None, "info", "remote")
 
     # 安装
     if action=="install":
         located=conf_dict.get("located")
-        value, msg=install(soft_file, located)
+        value, msg=common.install(soft_file, "ffmpeg", "ffmpeg", "deps", located)
         if value==1:
-            print("ffmpeg安装完成")
+            log.logger.info(f"{soft_name}安装完成")
         else:
-            print(f"Error: 安装失败: {msg}")
+            log.logger.error(f"{soft_name}安装失败: {msg}")
 
     elif action=="start":
-            print("ffmpeg无须启动")
+            log.logger.info(f"{soft_name}无须启动")
 
 if __name__ == "__main__":
     main()
