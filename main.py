@@ -5,6 +5,7 @@
 import json, sys
 from libs.client import Client
 from libs.install import soft
+from libs.common import Logger
 
 def get_weight(soft_weight_dict, soft_install_list):
     """ 返回各软件占服务器的权重
@@ -207,14 +208,24 @@ def main():
 
     json_ana(init_dict, conf_dict, arch_dict)
 
-    file_name, action=sys.argv[0:2]
+    args=sys.argv[:]
+    if args is None or len(args) != 2:
+        print(f"Usage: {args[0]} install|start")
+        exit()
+
+    log_dir=conf_dict["log"]["log_dir"]
+    log_file=f"{log_dir}/autodep.log"
+    log_level=conf_dict["log"]["log_level"]
+    log=Logger(log_file, log_level)
+
+    file_name, action=args
     if action=="install":
-        print("开始集群部署...")
+        log.logger.info("开始集群部署...\n")
         for host_name in arch_dict:
-            print(f"\n{host_name}部署...")
+            log.logger.info(f"{host_name}部署...")
             soft_install_dict=get_weight(conf_dict["software"], arch_dict[host_name].get("software"))
             for soft_name in soft_install_dict:
-                print(f"\n安装并配置{soft_name}...")
+                log.logger.info(f"{soft_name}开始安装...")
                 port=init_dict[host_name].get("port")
                 soft_obj=soft(host_name, port)
                 weight=soft_install_dict[soft_name]
@@ -223,37 +234,42 @@ def main():
                 if located_dir.endswith("/"):
                     arch_dict[host_name]["located"]=located_dir[0:-1]
 
-                Client.scp(host_name, port, "root", "./libs/common.py", "/opt/python3/code/libs/common.py" )
+                ssh=Client()
+                ssh.scp(host_name, port, "root", "./libs/common.py", "/opt/python3/code/libs/common.py")
                 status=soft_obj.control(soft_name, action, weight, conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(host_name))}'")
 
                 for line in status[1]:
                     if line is not None:
-                        print(line.strip("\n"))
+                        log.logger.info(line.strip("\n"))
                 for line in status[2]:
                     if line is not None:
-                        print(line.strip("\n"))
+                        log.logger.error(line.strip("\n"))
+                log.logger.info(f"{soft_name}结束安装...\n")
+
     elif action=="start":
-        print("开始集群启动...")
+        log.logger.info("开始集群启动...\n")
         for host_name in arch_dict:
-            print(f"\n{host_name}启动...")
+            log.logger.info(f"{host_name}启动...")
             for soft_name in arch_dict[host_name].get("software"):
-                print(f"\n启动并配置{soft_name}...")
+                log.logger.info(f"{soft_name}开始启动...")
                 port=init_dict[host_name].get("port")
                 soft_obj=soft(host_name, port)
-                status=soft_obj.control(soft_name, action, weight, conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(host_name))}'")
+                status=soft_obj.control(soft_name, action, None, conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(host_name))}'")
 
                 for line in status[1]:
                     if line is not None:
                         if line == ".\r\n":
+                            #log.logger.info(".", end="")
                             print(".", end="")
                             sys.stdout.flush()
                         else:
-                            print(line.strip("\n"))
+                            log.logger.info(line.strip("\n"))
                 for line in status[2]:
                     if line is not None:
-                        print(line.strip("\n"))
+                        log.logger.error(line.strip("\n"))
+                log.logger.info(f"{soft_name}启动完毕...\n")
     else:
-        print(f"Usage: {file_name} install|start")
+        print(f"Usage: {args[0]} install|start")
 
 if __name__ == "__main__":
     main()
