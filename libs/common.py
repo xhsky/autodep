@@ -20,7 +20,7 @@ def port_exist(port, seconds):
                 return 1
         print(".")
 
-def install(soft_file, link_src, link_dst, pkg_dirs, located):
+def install(soft_file, link_src, link_dst, pkg_dir, located):
     os.makedirs(located, exist_ok=1)
 
     try:
@@ -34,17 +34,24 @@ def install(soft_file, link_src, link_dst, pkg_dirs, located):
                 src=f"{located}/{i}"
                 break
         dst=f"{located}/{link_dst}"
+        if os.path.exists(dst) and os.path.islink(dst):
+            os.remove(dst)
         os.symlink(src, dst)
 
         # 安装依赖
-        if pkg_dirs is not None:
-            pkgs=" ".join(os.listdir(pkg_dirs))
-            command=f"cd {located}/{pkg_dirs} && rpm -Uvh {pkgs} &> /dev/null"
+        """
+        ffmpeg 768
+        glusterfs 5120
+        """
+        if pkg_dir is not None:
+            pkg_dir=f"{dst}/{pkg_dir}"
+            pkgs=" ".join(os.listdir(pkg_dir))
+            command=f"cd {pkg_dir} && rpm -Uvh {pkgs} &> /dev/null"
             result=os.system(command)
-            if result==0 or result==256:    # 256为重新安装rpm返回值
+            if result==0 or result==5120:    # 256为重新安装rpm返回值
                 return 1, "ok"
             else:
-                return 0, "安装失败"
+                return 0, result
         else:
             return 1, "ok"
     except Exception as e:
