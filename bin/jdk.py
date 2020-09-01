@@ -2,50 +2,45 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, os, json
-import tarfile
-
-def install(soft_file, located):
-    os.makedirs(located, exist_ok=1)
-
-    try:
-        t=tarfile.open(soft_file)
-        t.extractall(path=located)
-        return 1, "ok"
-    except Exception as e:
-        return 0, e
+import sys, json
+from libs import common
 
 def main():
     action, weight, soft_file, conf_json=sys.argv[1:5]
     conf_dict=json.loads(conf_json)
+    located=conf_dict.get("located")
+    soft_name="jdk"
+
+    log=common.Logger(None, "info", "remote")
 
     # 安装
     if action=="install":
-        located=conf_dict.get("located")
-        value, msg=install(soft_file, located)
+        value, msg=common.install(soft_file, "jdk", "jdk", None, located)
         if value==1:
-            print("jdk安装完成")
+            log.logger.info(f"{soft_name}安装完成")
         else:
-            print(f"Error: 解压安装包失败: {msg}")
+            log.logger.error(f"Error: 解压安装包失败: {msg}")
             return 
 
         # 配置
-        for i in os.listdir(located):
-            if i.startswith("jdk"):
-                src=f"{located}/{i}"
-        try:
-            dst=f"{located}/jdk"
-            os.symlink(src, dst)
-            path=f"export JAVA_HOME={dst}\nexport PATH=$JAVA_HOME/bin:$PATH\n"
-            with open("/etc/profile.d/jdk.sh", "w") as f:
-                f.write(path)
-        except Exception as e:
-            print(f"Error: jdk配置出错: {e}")
+        jdk_sh_context=f"""\
+                export JAVA_HOME={located}/jdk
+                export PATH=$JAVA_HOME/bin:$PATH
+        """
+        config_dict={
+                "jdk_sh":{
+                    "config_file": "/etc/profile.d/jdk.sh", 
+                    "config_context": jdk_sh_context
+                    }
+                }
+        result, msg=common.config(config_dict)
+        if result==1:
+            log.logger.info(f"{soft_name}配置完成")
         else:
-            print(f"jdk配置完成")
+            log.logger.error(f"{soft_name}配置出错: {msg}")
 
     if action=="start":
-        print(f"jdk无须启动")
+        log.logger.info(f"{soft_name}无须启动")
 
 if __name__ == "__main__":
     main()
