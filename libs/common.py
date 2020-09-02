@@ -45,13 +45,24 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
         """
         if pkg_dir is not None:
             pkg_dir=f"{dst}/{pkg_dir}"
-            pkgs=" ".join(os.listdir(pkg_dir))
-            command=f"cd {pkg_dir} && rpm -Uvh {pkgs} &> /dev/null"
-            result=os.system(command)
-            if result==0 or result==5120:    # 256为重新安装rpm返回值
-                return 1, "ok"
+            pkg_list=os.listdir(pkg_dir)
+
+            not_intall_pkg_list=[]  # 判断rpm是否已安装
+            for i in pkg_list:
+                command=f"rpm -q {i[:-4]} &> /dev/null"
+                if os.system(command) !=0 :
+                    not_intall_pkg_list.append(i)
+
+            if len(not_intall_pkg_list) == 0:
+                return 1, "Installed"
             else:
-                return 0, result
+                pkgs=" ".join(not_intall_pkg_list)
+                command=f"cd {pkg_dir} && rpm -Uvh {pkgs} &> /dev/null"
+                result=os.system(command)
+                if result==0: 
+                    return 1, "ok"
+                else:
+                    return 0, result
         else:
             return 1, "ok"
     except Exception as e:
