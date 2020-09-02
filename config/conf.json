@@ -8,7 +8,6 @@
     "redis": "../ext/redis-5.0.7-bin.tar.gz", 
     "mysql": "../ext/mysql-8.0.19.tar.gz", 
     "glusterfs": "../ext/glusterfs-7.5-rpm.tar.gz",
-    "glusterfs_client": "../ext/glusterfs-client-7.5-rpm.tar.gz", 
     "elasticsearch": "../ext/elasticsearch-7.8.1-linux-x86_64.tar.gz", 
     "rabbitmq": "../ext/rabbitmq-server-3.8.7.tar.gz"
   }, 
@@ -20,7 +19,6 @@
      "redis": 2, 
      "mysql": 3, 
      "glusterfs": 1,
-     "glusterfs_client": 0, 
      "elasticsearch": 1, 
      "rabbitmq": 1
   }, 
