@@ -15,18 +15,20 @@ def main():
     # 安装
     if action=="install":
         located=conf_dict.get("located")
-        server_flag="server"
         link_src="glusterfs-"
         link_dst="glusterfs"
+
+        server_flag="server"
+        pkg_dir="glusterfs_all"
         if conf_dict.get("glusterfs_info").get("server_info") is None:
             server_flag="client"
-            link_src="glusterfs_client-"
-            link_dst="glusterfs_client"
+            pkg_dir="glusterfs_client"
 
-        value, msg=common.install(soft_file, link_src, link_dst, ".", located)
+        value, msg=common.install(soft_file, link_src, link_dst, pkg_dir, located)
 
         if value==1:
             if server_flag == "server":
+                log.logger.info(f"{soft_name}安装完成")
                 command="systemctl enable glusterd &> /dev/null && systemctl start glusterd"
                 result=os.system(command)
                 if result==0:
