@@ -8,7 +8,7 @@ import textwrap
 import logging
 from logging import handlers
 
-def port_exist(port, seconds):
+def port_exist(port, seconds=300):
     N=0
     while True:
         time.sleep(1)
