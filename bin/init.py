@@ -54,7 +54,7 @@ def main():
             with open(ulimit_conf_file, "a") as f:
                 f.write("root - nproc 65536\n")
         log.logger.info("用户权限已提升")
-    except Except as e:
+    except Exception as e:
         log.logger.error(f"权限提升错误: {e}")
 
     # 配置hosts

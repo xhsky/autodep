@@ -13,10 +13,11 @@ def main():
     located=conf_dict.get("located")
     soft_name="Tomcat"
     log=common.Logger(None, "info", "remote")
+    dst="tomcat"
 
     # 安装
     if action=="install":
-        value, msg=common.install(soft_file, "apache-tomcat-", "tomcat", None, located)
+        value, msg=common.install(soft_file, "apache-tomcat-", dst, None, located)
         if value==1:
             log.logger.info(f"{soft_name}安装完成")
         else:
@@ -26,7 +27,7 @@ def main():
         # 配置
         try:
             # 删除tomcat原有程序目录
-            webapps_dir=f"{located}/tomcat/webapps"
+            webapps_dir=f"{located}/{dst}/webapps"
             for i in os.listdir(webapps_dir):
                 shutil.rmtree(f"{webapps_dir}/{i}")
         except Exception as e:
@@ -35,7 +36,7 @@ def main():
         mem=psutil.virtual_memory()
         jvm_mem=int(mem[0] * float(weight) /1024/1024)
         tomcat_sh_context=f"""\
-            export CATALINA_HOME={located}/tomcat
+            export CATALINA_HOME={located}/{dst}
             export PATH=$CATALINA_HOME/bin:$PATH
         """
         server_xml_context="""\
@@ -235,22 +236,25 @@ def main():
             """
         config_dict={
                 "server_xml": {
-                    "config_file": f"{located}/tomcat/conf/server.xml", 
-                    "config_context": server_xml_context
+                    "config_file": f"{located}/{dst}/conf/server.xml", 
+                    "config_context": server_xml_context, 
+                    "mode": "w"
                     }, 
                 "setenv_sh":{
-                    "config_file": f"{located}/tomcat/bin/setenv.sh", 
-                    "config_context": setevn_sh_context
+                    "config_file": f"{located}/{dst}/bin/setenv.sh", 
+                    "config_context": setevn_sh_context, 
+                    "mode": "w"
                     }, 
                 "tomcat_sh":{
                     "config_file": f"/etc/profile.d/tomcat.sh", 
-                    "config_context": tomcat_sh_context
+                    "config_context": tomcat_sh_context, 
+                    "mode": "w"
                 }
             }
 
         result, msg=common.config(config_dict)
         if result==1:
-            command=f"{located}/tomcat/bin/catalina.sh configtest &> /dev/null"
+            command=f"{located}/{dst}/bin/catalina.sh configtest &> /dev/null"
             value=os.system(command)
             # 返回值32512为apr未安装报错, 忽略
             if value==0 or value==32512:
@@ -261,7 +265,7 @@ def main():
             log.logger.error(f"{soft_name}配置写入失败:{msg}")
 
     elif action=="start":
-        command=f"set -m ; {located}/tomcat/bin/catalina.sh start &> /dev/null" 
+        command=f"set -m ; {located}/{dst}/bin/catalina.sh start &> /dev/null" 
         result=os.system(command)
         if result==0:
             if common.port_exist(8080, 300):
