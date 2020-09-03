@@ -196,14 +196,15 @@ def main():
         config_dict={
                 "redis_conf": {
                     "config_file": f"{located}/{dst}/conf/redis.conf", 
-                    "config_context": redis_conf_text
+                    "config_context": redis_conf_text, 
+                    "mode": "w"
                     }
                 }
         result, msg=common.config(config_dict)
         if result==1:
             log.logger.info(f"{soft_name}({role})配置优化完成")
         else:
-            log.logger.error(f"{soft_name}{role}配置优化失败: {msg}")
+            log.logger.error(f"{soft_name}({role})配置优化失败: {msg}")
 
     elif action=="start":
         cluster_flag=0
