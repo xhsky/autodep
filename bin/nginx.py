@@ -107,7 +107,8 @@ def main():
         config_dict={
                 "nginx_conf":{
                     "config_file": nginx_conf_file, 
-                    "config_context": nginx_conf_text
+                    "config_context": nginx_conf_text, 
+                    "mode": "w"
                     }
                 }
         result, msg=common.config(config_dict)

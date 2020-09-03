@@ -30,7 +30,8 @@ def main():
         config_dict={
                 "jdk_sh":{
                     "config_file": "/etc/profile.d/jdk.sh", 
-                    "config_context": jdk_sh_context
+                    "config_context": jdk_sh_context, 
+                    "mode": "w"
                     }
                 }
         result, msg=common.config(config_dict)

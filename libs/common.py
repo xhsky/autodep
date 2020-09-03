@@ -73,24 +73,33 @@ def config(config_dict):
     config_dict={
         config1:{
             config_file: /path/dir/file, 
-            config_context: str
+            config_context: str, 
+            mode: a
         }, 
         config2:{
             config_file: /path/dir/file, 
-            config_context: str
+            config_context: str, 
+            mode: r+
         } 
     }
     """
 
     try:
         for config in config_dict:
+            mode=config_dict[config]["mode"]
             context=textwrap.dedent(config_dict[config]["config_context"])
-            with open(config_dict[config]["config_file"], "w") as f:
-                f.write(context)
+            filename=config_dict[config]["config_file"]
+            if mode=="w" or mode=="a":
+                with open(filename, mode, encoding="utf-8") as f:
+                    f.write(context)
+            elif mode=="r+":
+                with open(filename, mode, encoding="utf-8") as f:
+                    all_text=f.readlines()
+                    if context not in all_text:
+                        f.write(context)
         return 1, "ok"
     except Exception as e:
         return 0, e
-
 class Logger(object):
     level_relations = {         #日志级别关系映射
         'debug':logging.DEBUG,

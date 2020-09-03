@@ -82,15 +82,18 @@ def main():
         config_dict={
                 "limit_conf": {
                     "config_file": "/etc/security/limits.d/elastic.conf", 
-                    "config_context": limit_conf_context
+                    "config_context": limit_conf_context, 
+                    "mode": "w"
                     }, 
                 "sysctl_conf": {
                     "config_file": sysctl_conf_file, 
-                    "config_context": sysctl_conf_context
+                    "config_context": sysctl_conf_context, 
+                    "mode": "w"
                     }, 
                 "es_config_text": {
                     "config_file": f"{located}/{dst}/config/elasticsearch.yml", 
-                    "config_context": es_config_text
+                    "config_context": es_config_text, 
+                    "mode": "w"
                     }
                 }
         result, msg=common.config(config_dict)

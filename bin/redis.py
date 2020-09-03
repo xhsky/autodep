@@ -33,29 +33,30 @@ def main():
                 net.core.somaxconn=1024
                 vm.overcommit_memory=1
         """
+        hugepage_disabled=f"echo never > /sys/kernel/mm/transparent_hugepage/enabled\n"
         config_dict={
                 "sysctl_conf":{
                     "config_file": sysctl_conf_file, 
-                    "config_context": sysctl_conf_text
+                    "config_context": sysctl_conf_text, 
+                    "mode": "w"
+                    }, 
+                "rc_local":{
+                    "config_file": "/etc/rc.local", 
+                    "config_context": hugepage_disabled, 
+                    "mode": "r+"
                     }
                 }
         result, msg=common.config(config_dict)
 
-        if result!=1:
-            log.logger.info(f"{soft_name}配置环境变量失败: {msg}")
-        try:
-            with open("/etc/rc.local", "r+") as f:
-                hugepage_disabled=f"echo never > /sys/kernel/mm/transparent_hugepage/enabled\n"
-                text=f.readlines()
-                if hugepage_disabled not in text:
-                    f.write(hugepage_disabled)
-            result=os.system(f"sysctl -p {sysctl_conf_file} &> /dev/null && echo never > /sys/kernel/mm/transparent_hugepage/enabled")
-            if result!=0:
-                log.logger.error(f"{soft_name}配置环境变量出错: {result}")
-        except Exception as e:
-            log.logger.error(f"{soft_name}配置环境变量出错: {e}")
-        else:
+        if result == 1:
             log.logger.info(f"{soft_name}配置环境变量完成")
+            result=os.system(f"sysctl -p {sysctl_conf_file} &> /dev/null && echo never > /sys/kernel/mm/transparent_hugepage/enabled")
+            if result == 0:
+                log.logger.info(f"{soft_name}环境变量生效")
+            else:
+                log.logger.error(f"{soft_name}环境变量未生效: {result}")
+        else:
+            log.logger.error(f"{soft_name}配置环境变量失败: {msg}")
 
         password=conf_dict.get("redis_info").get("db_info").get("redis_password")
         mem=psutil.virtual_memory()
