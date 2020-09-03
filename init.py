@@ -76,8 +76,10 @@ def host_init(log, host_dict, conf_dict):
                 log.logger.info(f"配置Python3环境完成")
 
             # 执行init.py
-            host.scp(ip, port, "root", init_py, "/tmp/init.py")
-            status=host.exec(ip, port, f"/opt/python3/bin/python3 /tmp/init.py {i} '{hosts_str}'")
+            code_dir="/opt/python3/code"
+            host.scp(ip, port, "root", "./libs/common.py", f"{code_dir}/libs/common.py")
+            host.scp(ip, port, "root", init_py, f"{code_dir}/init.py")
+            status=host.exec(ip, port, f"/opt/python3/bin/python3 {code_dir}/init.py {i} '{hosts_str}'")
 
             for line in status[1]:
                  if line is not None:
@@ -98,7 +100,7 @@ def host_msg(log, host_dict):
             ip=host_dict[i].get("ip")
             port=host_dict[i].get("port")
 
-            remote_file=f"/tmp/{get_msg_py.split('/')[-1]}"
+            remote_file=f"/opt/python3/code/{get_msg_py.split('/')[-1]}"
             host.scp(ip, port, "root", get_msg_py, remote_file)
             get_msg_command=f"/opt/python3/bin/python3 {remote_file}"
             status=host.exec(ip, port, get_msg_command)
@@ -122,14 +124,14 @@ def main():
             except json.decoder.JSONDecodeError:
                 log.logger.error(f"配置文件({init_file})json格式不正确")
             else:
-                log.logger.info(f"检测配置文件中账号端口等信息, 请稍后")
+                log.logger.info(f"检测配置文件中账号端口等信息, 请稍后...")
                 flag, connect_msg=connect_test(init_dict)
                 if flag==0:
-                    log.logger.error(f"Error: 配置文件({init_file})有误, 请根据返回信息重新配置并初始化\n")
+                    log.logger.error(f"配置文件({init_file})有误, 请根据返回信息重新配置并初始化\n")
                     for i in connect_msg:
                         log.logger.info(f"{i}:\t{connect_msg[i]}")
                     exit()
-                log.logger.info("主机初始化..")
+                log.logger.info("主机初始化...")
                 host_init(log, init_dict, conf_dict)
                 log.logger.info("初始化完成\n\n各主机信息如下:")
                 host_msg(log, init_dict)

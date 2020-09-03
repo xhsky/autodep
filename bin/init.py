@@ -4,19 +4,21 @@
 
 import sys, os
 import subprocess
+from libs.common import Logger
 
 def main():
     hostname, hosts_str=sys.argv[1:]
 
+    log=Logger(None, "info", "remote")
     hostname_cmd=f"hostnamectl set-hostname {hostname}"
     result=os.system(hostname_cmd)
     if result==0:
-        print(f"设置主机名为{hostname}完成")
+        log.logger.info(f"设置主机名为{hostname}完成")
 
     firewalld_cmd=f"systemctl disable firewalld; systemctl stop firewalld"
     result=os.system(firewalld_cmd)
     if result==0:
-        print(f"关闭防火墙完成")
+        log.logger.info(f"关闭防火墙完成")
 
     # 关闭selinux
     selinux_conf_file="/etc/selinux/config"
@@ -34,7 +36,7 @@ def main():
                 f.writelines(text)
             result=os.system("setenforce 0 &> /dev/null")
         if result==0 or result==256:
-            print(f"关闭SELinux完成")
+            log.logger.info(f"关闭SELinux完成")
 
     # 更改nofile, nproc
     value=65536
@@ -44,13 +46,16 @@ def main():
     nproc_value=int(msg)
 
     ulimit_conf_file="/etc/security/limits.conf"
-    if nofile_value < value:
-        with open(ulimit_conf_file, "a") as f:
-            f.write("root - nofile 65536\n")
-    if nproc_value < value:
-        with open(ulimit_conf_file, "a") as f:
-            f.write("root - nproc 65536\n")
-    print("用户权限已提升")
+    try:
+        if nofile_value < value:
+            with open(ulimit_conf_file, "a") as f:
+                f.write("root - nofile 65536\n")
+        if nproc_value < value:
+            with open(ulimit_conf_file, "a") as f:
+                f.write("root - nproc 65536\n")
+        log.logger.info("用户权限已提升")
+    except Except as e:
+        log.logger.error(f"权限提升错误: {e}")
 
     # 配置hosts
     hosts_file="/etc/hosts"
@@ -64,7 +69,7 @@ def main():
                 added_hosts.append(i)
     with open(hosts_file, "a") as f:
         f.writelines(added_hosts)
-    print(f"hosts配置完成")
+    log.logger.info(f"hosts配置完成")
 
 if __name__ == "__main__":
     main()
