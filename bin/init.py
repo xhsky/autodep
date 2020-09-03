@@ -15,7 +15,7 @@ def main():
     if result==0:
         log.logger.info(f"设置主机名为{hostname}完成")
 
-    firewalld_cmd=f"systemctl disable firewalld; systemctl stop firewalld"
+    firewalld_cmd=f"systemctl disable firewalld &> /dev/null; systemctl stop firewalld"
     result=os.system(firewalld_cmd)
     if result==0:
         log.logger.info(f"关闭防火墙完成")
