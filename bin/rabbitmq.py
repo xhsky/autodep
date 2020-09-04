@@ -25,7 +25,8 @@ def main():
         if value==1:
             log.logger.info(f"{soft_name}安装完成")
         else:
-            log.logger.error(f"{soft_name}安装失败")
+            log.logger.error(f"{soft_name}安装失败: {msg}")
+            return 
 
         # 配置
         ## cookie
@@ -43,6 +44,8 @@ def main():
             vm_memory_high_watermark.absolute={erlang_mem}M
             vm_memory_high_watermark_paging_ratio = 0.5
             log.file.level = info
+            mnesia_table_loading_retry_timeout = 10000
+            mnesia_table_loading_retry_limit = 3
             cluster_name={cluster_name}
             cluster_formation.peer_discovery_backend = classic_config
             cluster_formation.node_type = {node_type}
@@ -53,6 +56,10 @@ def main():
         for index, item in enumerate(members_list):
             members_nodes=f"{members_nodes}\ncluster_formation.classic_config.nodes.{index+1}=rabbit@{item}"
 
+        rabbitmq_sh_text=f"""\
+                export RABBITMQ_HOME={located}/{dst}
+                export PATH=$RABBITMQ_HOME/sbin:$PATH
+        """
         config_dict={
                 "cookie_config":{
                     "config_file": cookie_file, 
@@ -68,6 +75,11 @@ def main():
                     "config_file": mq_config_file, 
                     "config_context": members_nodes, 
                     "mode": "a"
+                    }, 
+                "rabbitmq_sh":{
+                    "config_file": "/etc/profile.d/rabbitmq.sh", 
+                    "config_context": rabbitmq_sh_text, 
+                    "mode": "w"
                     }
                 }
         result, msg=common.config(config_dict)
@@ -90,6 +102,20 @@ def main():
             status=common.port_exist(rabbitmq_port)
             if status==1:
                 log.logger.info(f"{soft_name}启动完成")
+                # 设置账号, vhost及权限
+                vhosts_list=conf_dict["rabbitmq_info"].get("vhosts")
+                users_list=conf_dict["rabbitmq_info"].get("users")
+                passwords_list=conf_dict["rabbitmq_info"].get("passwords")
+                if vhosts_list is None or users_list is None or passwords_list is None:
+                    pass
+                else:
+                    for vhost, user, password in zip(vhosts_list, users_list, passwords_list):
+                        account_command=f"rabbitmqctl add_user {user} {password} &> /dev/null && rabbitmqctl add_vhost {vhost}  &> /dev/null && rabbitmqctl set_permissions -p {vhost} {user} '.*' '.*' '.*' &> /dev/null"
+                        if os.system(account_command):
+                            log.logger.error(f"{soft_name}账号及权限设置失败")
+                            break
+                    else:
+                        log.logger.info(f"{soft_name}账号及权限设置成功")
             else:
                 log.logger.error(f"{soft_name}启动超时")
         else:
