@@ -2,7 +2,7 @@
   "web":{
     "software": ["nginx"], 
     "located": "/data/", 
-    "nginx_info":{
-      "proxy_hosts": ["web1", "web2"]
+    "nginx_info":{                    
+      "proxy_hosts": ["web1", "web2"]         // 指定后端代理的主机名
      }
 }

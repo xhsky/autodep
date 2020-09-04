@@ -1,6 +1,6 @@
 {
   "web1":{
-    "software": ["jdk", "tomcat", "ffmpeg"], 
+    "software": ["jdk", "tomcat", "ffmpeg"],        // ffmpeg需要同tomcat一起安装
     "located": "/data/"
   }, 
   "web2":{

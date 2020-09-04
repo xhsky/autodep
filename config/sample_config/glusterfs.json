@@ -3,13 +3,13 @@
     "software": ["glusterfs"], 
     "located": "/data1", 
     "glusterfs_info":{
-        "server_info":{
-          "volume_dir": "/data_db", 
-          "members":["web2", "web3"]
+        "server_info":{                       // 服务端配置
+          "volume_dir": "/data_db",           // 服务端提供共享的原始目录
+          "members":["web2", "web3"]          // 集群成员
         }, 
-        "client_info":{
-          "mounted_host": "web3", 
-          "mounted_dir": "/data_mount"
+        "client_info":{                       // 客户端配置
+          "mounted_host": "web3",             // 指定挂载的服务端主机名
+          "mounted_dir": "/data_mount"        // 指定客户端挂载目录
         }
     }
   }, 

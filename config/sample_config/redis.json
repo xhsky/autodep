@@ -3,12 +3,12 @@
     "software": ["redis"], 
     "located": "/data", 
 		"redis_info":{
-       "db_info":{
-         "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599"
+       "db_info":{                                                          // 单机信息
+         "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599"      // 密码
        }, 
-       "cluster_info":{
-         "role": "master", 
-         "master_host": "redis1"
+       "cluster_info":{                                                     // 集群信息
+         "role": "master",                                                  // 角色
+         "master_host": "redis1"                                            // master主机
        }
     }
   }, 
