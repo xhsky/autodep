@@ -245,6 +245,8 @@ def main():
                     if line is not None:
                         log.logger.error(line.strip("\n"))
                 log.logger.info(f"{soft_name}结束安装...\n")
+        else:
+            log.logger.info("集群部署完成...")
 
     elif action=="start":
         log.logger.info("开始集群启动...\n")
@@ -273,6 +275,8 @@ def main():
                     if line is not None:
                         log.logger.error(line.strip("\n"))
                 log.logger.info(f"{soft_name}启动完毕...\n")
+        else:
+            log.logger.info("集群启动完毕...")
     else:
         print(f"Usage: {args[0]} install|start")
 
