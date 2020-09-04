@@ -219,6 +219,7 @@ def main():
     log=Logger(log_file, log_level)
 
     file_name, action=args
+    ssh=Client()
     if action=="install":
         log.logger.info("开始集群部署...\n")
         for host_name in arch_dict:
@@ -234,7 +235,6 @@ def main():
                 if located_dir.endswith("/"):
                     arch_dict[host_name]["located"]=located_dir[0:-1]
 
-                ssh=Client()
                 ssh.scp(host_name, port, "root", "./libs/common.py", "/opt/python3/code/libs/common.py")
                 status=soft_obj.control(soft_name, action, weight, conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(host_name))}'")
 
@@ -254,6 +254,11 @@ def main():
                 log.logger.info(f"{soft_name}开始启动...")
                 port=init_dict[host_name].get("port")
                 soft_obj=soft(host_name, port)
+                # 去除located结尾的/
+                located_dir=arch_dict[host_name]["located"]
+                if located_dir.endswith("/"):
+                    arch_dict[host_name]["located"]=located_dir[0:-1]
+                ssh.scp(host_name, port, "root", "./libs/common.py", "/opt/python3/code/libs/common.py")
                 status=soft_obj.control(soft_name, action, None, conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(host_name))}'")
 
                 for line in status[1]:
