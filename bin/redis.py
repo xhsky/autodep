@@ -82,7 +82,8 @@ def main():
             config_dict={
                     "sentinel_conf": {
                         "config_file": f"{located}/{dst}/conf/sentinel.conf", 
-                        "config_context": sentinel_conf_text
+                        "config_context": sentinel_conf_text, 
+                        "mdoe": "w"
                         }
                     }
             result, msg=common.config(config_dict)
