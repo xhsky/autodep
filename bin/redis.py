@@ -33,6 +33,10 @@ def main():
                 net.core.somaxconn=1024
                 vm.overcommit_memory=1
         """
+        redis_sh_text=f"""\
+                export REDIS_HOME={located}/dst
+                export PATH=$REDIS_HOME/bin:$PATH
+        """
         hugepage_disabled=f"echo never > /sys/kernel/mm/transparent_hugepage/enabled\n"
         config_dict={
                 "sysctl_conf":{
@@ -44,6 +48,11 @@ def main():
                     "config_file": "/etc/rc.local", 
                     "config_context": hugepage_disabled, 
                     "mode": "r+"
+                    }, 
+                "redis_sh":{
+                    "config_file": "/etc/profile.d/redis.sh", 
+                    "config_context": redis_sh_text, 
+                    "mode": "w"
                     }
                 }
         result, msg=common.config(config_dict)
@@ -83,7 +92,7 @@ def main():
                     "sentinel_conf": {
                         "config_file": f"{located}/{dst}/conf/sentinel.conf", 
                         "config_context": sentinel_conf_text, 
-                        "mdoe": "w"
+                        "mode": "w"
                         }
                     }
             result, msg=common.config(config_dict)
