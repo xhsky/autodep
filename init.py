@@ -13,15 +13,14 @@ def connect_test(host_dict):
     flag=1
     return_msg={}
     for i in host_dict:
-        if i != "local_name":
-            host=Client()
-            ip=host_dict[i].get("ip")
-            port=host_dict[i].get("port")
-            password=host_dict[i].get("root_password")
-            status, msg=host.password_conn(ip, port, password)
-            if status!=0:
-                flag=0
-            return_msg[i]=msg
+        host=Client()
+        ip=host_dict[i].get("ip")
+        port=host_dict[i].get("port")
+        password=host_dict[i].get("root_password")
+        status, msg=host.password_conn(ip, port, password)
+        if status!=0:
+            flag=0
+        return_msg[i]=msg
 
     return flag, return_msg
 
@@ -50,45 +49,43 @@ def host_init(log, host_dict, conf_dict):
 
     # 获取所有hosts
     for i in host_dict:
-        if i != "local_name":
-            hosts_str=f"{hosts_str}{host_dict[i].get('ip')} {i}\n"
+        hosts_str=f"{hosts_str}{host_dict[i].get('ip')} {i}\n"
     # 初始化
     for i in host_dict:
-        if i != "local_name":
-            log.logger.info(f"主机{i}环境初始化...")
-            ip=host_dict[i].get("ip")
-            port=host_dict[i].get("port")
-            password=host_dict[i].get("root_password")
+        log.logger.info(f"主机{i}环境初始化...")
+        ip=host_dict[i].get("ip")
+        port=host_dict[i].get("port")
+        password=host_dict[i].get("root_password")
 
-            host.free_pass_set(ip, port, password)
-            log.logger.info(f"免密码登录设置完成")
-            
-            # 传输Python
-            remote_python3_file=f"/tmp/{local_python3_file.split('/')[-1]}"
-            host.scp(ip, port, "root", local_python3_file, remote_python3_file)
-            command=f"tar -xf {remote_python3_file} -C /opt/ && echo 0"
-            status=host.exec(ip, port, command)
-            flag=status[1].read().decode('utf8').strip()
-            if flag!='0':
-                log.logger.error(f"Python3安装报错: status[2].read().decode('utf8')")
-                exit()
-            else:
-                log.logger.info(f"配置Python3环境完成")
+        host.free_pass_set(ip, port, password)
+        log.logger.info(f"免密码登录设置完成")
+        
+        # 传输Python
+        remote_python3_file=f"/tmp/{local_python3_file.split('/')[-1]}"
+        host.scp(ip, port, "root", local_python3_file, remote_python3_file)
+        command=f"tar -xf {remote_python3_file} -C /opt/ && echo 0"
+        status=host.exec(ip, port, command)
+        flag=status[1].read().decode('utf8').strip()
+        if flag!='0':
+            log.logger.error(f"Python3安装报错: status[2].read().decode('utf8')")
+            exit()
+        else:
+            log.logger.info(f"配置Python3环境完成")
 
-            # 执行init.py
-            code_dir="/opt/python3/code"
-            host.scp(ip, port, "root", "./libs/common.py", f"{code_dir}/libs/common.py")
-            host.scp(ip, port, "root", init_py, f"{code_dir}/init.py")
-            status=host.exec(ip, port, f"/opt/python3/bin/python3 {code_dir}/init.py {i} '{hosts_str}'")
+        # 执行init.py
+        code_dir="/opt/python3/code"
+        host.scp(ip, port, "root", "./libs/common.py", f"{code_dir}/libs/common.py")
+        host.scp(ip, port, "root", init_py, f"{code_dir}/init.py")
+        status=host.exec(ip, port, f"/opt/python3/bin/python3 {code_dir}/init.py {i} '{hosts_str}'")
 
-            for line in status[1]:
-                 if line is not None:
-                     log.logger.info(line.strip("\n"))
-            for line in status[2]:
-                 if line is not None:
-                     log.logger.error(line.strip("\n"))
+        for line in status[1]:
+             if line is not None:
+                 log.logger.info(line.strip("\n"))
+        for line in status[2]:
+             if line is not None:
+                 log.logger.error(line.strip("\n"))
 
-            print("")
+        print("")
 
 def host_msg(log, host_dict):
     """获取主机信息
@@ -96,16 +93,15 @@ def host_msg(log, host_dict):
     host=Client()
     get_msg_py="./bin/host.py"
     for i in host_dict:
-        if i != "local_name":
-            ip=host_dict[i].get("ip")
-            port=host_dict[i].get("port")
+        ip=host_dict[i].get("ip")
+        port=host_dict[i].get("port")
 
-            remote_file=f"/opt/python3/code/{get_msg_py.split('/')[-1]}"
-            host.scp(ip, port, "root", get_msg_py, remote_file)
-            get_msg_command=f"/opt/python3/bin/python3 {remote_file}"
-            status=host.exec(ip, port, get_msg_command)
+        remote_file=f"/opt/python3/code/{get_msg_py.split('/')[-1]}"
+        host.scp(ip, port, "root", get_msg_py, remote_file)
+        get_msg_command=f"/opt/python3/bin/python3 {remote_file}"
+        status=host.exec(ip, port, get_msg_command)
 
-            log.logger.info(f"{status[1].read().decode('utf8')}")
+        log.logger.info(f"{status[1].read().decode('utf8')}")
 
 def main():
     conf_file="./config/conf.json"

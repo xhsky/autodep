@@ -1,5 +1,4 @@
 {
-  "local_name": "web",
   "web":{
     "ip":"192.168.1.203", 
     "root_password":"111111", 
