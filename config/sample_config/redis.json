@@ -2,7 +2,7 @@
   "redis1":{
     "software": ["redis"], 
     "located": "/data", 
-		"redis_info":{
+    "redis_info":{
        "db_info":{                                                          // 单机信息
          "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599"      // 密码
        }, 
@@ -15,7 +15,7 @@
   "redis2":{
     "software": ["redis"], 
     "located": "/data", 
-		"redis_info":{
+    "redis_info":{
        "db_info":{
          "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599"
        }, 

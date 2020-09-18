@@ -82,7 +82,9 @@
           "business_db": ["db1", "db2"], 
           "business_user": ["user1", "user2"], 
           "business_password": ["Dreamdb_111", "Dreamdb_222"]
-        }
+        },
+        "cluster_info":{
+          "role": "master"
     }
   }, 
   "db2":{
