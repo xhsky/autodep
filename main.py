@@ -530,7 +530,7 @@ def main():
             log.logger.info("集群启动完毕...\n")
             log.logger.info("开始生成部署文档...")
             project_file=to_doc(init_dict, arch_dict)
-            log.logger.info(f"部署文档{(project_file)}生成完毕...")
+            log.logger.info(f"请查看文档: {project_file}")
     else:
         print(f"Usage: {args[0]} install|start")
 
