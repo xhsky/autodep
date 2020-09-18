@@ -86,7 +86,7 @@ class dict_to_md(object):
             self.md_content=f"{self.md_content}\n{i[1]}\n"
             value=header_dict.get("value")
             if value is not None:
-                self.md_content=f"{self.md_content}\n{value}\n"
+                self.md_content=f"{self.md_content}\n{value}\n\n---\n"
             self.generate_md(header_dict)
     
     def write_to_file(self):
@@ -129,33 +129,5 @@ if __name__ == "__main__":
             }
     }
 
-    md=dict_to_md("测试项目")
-    import json
-    with open("../config/init.json", "r") as f:
-        dict_text=json.load(f)
-    header_list=[
-            {"IP": "ip"}, 
-            {"root账号": "root_password"}, 
-            {"SSH端口": "port"}
-            ]
-    md_table_content=md.to_table("主机名", header_list, dict_text)
-    exit()
-
-    #md.generate_md(json_content)
-
-    level_header_dict={
-            "2": "主机信息列表", 
-            "3": "a主机", 
-            "4": "a1主机", 
-            }
-    md.add_content(level_header_dict, 2, md.attach_content(["aaa"], -1))
-    level_header_dict={
-            "2": "主机信息列表", 
-            "3": "b主机", 
-            "4": "b1主机", 
-            "5": "信息" 
-            }
-    md.add_content(level_header_dict, 2, md_table_content)
-    md.write_to_file()
 
 

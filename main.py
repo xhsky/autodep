@@ -196,129 +196,184 @@ def get_attach_soft(soft_list):
 
 def set_soft_info_to_md(softname_list, soft_dict):
     info_all=""
-    info=""
+    prefix='    '
     located=soft_dict["located"]
     for softname in softname_list:
         if softname=="nginx":
             info=f"""\
                     - {softname}
+
                         - 后端代理主机: `{', '.join(soft_dict['nginx_info']['proxy_hosts'])}`
+
                         - 启动: `# cd {located}; ./sbin/nginx`
+
                         - 关闭: `# cd {located}; ./sbin/nginx -s stop`
                     """
         elif softname=="ffmpeg":
             info=f"""\
                     - {softname}
+
             """
         elif softname=="jdk":
             info=f"""\
                     - {softname}
+
             """
         elif softname=="tomcat":
             info=f"""\
                     - {softname}
+
                         - 启动: `# catalina.sh start`
+
                         - 关闭: `# catalina.sh stop -force`
             """
         elif softname=="redis":
             redis_cluster_info=soft_dict["redis_info"].get("cluster_info")
             password=soft_dict["redis_info"]["db_info"]["redis_password"]
             if redis_cluster_info is None:
-                role="stand_alone"
+                role="stand-alone"
                 sentinel_info=""
             else:
                 role=redis_cluster_info.get("role")
                 sentinel_info=f"""\
+                            - master: {redis_cluster_info["master_host"]} 
+
                         - sentinel:
+
                             - 密码: `{password}`
+
                             - 启动: `# cd {located}/redis ; ./bin/redis-sentinel conf/sentinel.conf`
+
                             - 关闭: `# cd {located}/redis ; ./bin/redis-cli -p 26379 -a {password} shutdown`
                 """
 
             info=f"""\
                     - {softname}
+
                         - 角色: {role}
-                        - master: {redis_cluster_info["master_host"]}
+
                         - 密码: `{password}`
+
                         - 启动: `# cd {located}/redis ; ./bin/redis-server conf/redis.conf`
+
                         - 关闭: `# cd {located}/redis ; ./bin/redis-cli -a {password} shutdown`
             """
             info=f"{textwrap.dedent(info)}\n{textwrap.dedent(sentinel_info)}"
-        
         elif softname=="rabbitmq":
             accounts=""
             if soft_dict["rabbitmq_info"].get("vhosts") is not None:
                 account_dict=list(zip(soft_dict["rabbitmq_info"]["vhosts"], soft_dict["rabbitmq_info"]["users"], soft_dict["rabbitmq_info"]["passwords"]))
                 for i in account_dict:
                     accounts=f"{accounts}`{i[1]}/{i[2]}({i[0]})`, "
-                accounts=f"- 账号: {accounts[:-2]}"
+                accounts=f"\n- 虚拟机账号: {accounts[:-2]}\n"
 
             info=f"""\
                     - {softname}
+
                         - 集群名称: `{soft_dict["rabbitmq_info"]["cluster_name"]}`
+
                         - 节点类型: `{soft_dict["rabbitmq_info"]["node_type"]}`
+
                         - 集群成员: `{', '.join(soft_dict['rabbitmq_info']['members'])}`
             """
-            info=f"{textwrap.dedent(info)}{textwrap.indent(accounts, prefix='    ')}"
+            info=f"{textwrap.dedent(info)}{textwrap.indent(accounts, prefix=prefix)}"
             control=f"""\
                     - 启动: `# cd {located}; ./sbin/rabbitmq-server -detached`
+
                     - 关闭: `# cd {located}; ./sbin/rabbitmqctl stop`
             """
-            info=f"{info}\n{textwrap.indent(textwrap.dedent(control), prefix='    ')}"
-
+            info=f"{info}\n{textwrap.indent(textwrap.dedent(control), prefix=prefix)}"
         elif softname=="glusterfs":
+            server_flag=0
+            client_flag=0
+            role="all(server and client)"
+            if soft_dict["glusterfs_info"].get("server_info") is not None:
+                server_flag=1
+                role="server"
+            if soft_dict["glusterfs_info"].get("client_info") is not None:
+                client_flag=1
+                role="client"
+
             info=f"""\
                     - {softname}
+
+                        - 角色: {role}
             """
-            if soft_dict["glusterfs_info"].get("server_info") is not None:
+            if server_flag==1:
                 server_info=f"""\
                         - 集群成员: `{', '.join(soft_dict["glusterfs_info"]["server_info"]["members"])}`
+
                         - 卷目录: `{soft_dict["glusterfs_info"]["server_info"]["volume_dir"]}`
                 """
-                info=f"{textwrap.dedent(info)}{textwrap.indent(textwrap.dedent(server_info), prefix='   ')}"
-            if soft_dict["glusterfs_info"].get("client_info") is not None:
+                info=f"{textwrap.dedent(info)}\n{textwrap.indent(textwrap.dedent(server_info), prefix=prefix)}"
+            if client_flag==1:
                 client_info=f"""\
                         - 挂载主机: `{soft_dict["glusterfs_info"]["client_info"]["mounted_host"]}`
-                        - 卷目录: `{soft_dict["glusterfs_info"]["client_info"]["mounted_dir"]}`
+
+                        - 挂载目录: `{soft_dict["glusterfs_info"]["client_info"]["mounted_dir"]}`
                 """
-                info=f"{textwrap.dedent(info)}{textwrap.indent(textwrap.dedent(client_info), prefix='   ')}"
+                info=f"{textwrap.dedent(info)}\n{textwrap.indent(textwrap.dedent(client_info), prefix=prefix)}"
             control_info=f"""\
-                    - 启动: `systemctl start glusterfs`
-                    - 关闭: `systemctl stop glusterfs`
+                    - 启动: `systemctl start glusterd`
+
+                    - 关闭: `systemctl stop glusterd`
             """
-            info=f"{info}\n{textwrap.indent(textwrap.dedent(control_info), prefix='    ')}"
+            info=f"{info}\n{textwrap.indent(textwrap.dedent(control_info), prefix=prefix)}"
 
         elif softname=="mysql":
-            info=f"""\
-                    - {softname}
-                        - 管理员密码: `{soft_dict['mysql_info']['db_info']['root_password']}`
-                        """
             accounts_list=list(zip(soft_dict['mysql_info']['db_info']['business_db'],soft_dict['mysql_info']['db_info']['business_user'], soft_dict['mysql_info']['db_info']['business_password']))
-            accounts="- 数据库账号: "
+            accounts=""
             for i in accounts_list:
                 accounts=f"{accounts}`{i[1]}/{i[2]}({i[0]})`, "
-            accounts=f"{accounts[:-2]}\n"
-            info=f"{textwrap.dedent(info)}{textwrap.indent(accounts, prefix='    ')}"
+            #info=f"{textwrap.dedent(info)}{textwrap.indent(accounts, prefix=prefix)}"
 
-            role="stand_alone"
+            role="stand-alone"
             slave_info=""
             if soft_dict["mysql_info"].get("cluster_info") is not None:
                 role=soft_dict["mysql_info"]["cluster_info"]["role"]
                 if role=="slave":
                     slave_info=f"""\
                             - 同步主机: `{soft_dict['mysql_info']['cluster_info']['sync_host']}`
+
                             - 同步数据库: `{', '.join(soft_dict['mysql_info']['cluster_info']['sync_dbs'])}`
+
                     """
-            cluster_info=f"- 角色: {role}\n{textwrap.dedent(slave_info)}"
+
+            info=f"""\
+                    - {softname}
+
+                        - 管理员密码: `{soft_dict['mysql_info']['db_info']['root_password']}`
+
+                        - 数据库账号: {accounts[:-2]}
+
+                        - 角色: {role}
+                """
+            #cluster_info=f"- 角色: {role}\n\n{textwrap.dedent(slave_info)}"
             control_info=f"""\
                     - 启动: `# systemctl start mysqld`
+
                     - 关闭: `# systemctl stop mysqld`
             """
-            info=f"{textwrap.dedent(info)}\n{textwrap.indent(cluster_info, prefix='    ')}{textwrap.indent(textwrap.dedent(control_info), prefix='    ')}"
+            info=f"{textwrap.dedent(info)}\n{textwrap.indent(textwrap.dedent(slave_info), prefix=prefix)}{textwrap.indent(textwrap.dedent(control_info), prefix=prefix)}"
 
+        elif softname=="elasticsearch":
+            info=f"""\
+                    - {softname}
 
+                        - 集群名称: `{soft_dict['elasticsearch_info']['cluster_name']}`
+
+                        - 集群成员: `{', '.join(soft_dict['elasticsearch_info']['members'])}`
+
+                        - 启动: `# cd {located}/es;  ./bin/elasticsearch -d -p elasticsearch.pid`
+
+                        - 关闭: ```# cd {located}/es; kill `cat elasticsearch.pid` ```
+            """
+        else: 
+            info=f"""\
+                    - {softname}
+
+            """
         info_all=f"{info_all}\n{textwrap.dedent(info)}"
-
     return info_all
 
 def to_doc(host_info_dict, arch_info_dict):
@@ -331,25 +386,26 @@ def to_doc(host_info_dict, arch_info_dict):
     """
     with open("./config/project", "r") as f:
         project_name=f.read().strip()
-    if project_name is None:
+    if project_name == '':
         project_name="项目部署文档"
     else:
         project_name=f"项目({project_name})部署文档"
 
     md=dict_to_md(project_name)
 
+    # 主机信息列表
     host_info_table=[
             {"IP": "ip"}, 
-            {"root密码": "root_password"}, 
-            {"SSH端口": "port"}
+            {"SSH端口": "port"}, 
+            {"root密码": "root_password"}
             ]
     host_info_table_md=md.to_table("主机名", host_info_table, host_info_dict)
-
     host_info_header={
             "2": ["主机信息列表", 1], 
             }
     md.add_content(host_info_header, host_info_table_md)
 
+    # 安装信息列表
     install_info_table=[
             {"安装软件": "soft"}, 
             {"安装目录": "located"}
@@ -366,6 +422,7 @@ def to_doc(host_info_dict, arch_info_dict):
     install_info_table_md=md.to_table("主机名", install_info_table, install_info_dict)
     md.add_content(install_info_header, install_info_table_md)
 
+    # 软件信息
     n=0
     for i in arch_info_dict:
         n=n+1
@@ -376,10 +433,8 @@ def to_doc(host_info_dict, arch_info_dict):
         info=set_soft_info_to_md(arch_info_dict[i]["software"], arch_info_dict[i])
         md.add_content(soft_info_header, info)
 
-
-
-
     md.write_to_file()
+    return f"{project_name}.md"
 
 def main():
     arch_file="./config/arch.json"
@@ -472,12 +527,12 @@ def main():
                         log.logger.error(line.strip("\n"))
                 log.logger.info(f"{soft_name}启动完毕...\n")
         else:
-            log.logger.info("集群启动完毕...")
+            log.logger.info("集群启动完毕...\n")
+            log.logger.info("开始生成部署文档...")
+            project_file=to_doc(init_dict, arch_dict)
+            log.logger.info(f"部署文档{(project_file)}生成完毕...")
     else:
         print(f"Usage: {args[0]} install|start")
-    log.logger.info("开始生成部署文档...\n")
-    to_doc(init_dict, arch_dict)
-    log.logger.info("部署文档生成完毕...\n")
 
 if __name__ == "__main__":
     main()
