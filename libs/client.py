@@ -26,7 +26,7 @@ class Client(object):
             msg="密码错误"
         except Exception as e:                                                                              # 未知错误
             status=3
-            msg="未知错误, 无法连接"
+            msg=f"未知错误, 无法连接({e})"
         self.ssh.close()
         return status, msg
 
