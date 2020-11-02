@@ -113,7 +113,9 @@ class Logger(object):
         log_to_file=0
         log_to_console=0
         log_to_remote=0
-        self.logger=logging.getLogger(filename)
+        log_to_graphical=0
+        #self.logger=logging.getLogger(filename)
+        self.logger=logging.getLogger()
         self.logger.setLevel(self.level_relations[level])
 
         if mode=="all":
@@ -125,6 +127,8 @@ class Logger(object):
             log_to_console=1
         elif mode=="remote":
             log_to_remote=1
+        elif mode=="graphical":
+            log_to_graphical=1
 
         if log_to_file:
             fmt='%(asctime)s - %(levelname)s: %(message)s'
@@ -146,6 +150,39 @@ class Logger(object):
             format_str=logging.Formatter(fmt)                           # 设置日志格式
             self.sh.setFormatter(format_str)
             self.logger.addHandler(self.sh)                                  # 把对象加到logger里
+        if log_to_graphical:
+            wfile=filename
+            self.sh=logging.StreamHandler(wfile)
+            fmt="%(levelname)s: %(message)s"
+            format_str=logging.Formatter(fmt)                           # 设置日志格式
+            self.sh.setFormatter(format_str)
+            self.logger.addHandler(self.sh)                                  # 把对象加到logger里
+
+def main():
+    import os
+    import dialog
+    import time
+    d=dialog.Dialog()
+    read_fd, write_fd = os.pipe()
+    #g_log=Logger(write_fd, "info", "graphical")
+    child_pid = os.fork()
+    if child_pid == 0:
+        os.close(read_fd)
+        with os.fdopen(write_fd,  mode="w",  buffering=1) as wfile:
+            g_log=Logger(wfile, "info", "graphical")
+            for i in range(3):
+                g_log.logger.info("aaaaa")
+                time.sleep(2)
+
+        os._exit(0)
+    os.close(write_fd)
+    d.programbox(fd=read_fd, title="hhhhhhhhh")
+
+    exit_info = os.waitpid(child_pid, 0)[1]
+    if os.WIFEXITED(exit_info):
+        exit_code = os.WEXITSTATUS(exit_info)
+    elif os.WIFSIGNALED(exit_info):
+        pass
 
 if __name__ == "__main__":
     main()
