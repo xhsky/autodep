@@ -62,14 +62,14 @@ class Deploy(object):
         # 获取所有hosts
         hosts_list=[]
         for i in init_dict:
-            hosts_list.append("{init_dict[i]}.get('ip') {i}")
+            hosts_list.append(f"{init_dict[i].get('ip')} {i}")
             #hosts_str=f"{hosts_str}{init_dict[i].get('ip')} {i}\n"
         # 初始化
         for i in init_dict:
             mode_log.logger.info(f"主机{i}环境初始化...")
-            ip=host_dict[i].get("ip")
-            port=host_dict[i].get("port")
-            password=host_dict[i].get("root_password")
+            ip=init_dict[i].get("ip")
+            port=init_dict[i].get("port")
+            password=init_dict[i].get("root_password")
 
             host.free_pass_set(ip, port, password)
             mode_log.logger.info(f"免密码登录设置完成")
@@ -90,18 +90,17 @@ class Deploy(object):
             code_dir="/opt/python3/code"
             host.scp(ip, port, "root", "./libs/common.py", f"{code_dir}/libs/common.py")
             host.scp(ip, port, "root", init_py, f"{code_dir}/init.py")
-            status=host.exec(ip, port, f"/opt/python3/bin/python3 {code_dir}/init.py {i} {'\n'.join(hosts_list)}")
+            host_str="\n".join(hosts_list)
+            status=host.exec(ip, port, f"/opt/python3/bin/python3 {code_dir}/init.py {i} '{host_str}'")
+
+            return status
 
             for line in status[1]:
                  if line is not None:
-                     log.logger.info(line.strip("\n"))
+                     mode_log.logger.info(line.strip("\n"))
             for line in status[2]:
                  if line is not None:
-                     log.logger.error(line.strip("\n"))
-
-            print("")
-        
-
+                     mode_log.logger.error(line.strip("\n"))
 
     def install(self):
         pass
@@ -755,12 +754,17 @@ class graphics_deploy(Deploy):
         child_pid = os.fork()
         if child_pid == 0:
             os.close(read_fd)
-            with os.fdopen(write_fd, mode="w", buffering=1) as wfile:
+            #with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
+            with os.fdopen(write_fd, mode="a") as wfile:
                 g_log=Logger(wfile, "info", "graphical")
-                super(graphics_deploy, self).init(init_dict, local_python3_file, g_log)
+                stdin, stdout, stderr=super(graphics_deploy, self).init(init_dict, local_python3_file, g_log)
+
+                for line in stdout:
+                    if line is not None:
+                        g_log.logger.info(line)
             os._exit(0)
         os.close(write_fd)
-        self.d.programbox(fd=read_fd, title=title, height=30, width=40)
+        self.d.programbox(fd=read_fd, title=title, height=30, width=180)
         exit_info = os.waitpid(child_pid, 0)[1]
         if os.WIFEXITED(exit_info):
             exit_code = os.WEXITSTATUS(exit_info)
