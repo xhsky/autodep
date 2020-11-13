@@ -22,7 +22,7 @@ def format_size(byte):
     else:
         return f"{kb:.2f}k"
 
-def host_info(log):
+def host_info():
     os_name, hostname, kernel_version=list(platform.uname())[0:3]
     redhat_file="/etc/redhat-release"
     if os.path.exists(redhat_file):
@@ -48,14 +48,26 @@ def host_info(log):
     mem=psutil.virtual_memory()
     mem_total, mem_used_percent=mem[0], mem[2]
 
+    # port
+    port_list=[]
+    all_port=psutil.net_connections(kind='inet4')
+    for i in all_port:
+        if len(i[3])!=0:
+            pid=i[6]
+            if pid is not None:
+                if i[5]!="ESTABLISHED":
+                    process_name=psutil.Process(pid).name()
+                    port=i[3][1]
+                    port_list.append((pid, process_name, port))
+
     return hostname, os_name, kernel_version, \
             cpu_count, cpu_used_percent, \
             mem_total, mem_used_percent, \
-            disk_list
+            disk_list, port_list
 
 def main():
     log=Logger(None, "info", "remote")
-    info=host_info(log)
+    info=host_info()
     msg=f"""\
             主机名: \t{info[0]}
             发行版: \t{info[1]}
@@ -67,7 +79,7 @@ def main():
     for i in info[7]:
         disk_msg=f"磁盘({i[0]}): \t{format_size(i[1])}({i[2]}%)\n"
         dedent_msg=f"{dedent_msg}{disk_msg}"
-
+    dedent_msg=f"{dedent_msg}{info[8]}"
     log.logger.info(f"{dedent_msg}")
 
 if __name__ == "__main__":
