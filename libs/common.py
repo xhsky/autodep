@@ -109,22 +109,25 @@ class Logger(object):
         'crit':logging.CRITICAL
     }
 
-    def __init__(self, filename, level, mode="all"):
+    def __init__(self, filename, level, mode="file", g_file="wfile"):
         log_to_file=0
         log_to_console=0
         log_to_remote=0
         log_to_graphical=0
-        #self.logger=logging.getLogger(filename)
-        self.logger=logging.getLogger()
-        self.logger.setLevel(self.level_relations[level])
+        if filename is None:
+            filename=mode
+        self.logger=logging.getLogger(filename)
+        self.logger.setLevel(self.level_relations["info"])
 
-        if mode=="all":
-            log_to_file=1
-            log_to_console=1
-        elif mode=="file":
+        #if mode=="all":
+        #    log_to_file=1
+        #    log_to_console=1
+        if mode=="file":
+            self.logger.setLevel(self.level_relations[level])
             log_to_file=1
         elif mode=="console":
             log_to_console=1
+            log_to_file=1
         elif mode=="remote":
             log_to_remote=1
         elif mode=="graphical":
@@ -151,9 +154,9 @@ class Logger(object):
             self.sh.setFormatter(format_str)
             self.logger.addHandler(self.sh)                                  # 把对象加到logger里
         if log_to_graphical:
-            wfile=filename
+            wfile=g_file
             self.sh=logging.StreamHandler(wfile)
-            fmt="%(levelname)s: %(message)s"
+            fmt="%(message)s"
             format_str=logging.Formatter(fmt)                           # 设置日志格式
             self.sh.setFormatter(format_str)
             self.logger.addHandler(self.sh)                                  # 把对象加到logger里

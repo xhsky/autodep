@@ -8,6 +8,7 @@ from dialog import Dialog
 from textwrap import dedent
 from libs.common import Logger
 from libs.client import Client
+from libs.install import soft
 
 class Deploy(object):
     '''集群部署
@@ -19,24 +20,69 @@ class Deploy(object):
             log_dir=self.conf_dict["log"]["log_dir"]
             os.makedirs(log_dir, exist_ok=1)
 
-            log_file=f"{log_dir}/autodep.log"
-            log_level=self.conf_dict["log"]["log_level"]
-            self.log=Logger(log_file, log_level, "file")
+            self.log_file=f"{log_dir}/autodep.log"
+            self.log_level=self.conf_dict["log"]["log_level"]
 
         self.init_file=init_file
         self.arch_file=arch_file
         self.project_file=project_file
-        
+        self.ssh=Client()
+
     def connect_test(self, init_dict):
         connect_msg=[]
+        flag=0
+        for node in init_dict:
+            ip=init_dict[node].get("ip")
+            port=init_dict[node].get("port")
+            password=init_dict[node].get("root_password")
+            #status, msg=host.password_conn(ip, port, password)
+            status, msg=self.ssh.password_conn(ip, port, password)
+            if status != 0:
+                flag=1
+            connect_msg.append((node, status, msg))
+        return flag, connect_msg
+
+    def get_host_msg(self, init_dict, mode_log):
+        """获取主机信息
+        """
+        get_msg_py="./bin/host.py"
         for i in init_dict:
-            host=Client()
-            ip=host_dict[i].get("ip")
-            port=host_dict[i].get("port")
-            password=host_dict[i].get("root_password")
-            status, msg=host.password_conn(ip, port, password)
-            connect_msg.append((i, status, msg))
-        return connect_msg
+            ip=init_dict[i].get("ip")
+            port=init_dict[i].get("port")
+
+            remote_file=f"/opt/python3/code/{get_msg_py.split('/')[-1]}"
+            self.ssh.scp(ip, port, "root", get_msg_py, remote_file)
+            get_msg_command=f"/opt/python3/bin/python3 {remote_file}"
+            status=self.ssh.exec(ip, port, get_msg_command)
+
+            for line in status[1]:
+                 if line is not None:
+                     mode_log.logger.info(line.strip("\n"))
+            for line in status[2]:
+                 if line is not None:
+                     mode_log.logger.error(line.strip("\n"))
+
+    def json_ana(init_dict, conf_dict, arch_dict):
+        init_host_list=init_dict.keys()
+
+        # arch.json中是否存在未初始化主机
+        not_init_host_list=[]
+        for i in arch_dict:
+            if i not in init_host_list:
+                not_init_host_list.append(i)
+        if not_init_host_list != []:
+            print(f"Error: 未初始化主机列表: {not_init_host_list}")
+            exit()
+
+        # 判断主机属性 attr
+        attr={"software": list, "located": str}
+        for i in arch_dict:
+            for j in attr:
+                if arch_dict[i].get(j) is None or not isinstance(arch_dict[i].get(j), attr[j]):
+                    print(f"Error: '{i}.{j}'配置错误")
+                    exit()
+        soft_list=conf_dict.get("software").keys()
+        check(arch_dict, soft_list, init_host_list)
 
     def init(self, init_dict, local_python3_file, mode_log):
         """主机环境初始化
@@ -50,87 +96,165 @@ class Deploy(object):
             * nproc nofile
         """
 
-        host=Client()
-        if host.gen_keys():
-            mode_log.logger.info("本机生成密钥对\n")
-        else:
-            mode_log.logger.info("本机已存在密钥对\n")
-
-        hosts={}
-        init_py="./bin/init.py"
-
-        # 获取所有hosts
-        hosts_list=[]
-        for i in init_dict:
-            hosts_list.append(f"{init_dict[i].get('ip')} {i}")
-            #hosts_str=f"{hosts_str}{init_dict[i].get('ip')} {i}\n"
-        # 初始化
-        for i in init_dict:
-            mode_log.logger.info(f"主机{i}环境初始化...")
-            ip=init_dict[i].get("ip")
-            port=init_dict[i].get("port")
-            password=init_dict[i].get("root_password")
-
-            host.free_pass_set(ip, port, password)
-            mode_log.logger.info(f"免密码登录设置完成")
-            
-            # 传输Python
-            remote_python3_file=f"/tmp/{local_python3_file.split('/')[-1]}"
-            host.scp(ip, port, "root", local_python3_file, remote_python3_file)
-            command=f"tar -xf {remote_python3_file} -C /opt/ && echo 0"
-            status=host.exec(ip, port, command)
-            flag=status[1].read().decode('utf8').strip()
-            if flag!='0':
-                mode_log.logger.error(f"Python3安装报错: status[2].read().decode('utf8')")
-                exit()
+        try:
+            if self.ssh.gen_keys():
+                mode_log.logger.info("本机生成密钥对\n")
             else:
-                mode_log.logger.info(f"配置Python3环境完成")
+                mode_log.logger.info("本机已存在密钥对\n")
 
-            # 执行init.py
-            code_dir="/opt/python3/code"
-            host.scp(ip, port, "root", "./libs/common.py", f"{code_dir}/libs/common.py")
-            host.scp(ip, port, "root", init_py, f"{code_dir}/init.py")
-            host_str="\n".join(hosts_list)
-            status=host.exec(ip, port, f"/opt/python3/bin/python3 {code_dir}/init.py {i} '{host_str}'")
 
-            return status
+            # 获取所有hosts
+            hosts_list=[]
+            for i in init_dict:
+                hosts_list.append(f"{init_dict[i].get('ip')} {i}")
+            # 初始化
+            for i in init_dict:
+                mode_log.logger.info(f"主机{i}环境初始化...")
+                ip=init_dict[i].get("ip")
+                port=init_dict[i].get("port")
+                password=init_dict[i].get("root_password")
 
-            for line in status[1]:
-                 if line is not None:
-                     mode_log.logger.info(line.strip("\n"))
-            for line in status[2]:
-                 if line is not None:
-                     mode_log.logger.error(line.strip("\n"))
+                self.ssh.free_pass_set(ip, port, password)
+                mode_log.logger.info(f"免密码登录设置完成")
+                
+                # 传输Python
+                remote_python3_file=f"/tmp/{local_python3_file.split('/')[-1]}"
+                self.ssh.scp(ip, port, "root", local_python3_file, remote_python3_file)
+                command=f"tar -xf {remote_python3_file} -C /opt/ && echo 0"
+                status=self.ssh.exec(ip, port, command)
+                flag=status[1].read().decode('utf8').strip()
+                if flag!='0':
+                    mode_log.logger.error(f"Python3安装报错: status[2].read().decode('utf8')")
+                    exit()
+                else:
+                    mode_log.logger.info(f"配置Python3环境完成")
 
-    def install(self):
-        pass
+                # 执行init.py
+                code_dir="/opt/python3/code"
+                init_py="./bin/init.py"
+                self.ssh.scp(ip, port, "root", "./libs/common.py", f"{code_dir}/libs/common.py")
+                self.ssh.scp(ip, port, "root", init_py, f"{code_dir}/init.py")
+                host_str="\n".join(hosts_list)
+                status=self.ssh.exec(ip, port, f"/opt/python3/bin/python3 {code_dir}/init.py {i} '{host_str}'")
 
-    def start(self):
-        pass
+                for line in status[1]:
+                     if line is not None:
+                         mode_log.logger.info(line.strip("\n"))
+                for line in status[2]:
+                     if line is not None:
+                         mode_log.logger.error(line.strip("\n"))
+                mode_log.logger.info("*"*20)
+            return "OK"
+        except Exception as e:
+            return "{e}"
+
+    def get_weight(self, soft_weight_dict, soft_install_list):
+        """ 返回各软件占服务器的权重
+
+            soft_install_dict={
+                "soft_name": weight, 
+                "soft_name": weight, 
+            }
+        """
+        soft_install_dict={}
+        for i in soft_install_list:
+            soft_install_dict[i]=soft_weight_dict[i]
+        weight_sum=sum(soft_install_dict.values())+1		# 1为系统权重
+        
+        for i in soft_install_dict:
+            soft_install_dict[i]=round(soft_install_dict[i]/weight_sum, 2)
+        return soft_install_dict
+
+    def control(self, init_dict, arch_dict, action, log):
+        for node in arch_dict:
+            log.logger.info(f"{node}节点...")
+            soft_install_dict=self.get_weight(self.conf_dict["software"], arch_dict[node].get("software"))
+            for soft_name in soft_install_dict:
+                log.logger.info(f"{soft_name}安装...")
+                ssh_port=init_dict[node].get("port")
+                Install=soft(node, ssh_port)
+                weight=soft_install_dict[soft_name]
+
+                # 去除located结尾的/
+                located_dir=arch_dict[node]["located"]
+                if located_dir.endswith("/"):
+                    arch_dict[node]["located"]=located_dir[0:-1]
+
+                self.ssh.scp(node, ssh_port, "root", "./libs/common.py", "/opt/python3/code/libs/common.py")
+                status=Install.control(soft_name, action[1], weight, self.conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(node))}'")
+
+                for line in status[1]:
+                    if line is not None:
+                        log.logger.info(line.strip("\n"))
+                for line in status[2]:
+                    if line is not None:
+                        log.logger.error(line.strip("\n"))
+                log.logger.info(f"{soft_name}{action[0]}结束...\n")
+        else:
+            log.logger.info(f"集群{action[0]}完成...")
+
+    def install(self, init_dict, arch_dict, log):
+        action=("安装", "install")
+        self.control(init_dict, arch_dict, action, log)
+
+    def start(self, init_dict, arch_dict, log):
+        action=("启动", "start")
+        self.control(init_dict, arch_dict, action, log)
 
 class text_deploy(Deploy):
     '''文本安装'''
 
     def __init__(self, conf_file, init_file, arch_file, project_file):
         super(text_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
+        self.log=Logger(self.log_file, self.log_level, "console")
 
     def check(self):
+        '''
+            校验配置文件
+        '''
         pass
 
     def init(self):
-        pass
+        with open(self.init_file, "r", encoding="utf8") as f:
+            init_dict=json.load(f)
+
+        self.log.logger.info("监测主机配置, 请稍后...\n")
+        flag, connect_msg=self.connect_test(init_dict)
+        if flag==1:
+            self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
+            for node_msg in connect_msg:
+                self.log.logger.info(f"{node_msg[0]}:\t{node_msg[2]}")
+            exit()
+
+        local_python3_file=self.conf_dict["location"].get("python3")
+        status=super(text_deploy, self).init(init_dict, local_python3_file, self.log)
+        if status=="OK":
+            self.log.logger.info("初始化完成\n")
+            self.log.logger.info("各主机信息如下:")
+            self.get_host_msg(init_dict, self.log)
+        else:
+            self.log.logger.error(f"初始化失败: {e}")
 
     def install(self):
-        pass
+        with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
+            init_dict=json.load(init_f)
+            arch_dict=json.load(arch_f)
+        self.log.logger.info("集群安装...\n")
+        super(text_deploy, self).install(init_dict, arch_dict, self.log)
 
     def start(self):
-        pass
+        with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
+            init_dict=json.load(init_f)
+            arch_dict=json.load(arch_f)
+        self.log.logger.info("集群启动...\n")
+        super(text_deploy, self).install(init_dict, arch_dict, self.log)
 
 class graphics_deploy(Deploy):
     '''文本图形化安装'''
 
     def __init__(self, conf_file, init_file, arch_file, project_file):
         super(graphics_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
+        self.log=Logger(self.log_file, self.log_level, "file")
 
         #self.g_log=Logger(log_file, log_level, "file")
         locale.setlocale(locale.LC_ALL, '')
@@ -526,7 +650,7 @@ class graphics_deploy(Deploy):
                     if i=="服务端":
                         if soft_dict["glusterfs_info"].get("server_info") is None:
                             volume_dir="/data/volume"
-                            members=nodename
+                            members={nodename}
                         else:
                             volume_dir=soft_dict["glusterfs_info"]["server_info"]["volume_dir"]
                             members=soft_dict["glusterfs_info"]["server_info"]["members"]
@@ -611,11 +735,11 @@ class graphics_deploy(Deploy):
             if code==self.d.OK:
                 self.log.logger.debug(f"{softname=}, {role=}")
                 elements=[
-                        ("MySQL管理员密码: ", 1, 1, root_password, 1, 20, 25, 0), 
-                        ("Server ID(唯一): ", 2, 1, str(server_id),2, 20, 25, 0), 
-                        ("数据库名: ", 3, 1, ",".join(business_db), 3, 20, 25, 0), 
-                        ("用户名: ", 4, 1, ",".join(business_user), 4, 20, 25, 0), 
-                        ("密码: ", 5, 1, ",".join(business_password), 5, 20, 25, 0)
+                        ("MySQL管理员密码: ", 1, 1, root_password, 1, 20, 35, 0), 
+                        ("Server ID(唯一): ", 2, 1, str(server_id),2, 20, 35, 0), 
+                        ("数据库名: ", 3, 1, ",".join(business_db), 3, 20, 35, 0), 
+                        ("用户名: ", 4, 1, ",".join(business_user), 4, 20, 35, 0), 
+                        ("密码: ", 5, 1, ",".join(business_password), 5, 20, 35, 0)
                         ]
                 cluster_flag=1
                 if role=="stand":
@@ -636,10 +760,10 @@ class graphics_deploy(Deploy):
                                 sync_host=""
                                 sync_dbs=""
 
-                    elements.append(("角色:", 6, 1, role, 6, 20, -25, 0))
+                    elements.append(("角色:", 6, 1, role, 6, 20, -35, 0))
                     if role=="slave":
-                        elements.append(("同步主机:", 7, 1, sync_host, 7, 20, 25, 0))
-                        elements.append(("同步数据库:", 8, 1, ",".join(sync_dbs), 8, 20, 25, 0))
+                        elements.append(("同步主机:", 7, 1, sync_host, 7, 20, 35, 0))
+                        elements.append(("同步数据库:", 8, 1, ",".join(sync_dbs), 8, 20, 35, 0))
 
                 code, fields=self.d.form(f"填写MySQL({role})信息:", elements=elements, title=title)
                 if code==self.d.OK:
@@ -749,19 +873,22 @@ class graphics_deploy(Deploy):
         with open(self.init_file, "r", encoding="utf8") as f:
             init_dict=json.load(f)
 
+        self.log.logger.info("监测主机配置, 请稍后...\n")
+        flag, connect_msg=self.connect_test(init_dict)
+        if flag==1:
+            self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
+            for node_msg in connect_msg:
+                self.log.logger.info(f"{node_msg[0]}:\t{node_msg[2]}")
+            exit()
+
         local_python3_file=self.conf_dict["location"].get("python3")
         read_fd, write_fd = os.pipe()
         child_pid = os.fork()
         if child_pid == 0:
             os.close(read_fd)
-            #with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
-            with os.fdopen(write_fd, mode="a") as wfile:
-                g_log=Logger(wfile, "info", "graphical")
-                stdin, stdout, stderr=super(graphics_deploy, self).init(init_dict, local_python3_file, g_log)
-
-                for line in stdout:
-                    if line is not None:
-                        g_log.logger.info(line)
+            with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
+                g_log=Logger(self.log_file, self.log_level, "graphical", g_file=wfile)
+                super(graphics_deploy, self).init(init_dict, local_python3_file, g_log)
             os._exit(0)
         os.close(write_fd)
         self.d.programbox(fd=read_fd, title=title, height=30, width=180)
@@ -770,7 +897,6 @@ class graphics_deploy(Deploy):
             exit_code = os.WEXITSTATUS(exit_info)
         elif os.WIFSIGNALED(exit_info):
             pass
-
 
     def install(self, title):
         pass
@@ -816,6 +942,7 @@ class graphics_deploy(Deploy):
                 time.sleep(3)
             else:
                 self.cancel("安装")
+
     def show(self):
         introduction=dedent("""
             本程序主要用来自动部署项目集群. 

@@ -8,6 +8,7 @@ import os
 class Client(object):
     def __init__(self):
         self.ssh=paramiko.SSHClient()
+        #self.ssh.load_system_host_keys()
         self.ssh.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
         self.key_dir="/root/.ssh"
         self.key_file=f"{self.key_dir}/id_rsa"
@@ -51,7 +52,7 @@ class Client(object):
             return 1
 
     def exec(self, ip, port, commands, user='root'):
-        self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=1)
+        self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=3)
         """
         stdin, stdout, stderr=self.ssh.exec_command(commands)
         return stdin, stdout, stderr
@@ -101,13 +102,17 @@ class Client(object):
         self.ssh.close()
 
 if __name__ == "__main__":
+    from  common import Logger
+    #import logging
+    #log=logging.getLogger("aaa")
+    #log=logging.getLogger()
     a=Client()
 
-    #gen_keys()
     a.gen_keys()
     #status=a.password_conn("192.168.1.174", 22, "dreamsoft")
-    a.free_pass_set("192.168.1.174", 22, "dreamsoft")
+    a.free_pass_set("dev", 22, "dreamsoft")
     #a.free_pass_set("192.168.1.173", 22, "dreamsoft")
     #msg=a.exec("192.168.1.174", 22, "df -h")
     #a.scp("192.168.1.174", 22, "root", "/tmp/b", "/root/b")
+    log=Logger("a.log", "info", "all")
 

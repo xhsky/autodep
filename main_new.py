@@ -46,7 +46,7 @@ def main():
         if opt in ("-g", "--graphics"):
             d=deploy.graphics_deploy(conf_file, init_file, arch_file, project_file)
             d.show()
-        elif opt in ("/t", "--text"):
+        elif opt in ("-t", "--text"):
             d=deploy.text_deploy(conf_file, init_file, arch_file, project_file)
             if arg=="init":
                 d.init()

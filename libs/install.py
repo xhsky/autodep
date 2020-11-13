@@ -30,10 +30,8 @@ class soft(object):
             self.ssh.scp(self.ip, self.port, "root", soft_file, f"/tmp/{install_pkg_name}")
 
         command=f"/opt/python3/bin/python3 {code_dir}/{soft_name}.py {action} {weight} /tmp/{install_pkg_name} {json_info}"
-        #print(f"{command}")
         status=self.ssh.exec(self.ip, self.port, command)
         return status
-
 
 if __name__ == "__main__":
     pass
