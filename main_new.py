@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!../ext/python3/bin/python3
 # *-* coding:utf8 *-*
 # 2020-10-21 13:55:46
 # sky
@@ -16,8 +16,9 @@ def print_usage_info():
         Options:
             -t, --text string          以文本方式安装
             -g, --graphics             以图形方式安装
+            -p, --paltform string      以平台方式安装
 
-        Connands:
+        Commands:
             init                       文本方式初始化
             install                    文本方式安装
             start                      文本方式启动
@@ -26,7 +27,7 @@ def print_usage_info():
 
 def main():
     try:
-        options, args=getopt.getopt(sys.argv[1:], "t:gh", ["text=", "graphics", "help"])
+        options, args=getopt.getopt(sys.argv[1:], "t:p:gh", ["text=", "platform=", "graphics", "help"])
     except getopt.GetoptError:
         print(print_usage_info())
         sys.exit(0)
@@ -35,7 +36,7 @@ def main():
 
     if len(options)==0 or len(args)!=0:
         print(print_usage_info())
-        exit()
+        sys.exit(0)
 
     conf_file="./config/conf.json"
     init_file="./config/init.json"
@@ -46,6 +47,7 @@ def main():
         if opt in ("-g", "--graphics"):
             d=deploy.graphics_deploy(conf_file, init_file, arch_file, project_file)
             d.show()
+            sys.exit(0)
         elif opt in ("-t", "--text"):
             d=deploy.text_deploy(conf_file, init_file, arch_file, project_file)
             if arg=="init":
@@ -56,6 +58,18 @@ def main():
                 d.start()
             else:
                 print(print_usage_info())
+            sys.exit(0)
+        elif opt in ("-p", "--platform"):
+            d=deploy.platform_deploy(conf_file, init_file, arch_file, project_file)
+            if arg=="init":
+                d.init()
+            elif arg=="install":
+                d.install()
+            elif arg=="start":
+                d.start()
+            else:
+                print(print_usage_info())
+            sys.exit(0)
         elif opt in ("-h", "--help"):
             print(print_usage_info())
         else:

@@ -21,8 +21,8 @@ def port_exist(port, seconds=300):
         print(".")
 
 def install(soft_file, link_src, link_dst, pkg_dir, located):
+    log=Logger(None, "info", "remote")
     os.makedirs(located, exist_ok=1)
-
     try:
         # 解压
         t=tarfile.open(soft_file)
@@ -39,10 +39,6 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
         os.symlink(src, dst)
 
         # 安装依赖
-        """
-        ffmpeg 768
-        glusterfs 5120
-        """
         if pkg_dir is not None:
             pkg_dir=f"{dst}/{pkg_dir}"
             pkg_list=os.listdir(pkg_dir)
@@ -50,6 +46,7 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
             not_intall_pkg_list=[]  # 判断rpm是否已安装
             for i in pkg_list:
                 command=f"rpm -q {i[:-4]} &> /dev/null"
+                log.logger.info(f"{command=}")
                 if os.system(command) !=0 :
                     not_intall_pkg_list.append(i)
 
@@ -57,7 +54,9 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
                 return 1, "Installed"
             else:
                 pkgs=" ".join(not_intall_pkg_list)
-                command=f"cd {pkg_dir} && rpm -Uvh {pkgs} &> /dev/null"
+                #command=f"cd {pkg_dir} && rpm -Uvh {pkgs} &> /dev/null"
+                command=f"cd {pkg_dir} && rpm -Uvh {pkgs}"
+                log.logger.info(f"{command=}")
                 result=os.system(command)
                 if result==0: 
                     return 1, "ok"
@@ -100,6 +99,21 @@ def config(config_dict):
         return 1, "ok"
     except Exception as e:
         return 0, e
+
+class MessageFilter(logging.Filter):
+    def filter(self, record):
+        if "DEBUG" in record.msg:
+            return False
+        return True
+
+class MessageRewrite(logging.Filter):
+    def filter(self, record):
+        for level in ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"]:
+            if level == record.msg[:len(level)]:
+                record.msg=record.msg[len(level)+2:]
+                record.levelname=level
+        return True
+
 class Logger(object):
     level_relations = {         #日志级别关系映射
         'debug':logging.DEBUG,
@@ -109,57 +123,70 @@ class Logger(object):
         'crit':logging.CRITICAL
     }
 
-    def __init__(self, filename, level, mode="file", g_file="wfile"):
+    #def __init__(self, filename, level, mode="file", g_file="wfile"):
+    def __init__(self, mode_level_dict, **kwargs):
         log_to_file=0
         log_to_console=0
         log_to_remote=0
         log_to_graphical=0
-        if filename is None:
-            filename=mode
-        self.logger=logging.getLogger(filename)
-        self.logger.setLevel(self.level_relations["info"])
+        log_to_platform=0
 
-        #if mode=="all":
-        #    log_to_file=1
-        #    log_to_console=1
-        if mode=="file":
-            self.logger.setLevel(self.level_relations[level])
-            log_to_file=1
-        elif mode=="console":
-            log_to_console=1
-            log_to_file=1
-        elif mode=="remote":
-            log_to_remote=1
-        elif mode=="graphical":
-            log_to_graphical=1
+        self.logger=logging.getLogger("autodep")
+        self.logger.setLevel(self.level_relations["debug"])
 
+        for mode in mode_level_dict:
+            if mode=="file":
+                log_to_file=1
+            elif mode=="console":
+                log_to_console=1
+            elif mode=="remote":
+                log_to_remote=1
+            elif mode=="graphical":
+                log_to_graphical=1
+            elif mode=="platform":
+                log_to_platform=1
+
+        if log_to_console:
+            self.ch=logging.StreamHandler()
+            fmt="%(message)s"
+            format_str=logging.Formatter(fmt)                           # 设置日志格式
+            self.ch.setLevel(self.level_relations[mode_level_dict["console"]])
+            self.ch.setFormatter(format_str)
+            self.ch.addFilter(MessageFilter())
+            self.logger.addHandler(self.ch)                             # 把对象加到logger里
         if log_to_file:
+            self.fh=handlers.TimedRotatingFileHandler(filename=kwargs["log_file"], when="D", backupCount=7, encoding='utf-8')
             fmt='%(asctime)s - %(levelname)s: %(message)s'
             format_str=logging.Formatter(fmt)                           # 设置日志格式
-            self.fh=handlers.TimedRotatingFileHandler(filename=filename, when="D", backupCount=7, encoding='utf-8')
-            self.fh.setFormatter(format_str)                                 # 设置文件里写入的格式
-            self.logger.addHandler(self.fh)                                  # 把对象加到logger里
-        if log_to_console:
-            self.sh=logging.StreamHandler()
-            fmt="%(message)s"
-            #fmt="%(levelname)s: %(message)s"
-            format_str=logging.Formatter(fmt)                           # 设置日志格式
-            self.sh.setFormatter(format_str)
-            self.logger.addHandler(self.sh)                                  # 把对象加到logger里
+            self.fh.setLevel(self.level_relations[mode_level_dict["file"]])
+            self.fh.setFormatter(format_str)                            # 设置文件里写入的格式
+            self.fh.addFilter(MessageRewrite())
+            self.logger.addHandler(self.fh)                             # 把对象加到logger里
         if log_to_remote:
-            self.sh=logging.StreamHandler()
-            #fmt="%(message)s"
+            self.rh=logging.StreamHandler()
             fmt="%(levelname)s: %(message)s"
+            self.rh.setLevel(self.level_relations[mode_level_dict["remote"]])
             format_str=logging.Formatter(fmt)                           # 设置日志格式
-            self.sh.setFormatter(format_str)
-            self.logger.addHandler(self.sh)                                  # 把对象加到logger里
+            self.rh.setFormatter(format_str)
+            self.logger.addHandler(self.rh)                             # 把对象加到logger里
         if log_to_graphical:
             wfile=g_file
-            self.sh=logging.StreamHandler(wfile)
+            self.gh=logging.StreamHandler(wfile)
             fmt="%(message)s"
             format_str=logging.Formatter(fmt)                           # 设置日志格式
-            self.sh.setFormatter(format_str)
-            self.logger.addHandler(self.sh)                                  # 把对象加到logger里
+            self.gh.setLevel(self.level_relations[mode_level_dict["graphical"]])
+            self.gh.setFormatter(format_str)
+            self.logger.addHandler(self.gh)                             # 把对象加到logger里
+        if log_to_platform:
+            pass
+            """
+            fmt="%(levelname)s: %(message)s"
+            self.ph=handlers.HTTPHandler(host, url, method="POST")
+            self.ph.setLevel(self.level_relations[mode_level_dict["platform"]])
+            format_str=logging.Formatter(fmt)                           # 设置日志格式
+            self.logger.addHandler(self.ph)
+            """
+
 
 def main():
     import os
@@ -186,6 +213,9 @@ def main():
         exit_code = os.WEXITSTATUS(exit_info)
     elif os.WIFSIGNALED(exit_info):
         pass
+def main1():
+    log=Logger("platform", "info")
+    log.logger.info("aaa")
 
 if __name__ == "__main__":
-    main()
+    main1()
