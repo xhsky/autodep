@@ -11,15 +11,13 @@ from libs.client import Client
 from libs.install import soft
 #from threading import Thread
 
-logs_dir="./logs"
-log_file=f"{logs_dir}/autodep.log"
+from libs.env import logs_dir, log_file, \
+        remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
+        remote_code_dir, remote_pkgs_dir, \
+        interface
 
-remote_python_transfer_dir="/tmp"
-remote_python_install_dir="/opt"
-
-remote_code_dir=f"{remote_python_install_dir}/python3/code"
-
-os.makedirs(logs_dir, exist_ok=1)
+if not os.path.exists(logs_dir):
+    os.makedirs(logs_dir, exist_ok=1)
 
 """
 class MyThread(Thread):
@@ -45,12 +43,6 @@ class Deploy(object):
         with open(conf_file, "r", encoding="utf8") as conf_f:
             self.conf_dict=json.load(conf_f)
             self.soft=self.conf_dict["software"].keys()
-
-            #log_dir=self.conf_dict["log"]["log_dir"]
-            #os.makedirs(log_dir, exist_ok=1)
-
-            #self.log_file=f"{log_dir}/autodep.log"
-            #self.log_level=self.conf_dict["log"]["log_level"]
 
         self.init_file=init_file
         self.arch_file=arch_file
@@ -84,7 +76,7 @@ class Deploy(object):
 
             remote_file=f"{remote_code_dir}/{get_msg_py.split('/')[-1]}"
             self.ssh.scp(ip, port, "root", get_msg_py, remote_file)
-            get_msg_command=f"{remote_python_install_dir}/python3/bin/python3 {remote_file}"
+            get_msg_command=f"{remote_python_exec} {remote_file}"
             self.log.logger.debug(f"获取{i}主机信息: {get_msg_command=}")
             status=self.ssh.exec(ip, port, get_msg_command)
 
@@ -130,6 +122,7 @@ class Deploy(object):
             * 关闭selinux
             * 配置Python3环境
             * nproc nofile
+            * 接口连通性测试
         """
 
         try:
@@ -137,7 +130,6 @@ class Deploy(object):
                 mode_log.logger.info("本机生成密钥对\n")
             else:
                 mode_log.logger.info("本机已存在密钥对\n")
-
 
             # 获取所有hosts
             hosts_list=[]
@@ -172,7 +164,12 @@ class Deploy(object):
                 self.ssh.scp(ip, port, "root", "./libs/common.py", f"{remote_code_dir}/libs/common.py")
                 self.ssh.scp(ip, port, "root", init_py, f"{remote_code_dir}/init.py")
                 host_str="\n".join(hosts_list)
-                command=f"{remote_python_install_dir}/python3/bin/python3 {remote_code_dir}/init.py {i} '{host_str}'"
+                init_args={
+                        "hostname": i, 
+                        "hosts": host_str, 
+                        "interface": interface, 
+                        }
+                command=f"{remote_python_exec} {remote_code_dir}/init.py '{json.dumps(init_args)}'"
                 self.log.logger.debug(f"{i}远程初始化...")
                 self.log.logger.debug(f"{command=}")
                 status=self.ssh.exec(ip, port, command)
@@ -184,7 +181,7 @@ class Deploy(object):
                 if status[1].channel.recv_exit_status() != 0:
                     self.log.logger.error(f"{i}远程初始化失败")
 
-                #mode_log.logger.info("*"*20)
+                self.log.logger.info("")
             return "1"
         except Exception as e:
             return e
@@ -206,67 +203,61 @@ class Deploy(object):
             soft_install_dict[i]=round(soft_install_dict[i]/weight_sum, 2)
         return soft_install_dict
 
-    def read_status(self, status, log):
-        for line in status[1]:
-            log.logger.info(line.strip())
-
     def control(self, init_dict, arch_dict, action, log):
+        flag=True
         for node in arch_dict:
             log.logger.info(f"{node}节点...")
-            soft_install_dict=self.get_weight(self.conf_dict["software"], arch_dict[node].get("software"))
+            #soft_install_dict=self.get_weight(self.conf_dict["software"], arch_dict[node].get("software"))
 
-            t_list=[]
-            t_data=[]
-            for soft_name in soft_install_dict:
-                log.logger.info(f"{soft_name}安装...")
+            for softname in arch_dict[node]["software"]:
+                log.logger.info(f"{softname}{action[0]}...")
                 ssh_port=init_dict[node].get("port")
+
                 Install=soft(node, ssh_port)
-                weight=soft_install_dict[soft_name]
+                #weight=soft_install_dict[soft_name]
 
                 # 去除located结尾的/
                 located_dir=arch_dict[node]["located"]
                 if located_dir.endswith("/"):
                     arch_dict[node]["located"]=located_dir[0:-1]
 
-                self.ssh.scp(node, ssh_port, "root", "./libs/common.py", "/opt/python3/code/libs/common.py")
+                pkg_file=self.conf_dict["location"].get(softname)
+                args_dict={
+                        "trans_files": {
+                            "lib_file": ["./libs/common.py", f"{remote_code_dir}/libs/common.py"], 
+                            "py_file": [f"./bin/{softname}.py", f"{remote_code_dir}/{softname}.py"], 
+                            "pkg_file": [pkg_file, f"{remote_pkgs_dir}/{pkg_file.split('/')[-1]}"], 
+                            }, 
+                        "config_args": arch_dict.get(node), 
+                        "remote_python_exec": remote_python_exec, 
+                        "softname": softname
+                        }
+
+                #self.ssh.scp(node, ssh_port, "root", "./libs/common.py", "{remote_code_dir}/libs/common.py")
                 #status=Install.control(soft_name, action[1], weight, self.conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(node))}'")
+                if action[1]=="install":
+                    status=Install.install(softname,  args_dict)
+                elif action[1]=="start":
+                    status=Install.start(softname,  args_dict)
 
-                t=MyThread(Install.control, (soft_name, action[1], weight, self.conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(node))}'"))
-                t_list.append(t)
-                t.start()
-
-            for t in t_list:
-                t.join()
-                t_data.append(t.get_result())
-
-            
-            t_status_list=[]
-            for status in t_data:
-                t=MyThread(self.read_status, (status, log))
-                t_status_list.append(t)
-                t.start()
-            for t in t_status_list:
-                t.join()
-
-            """
-                for line in status[1]:
-                    if line is not None:
-                        log.logger.info(line.strip("\n"))
-                for line in status[2]:
-                    if line is not None:
-                        log.logger.error(line.strip("\n"))
-                log.logger.info(f"{soft_name}{action[0]}结束...\n")
-            """
-        else:
-            log.logger.info(f"集群{action[0]}完成...")
+                #for line in status[1]:
+                #    log.logger.info(line.strip())
+                #for line in status[2]:
+                #    log.logger.error(line.strip())
+                if status[1].channel.recv_exit_status()!=0:
+                    log.logger.error(f"{softname}{action[0]}失败")
+                    flag=False
+        return flag
 
     def install(self, init_dict, arch_dict, log):
         action=("安装", "install")
-        self.control(init_dict, arch_dict, action, log)
+        result=self.control(init_dict, arch_dict, action, log)
+        return result
 
     def start(self, init_dict, arch_dict, log):
         action=("启动", "start")
-        self.control(init_dict, arch_dict, action, log)
+        result=self.control(init_dict, arch_dict, action, log)
+        return result
 
 class text_deploy(Deploy):
     '''文本安装'''
@@ -279,7 +270,7 @@ class text_deploy(Deploy):
         '''
             校验配置文件
         '''
-        pass
+        return True, msg
 
     def init(self):
         with open(self.init_file, "r", encoding="utf8") as f:
@@ -303,14 +294,16 @@ class text_deploy(Deploy):
                 if all_host_info[node][0] == 0:
                     self.log.logger.debug(all_host_info[node][1])
                     node_info_dict=json.loads(all_host_info[node][1][6:])
-                    node_info=dedent(f"""\
+                    node_info=dedent(f"""
                     主机名: {node}
-                    发行版本: {node_info_dict['os_name']}
-                    内核版本: {node_info_dict['kernel_version']}""")
+                    发行版本: \t{node_info_dict['os_name']}
+                    内核版本: \t{node_info_dict['kernel_version']}
+                    CPU:      \t{node_info_dict['CPU'][0]}({node_info_dict['CPU'][1]}%)
+                    内存:     \t{node_info_dict['Mem'][0]}({node_info_dict['Mem'][1]}%)""")
                     for disk in node_info_dict["disk"]:
-                        node_info=f"{node_info}\n磁盘({disk}): {node_info_dict['disk'][disk][0]}({node_info_dict['disk'][disk][1]})"
+                        node_info=f"{node_info}\n磁盘({disk}): \t{node_info_dict['disk'][disk][0]}({node_info_dict['disk'][disk][1]}%)"
                     for port in node_info_dict["port"]:
-                        node_info=f"{node_info}\n端口({port}): {node_info_dict['port'][port][1]}/{node_info_dict['port'][port][0]}"
+                        node_info=f"{node_info}\n端口({port}): \t{node_info_dict['port'][port][1]}/{node_info_dict['port'][port][0]}"
                     self.log.logger.info(node_info)
                 else:
                     self.log.logger.error(all_host_info[node][1])
@@ -322,14 +315,22 @@ class text_deploy(Deploy):
             init_dict=json.load(init_f)
             arch_dict=json.load(arch_f)
         self.log.logger.info("集群安装...\n")
-        super(text_deploy, self).install(init_dict, arch_dict, self.log)
+        result=super(text_deploy, self).install(init_dict, arch_dict, self.log)
+        if result:
+            self.log.logger.info("集群安装完成")
+        else:
+            self.log.logger.error("集群安装失败")
 
     def start(self):
         with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
             init_dict=json.load(init_f)
             arch_dict=json.load(arch_f)
         self.log.logger.info("集群启动...\n")
-        super(text_deploy, self).install(init_dict, arch_dict, self.log)
+        result=super(text_deploy, self).install(init_dict, arch_dict, self.log)
+        if result:
+            self.log.logger.info("集群启动完成")
+        else:
+            self.log.logger.error("集群启动失败")
 
 class graphics_deploy(Deploy):
     '''文本图形化安装'''

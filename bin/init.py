@@ -2,14 +2,21 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, os
+import sys, os, json
 import subprocess
-from libs.common import Logger
+from libs.common import Logger, port_connect
 
 def main():
-    return_value=0
-    hostname, hosts_str=sys.argv[1:]
     log=Logger({"remote":"debug"})
+
+    return_value=0
+    args_json=sys.argv[1]
+    log.logger.debug(f"{args_json=}")
+    args=json.loads(args_json)
+
+    hostname=args["hostname"]
+    hosts_str=args["hosts"]
+
 
     log.logger.info(f"设置主机名为{hostname}...")
     hostname_cmd=f"hostnamectl set-hostname {hostname}"
@@ -84,6 +91,14 @@ def main():
     except Exception as e:
         log.logger.error(f"hosts配置失败")
         return_value=1
+
+    # 接口链通测试
+    for interface in args["interface"]:
+        if port_connect(args["interface"][interface][0], args["interface"][interface][1]):
+            log.logger.info(f"{interface}接口连通")
+        else:
+            log.logger.warning(f"{interface}接口无法连通")
+            return_value=1
 
     sys.exit(return_value)
 

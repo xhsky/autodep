@@ -10,7 +10,7 @@ def main():
     conf_dict=json.loads(conf_json)
     soft_name="GlusterFS"
 
-    log=common.Logger(None, "info", "remote")
+    log=common.Logger(None, "debug", "remote")
 
     # 安装
     if action=="install":
@@ -29,7 +29,8 @@ def main():
         if value==1:
             if server_flag == "server":
                 log.logger.info(f"{soft_name}安装完成")
-                command="systemctl enable glusterd &> /dev/null && systemctl start glusterd"
+                command="systemctl enable glusterd && systemctl start glusterd"
+                log.logger.debug(f"{command=}")
                 result=os.system(command)
                 if result==0:
                     if common.port_exist(24007, 300):
@@ -59,7 +60,8 @@ def main():
 
             for i in members:
                 create_volume_command=f"{create_volume_command} {i}:{volume_dir} "
-                add_peer_command=f"gluster peer probe {i} &> /dev/null"
+                add_peer_command=f"gluster peer probe {i}"
+                log.logger.debug(f"{add_peer_command=}")
                 result=os.system(add_peer_command)
                 result_list.append(result)
 
@@ -67,12 +69,15 @@ def main():
                 volume_name="g_data"
                 N=len(members)
                 volume_exist_command=f"gluster volume info {volume_name} &> /dev/null"
+                log.logger.debug(f"{volume_exist_command=}")
                 if os.system(volume_exist_command) != 0:
                     create_volume_command=f"gluster volume create {volume_name} replica {N} {create_volume_command} force &> /dev/null"
+                    log.logger.debug(f"{create_volume_command}")
                     result=os.system(create_volume_command)
                     if result==0:
                         log.logger.info("创建volume成功")
                         start_volume_command=f"gluster volume start {volume_name} &> /dev/null"
+                        log.logger.debug(f"{start_volume_command=}")
                         result=os.system(start_volume_command)
                         if result==0:
                             if common.port_exist(49152, 300):
@@ -88,12 +93,13 @@ def main():
 
             os.makedirs(mounted_dir, exist_ok=1)
             mounted_str=f"{mounted_host}:g_data {mounted_dir} glusterfs defaults 0 0\n"
+            log.logger.debug(f"{mounted_str=}")
             with open("/etc/fstab", "r+") as f:
                  text=f.readlines()
                  if mounted_str not in text:
                      f.write(mounted_str)
 
-            command="mount -a &> /dev/null"
+            command="mount -a"
             result=os.system(command)
             if result==0:
                 log.logger.info(f"{soft_name}客户端挂载完成")

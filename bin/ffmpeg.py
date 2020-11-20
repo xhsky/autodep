@@ -3,17 +3,22 @@
 # sky
 
 import sys, json
-from libs import common
+from libs.common import Logger
 
 def main():
     """
         将libXau, libxcb, SDL2安装包放入编译好的ffmpeg下的deps目录
     """
-    action, weight, soft_file, conf_json=sys.argv[1:5]
-    conf_dict=json.loads(conf_json)
-    soft_name="ffmpeg"
+    #action, weight, soft_file, conf_json=sys.argv[1:5]
+    #action, args_json=sys.argv[1:]
+    a=sys.argv[2]
+    print(a)
+    exit()
+    #args_dict=json.loads(args_json)
+    softname=conf_dict["softname"]
+    conf_dict=args_dict["config_args"]
 
-    log=common.Logger(None, "info", "remote")
+    log=Logger({"remote", "debug"})
 
     # 安装
     if action=="install":

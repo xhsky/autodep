@@ -3,7 +3,7 @@
 # sky
 
 import tarfile, psutil
-import os, time
+import os, time, socket
 import textwrap
 import logging
 from logging import handlers
@@ -19,6 +19,14 @@ def port_exist(port, seconds=300):
             if port==i[3][1] and i[6] is not None:
                 return 1
         print(".")
+
+def port_connect(host, port):
+    s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    result=s.connect_ex((host, port))
+    if result==0:
+        return True
+    else:
+        return False
 
 def install(soft_file, link_src, link_dst, pkg_dir, located):
     log=Logger(None, "info", "remote")
@@ -131,7 +139,13 @@ class Logger(object):
         log_to_graphical=0
         log_to_platform=0
 
-        self.logger=logging.getLogger("autodep")
+        if kwargs.get("logger_name") is None:
+            logger_name="main"
+        else:
+            logger_name=kwargs["logger_name"]
+        
+        
+        self.logger=logging.getLogger(logger_name)
         self.logger.setLevel(self.level_relations["debug"])
 
         for mode in mode_level_dict:

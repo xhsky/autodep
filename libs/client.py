@@ -85,11 +85,6 @@ class Client(object):
         self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=1)
         sftp=self.ssh.open_sftp()
         sftp.put(local_file, remote_file, confirm=True)
-        """
-        tar_command="tar -xf %s -C %s" % (local_file, remote_path)
-        self.__ssh.exec_command(tar_command)
-        self.__log.log("info", "%s上的安装包解压至%s" % (hostname, remote_path))
-        """
         sftp.close()
 
     def get(self, ip, port, user, remote_file, local_file):
