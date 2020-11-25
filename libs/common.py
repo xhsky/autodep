@@ -5,8 +5,8 @@
 import tarfile, psutil
 import os, time, socket
 import textwrap
-import logging
 from logging import handlers
+import logging
 
 def port_exist(port, seconds=300):
     N=0
@@ -14,11 +14,12 @@ def port_exist(port, seconds=300):
         time.sleep(1)
         N=N+1
         if N >= seconds:
-            return 0
+            return False
         for i in psutil.net_connections():
             if port==i[3][1] and i[6] is not None:
-                return 1
-        print(".")
+                print(f"{i=}, {N=}")
+                return True
+        #print(".")
 
 def port_connect(host, port):
     s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -29,10 +30,11 @@ def port_connect(host, port):
         return False
 
 def install(soft_file, link_src, link_dst, pkg_dir, located):
-    log=Logger(None, "info", "remote")
+    log=Logger({"remote": "debug"}, logger_name="remote install")
     os.makedirs(located, exist_ok=1)
     try:
         # 解压
+        log.logger.debug(f"{soft_file=}解压")
         t=tarfile.open(soft_file)
         t.extractall(path=located)
 
@@ -44,6 +46,7 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
         dst=f"{located}/{link_dst}"
         if os.path.exists(dst) and os.path.islink(dst):
             os.remove(dst)
+        log.logger.debug(f"建立软连接: {src=} ==> {dst=}")
         os.symlink(src, dst)
 
         # 安装依赖
@@ -54,26 +57,25 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
             not_intall_pkg_list=[]  # 判断rpm是否已安装
             for i in pkg_list:
                 command=f"rpm -q {i[:-4]} &> /dev/null"
-                log.logger.info(f"{command=}")
-                if os.system(command) !=0 :
+                log.logger.debug(f"{command=}")
+                if os.system(command) != 0:
                     not_intall_pkg_list.append(i)
 
             if len(not_intall_pkg_list) == 0:
-                return 1, "Installed"
+                return True, None
             else:
                 pkgs=" ".join(not_intall_pkg_list)
-                #command=f"cd {pkg_dir} && rpm -Uvh {pkgs} &> /dev/null"
-                command=f"cd {pkg_dir} && rpm -Uvh {pkgs}"
+                command=f"cd {pkg_dir} && rpm -Uvh {pkgs} &> /dev/null"
                 log.logger.info(f"{command=}")
                 result=os.system(command)
                 if result==0: 
-                    return 1, "ok"
+                    return True, None
                 else:
-                    return 0, result
+                    return False, result
         else:
-            return 1, "ok"
+            return True, None
     except Exception as e:
-        return 0, e
+        return False, e
 
 def config(config_dict):
     """
@@ -104,23 +106,42 @@ def config(config_dict):
                     all_text=f.readlines()
                     if context not in all_text:
                         f.write(context)
-        return 1, "ok"
+        return True, None
     except Exception as e:
-        return 0, e
+        return False, e
 
 class MessageFilter(logging.Filter):
+    """
+        含有DEBUG的信息不输出
+    """
     def filter(self, record):
         if "DEBUG" in record.msg:
             return False
         return True
 
 class MessageRewrite(logging.Filter):
+    """
+        将信息中的日志级别替换当前的日志级别, 并根据设定的日志级别决定是否输出
+    """
     def filter(self, record):
-        for level in ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"]:
+        level_dict={
+                "CRITICAL": 50, 
+                "ERROR": 40, 
+                "WARNING": 30, 
+                "INFO": 20, 
+                "DEBUG": 10, 
+                "NOTSET": 0
+                }
+        original_levelno=record.levelno
+        for level in level_dict:
             if level == record.msg[:len(level)]:
                 record.msg=record.msg[len(level)+2:]
                 record.levelname=level
-        return True
+                record.levelno=level_dict[level]
+        if record.levelno >= original_levelno:
+            return True
+        else:
+            return False
 
 class Logger(object):
     level_relations = {         #日志级别关系映射
@@ -140,10 +161,9 @@ class Logger(object):
         log_to_platform=0
 
         if kwargs.get("logger_name") is None:
-            logger_name="main"
+            logger_name="autodep"
         else:
             logger_name=kwargs["logger_name"]
-        
         
         self.logger=logging.getLogger(logger_name)
         self.logger.setLevel(self.level_relations["debug"])
@@ -160,13 +180,15 @@ class Logger(object):
             elif mode=="platform":
                 log_to_platform=1
 
+        self.logger.addFilter(MessageRewrite())
+
         if log_to_console:
             self.ch=logging.StreamHandler()
             fmt="%(message)s"
             format_str=logging.Formatter(fmt)                           # 设置日志格式
             self.ch.setLevel(self.level_relations[mode_level_dict["console"]])
             self.ch.setFormatter(format_str)
-            self.ch.addFilter(MessageFilter())
+            #self.ch.addFilter(MessageFilter())
             self.logger.addHandler(self.ch)                             # 把对象加到logger里
         if log_to_file:
             self.fh=handlers.TimedRotatingFileHandler(filename=kwargs["log_file"], when="D", backupCount=7, encoding='utf-8')
@@ -174,7 +196,7 @@ class Logger(object):
             format_str=logging.Formatter(fmt)                           # 设置日志格式
             self.fh.setLevel(self.level_relations[mode_level_dict["file"]])
             self.fh.setFormatter(format_str)                            # 设置文件里写入的格式
-            self.fh.addFilter(MessageRewrite())
+            #self.fh.addFilter(MessageRewrite())
             self.logger.addHandler(self.fh)                             # 把对象加到logger里
         if log_to_remote:
             self.rh=logging.StreamHandler()
@@ -201,35 +223,5 @@ class Logger(object):
             self.logger.addHandler(self.ph)
             """
 
-
-def main():
-    import os
-    import dialog
-    import time
-    d=dialog.Dialog()
-    read_fd, write_fd = os.pipe()
-    #g_log=Logger(write_fd, "info", "graphical")
-    child_pid = os.fork()
-    if child_pid == 0:
-        os.close(read_fd)
-        with os.fdopen(write_fd,  mode="w",  buffering=1) as wfile:
-            g_log=Logger(wfile, "info", "graphical")
-            for i in range(3):
-                g_log.logger.info("aaaaa")
-                time.sleep(2)
-
-        os._exit(0)
-    os.close(write_fd)
-    d.programbox(fd=read_fd, title="hhhhhhhhh")
-
-    exit_info = os.waitpid(child_pid, 0)[1]
-    if os.WIFEXITED(exit_info):
-        exit_code = os.WEXITSTATUS(exit_info)
-    elif os.WIFSIGNALED(exit_info):
-        pass
-def main1():
-    log=Logger("platform", "info")
-    log.logger.info("aaa")
-
 if __name__ == "__main__":
-    main1()
+    main()

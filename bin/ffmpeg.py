@@ -3,34 +3,31 @@
 # sky
 
 import sys, json
-from libs.common import Logger
+from libs.common import Logger, install
+from libs.env import log_remote_level, ffmpeg_src, ffmpeg_dst, ffmpeg_pkg_dir, ffmpeg_version
 
 def main():
     """
         将libXau, libxcb, SDL2安装包放入编译好的ffmpeg下的deps目录
     """
-    #action, weight, soft_file, conf_json=sys.argv[1:5]
-    #action, args_json=sys.argv[1:]
-    a=sys.argv[2]
-    print(a)
-    exit()
-    #args_dict=json.loads(args_json)
-    softname=conf_dict["softname"]
-    conf_dict=args_dict["config_args"]
+    action, conf_json=sys.argv[1:]
+    conf_dict=json.loads(conf_json)
 
-    log=Logger({"remote", "debug"})
+    log=Logger({"remote": log_remote_level})
 
+    flag=0
     # 安装
     if action=="install":
-        located=conf_dict.get("located")
-        value, msg=common.install(soft_file, "ffmpeg", "ffmpeg", "deps", located)
-        if value==1:
-            log.logger.info(f"{soft_name}安装完成")
-        else:
-            log.logger.error(f"{soft_name}安装失败: {msg}")
+        located=conf_dict["located"]
+        pkg_file=conf_dict["pkg_file"]
+        value, msg=install(pkg_file, ffmpeg_src, ffmpeg_dst, ffmpeg_pkg_dir, located)
+        if not value:
+            flag=1
+            log.logger.error(msg)
+        sys.exit(flag)
 
     elif action=="start":
-            log.logger.info(f"{soft_name}无须启动")
+        sys.exit(flag)
 
 if __name__ == "__main__":
     main()

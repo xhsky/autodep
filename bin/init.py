@@ -3,11 +3,22 @@
 # sky
 
 import sys, os, json
-import subprocess
+from subprocess import run
 from libs.common import Logger, port_connect
+from libs.env import log_remote_level
+
+
+def exec_command(command):
+    command_list=commond.split(" ")
+    try:
+        result=run(command)
+    except Exception as e:
+        pass
+
+    return result
 
 def main():
-    log=Logger({"remote":"debug"})
+    log=Logger({"remote": log_remote_level})
 
     return_value=0
     args_json=sys.argv[1]
@@ -20,6 +31,7 @@ def main():
 
     log.logger.info(f"设置主机名为{hostname}...")
     hostname_cmd=f"hostnamectl set-hostname {hostname}"
+    resutl=exec_command(["hostnamectl", "set-hostname", {hostname}])
     log.logger.debug(f"{hostname_cmd=}")
     result=os.system(hostname_cmd)
     if result != 0:

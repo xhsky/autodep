@@ -7,6 +7,7 @@ import platform
 import os, sys, json
 import subprocess
 from libs.common import Logger
+from libs.env import log_remote_level
 
 def format_size(byte):
     byte=float(byte)
@@ -24,16 +25,19 @@ def format_size(byte):
 
 def main():
     try:
-        log=Logger({"remote": "debug"})
+        log=Logger({"remote": log_remote_level})
         host_info_dict={}
 
         os_name, hostname, kernel_version=list(platform.uname())[0:3]
-        status, msg=subprocess.getstatusoutput("lsb_release -sd")
-        if status==0:
-            os_name=msg.split()
-        elif os.path.exists("/etc/redhat-release"):
-            with open("/etc/redhat-release", "r") as f:
-                os_name=f.read().strip()
+        try:
+            result=subprocess.run(["lsb_release", "-sd"], capture_output=True, encoding="utf8")
+            if result.returncode==0:
+                os_name=result.stdout.split()
+        except:
+            redhat_file="/etc/redhat-release"
+            if os.path.exists(redhat_file):
+                with open(redhat_file, "r") as f:
+                    os_name=f.read().strip()
 
         host_info_dict["hostname"]=hostname
         host_info_dict["os_name"]=os_name
@@ -61,7 +65,7 @@ def main():
 
         # port
         host_info_dict["port"]={}
-        all_port=psutil.net_connections(kind='inet4')
+        all_port=psutil.net_connections(kind='inet')
         for i in all_port:
             if len(i[3])!=0:
                 pid=i[6]

@@ -57,7 +57,7 @@ class Client(object):
         stdin, stdout, stderr=self.ssh.exec_command(commands)
         return stdin, stdout, stderr
         """
-        status=self.ssh.exec_command(commands, get_pty=0)
+        status=self.ssh.exec_command(commands, get_pty=1)
         return status
 
     def free_pass_set(self, ip, port, password, user='root'):

@@ -11,7 +11,7 @@ from libs.client import Client
 from libs.install import soft
 #from threading import Thread
 
-from libs.env import logs_dir, log_file, \
+from libs.env import logs_dir, log_file, log_file_level, log_console_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, \
         interface
@@ -162,6 +162,7 @@ class Deploy(object):
                 # 执行init.py
                 init_py="./bin/init.py"
                 self.ssh.scp(ip, port, "root", "./libs/common.py", f"{remote_code_dir}/libs/common.py")
+                self.ssh.scp(ip, port, "root", "./libs/env.py", f"{remote_code_dir}/libs/env.py")
                 self.ssh.scp(ip, port, "root", init_py, f"{remote_code_dir}/init.py")
                 host_str="\n".join(hosts_list)
                 init_args={
@@ -186,6 +187,7 @@ class Deploy(object):
         except Exception as e:
             return e
 
+    '''
     def get_weight(self, soft_weight_dict, soft_install_list):
         """ 返回各软件占服务器的权重
 
@@ -202,19 +204,17 @@ class Deploy(object):
         for i in soft_install_dict:
             soft_install_dict[i]=round(soft_install_dict[i]/weight_sum, 2)
         return soft_install_dict
+    '''
 
     def control(self, init_dict, arch_dict, action, log):
         flag=True
         for node in arch_dict:
-            log.logger.info(f"{node}节点...")
-            #soft_install_dict=self.get_weight(self.conf_dict["software"], arch_dict[node].get("software"))
+            log.logger.info(f"*****{node}节点*****")
+            ssh_port=init_dict[node].get("port")
+            Install=soft(node, ssh_port)
 
             for softname in arch_dict[node]["software"]:
                 log.logger.info(f"{softname}{action[0]}...")
-                ssh_port=init_dict[node].get("port")
-
-                Install=soft(node, ssh_port)
-                #weight=soft_install_dict[soft_name]
 
                 # 去除located结尾的/
                 located_dir=arch_dict[node]["located"]
@@ -222,31 +222,26 @@ class Deploy(object):
                     arch_dict[node]["located"]=located_dir[0:-1]
 
                 pkg_file=self.conf_dict["location"].get(softname)
-                args_dict={
-                        "trans_files": {
-                            "lib_file": ["./libs/common.py", f"{remote_code_dir}/libs/common.py"], 
-                            "py_file": [f"./bin/{softname}.py", f"{remote_code_dir}/{softname}.py"], 
-                            "pkg_file": [pkg_file, f"{remote_pkgs_dir}/{pkg_file.split('/')[-1]}"], 
-                            }, 
-                        "config_args": arch_dict.get(node), 
-                        "remote_python_exec": remote_python_exec, 
-                        "softname": softname
+                trans_files_dict={
+                        "lib_file": ["./libs/common.py", f"{remote_code_dir}/libs/common.py"], 
+                        "env_file": ["./libs/env.py", f"{remote_code_dir}/libs/env.py"], 
+                        "py_file": [f"./bin/{softname}.py", f"{remote_code_dir}/{softname}.py"], 
+                        "pkg_file": [pkg_file, f"{remote_pkgs_dir}/{pkg_file.split('/')[-1]}"]
                         }
+                args_dict=arch_dict.get(node)
 
-                #self.ssh.scp(node, ssh_port, "root", "./libs/common.py", "{remote_code_dir}/libs/common.py")
-                #status=Install.control(soft_name, action[1], weight, self.conf_dict["location"].get(soft_name), f"'{json.dumps(arch_dict.get(node))}'")
                 if action[1]=="install":
-                    status=Install.install(softname,  args_dict)
+                    status=Install.install(trans_files_dict, args_dict)
                 elif action[1]=="start":
-                    status=Install.start(softname,  args_dict)
+                    status=Install.start(trans_files_dict["py_file"][1], args_dict)
 
-                #for line in status[1]:
-                #    log.logger.info(line.strip())
-                #for line in status[2]:
-                #    log.logger.error(line.strip())
-                if status[1].channel.recv_exit_status()!=0:
+                for line in status[1]:
+                    log.logger.info(line.strip())
+                if status[1].channel.recv_exit_status() != 0:
                     log.logger.error(f"{softname}{action[0]}失败")
                     flag=False
+                else:
+                    log.logger.info(f"{softname}{action[0]}完成")
         return flag
 
     def install(self, init_dict, arch_dict, log):
@@ -264,7 +259,7 @@ class text_deploy(Deploy):
 
     def __init__(self, conf_file, init_file, arch_file, project_file):
         super(text_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
-        self.log=Logger({"file":"debug", "console": "info"}, log_file=log_file)
+        self.log=Logger({"file": log_file_level, "console": log_console_level}, log_file=log_file)
 
     def check(self):
         '''
@@ -326,7 +321,7 @@ class text_deploy(Deploy):
             init_dict=json.load(init_f)
             arch_dict=json.load(arch_f)
         self.log.logger.info("集群启动...\n")
-        result=super(text_deploy, self).install(init_dict, arch_dict, self.log)
+        result=super(text_deploy, self).start(init_dict, arch_dict, self.log)
         if result:
             self.log.logger.info("集群启动完成")
         else:
