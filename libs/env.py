@@ -9,6 +9,8 @@ log_console_level="info"
 log_file_level="debug"
 log_remote_level="debug"
 
+test_mode=True
+
 remote_python_transfer_dir="/tmp"
 remote_python_install_dir="/opt"
 remote_python_dir=f"{remote_python_install_dir}/python3"
