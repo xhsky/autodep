@@ -19,7 +19,6 @@ def port_exist(port, seconds=300):
             if port==i[3][1] and i[6] is not None:
                 print(f"{i=}, {N=}")
                 return True
-        #print(".")
 
 def port_connect(host, port):
     s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -132,16 +131,13 @@ class MessageRewrite(logging.Filter):
                 "DEBUG": 10, 
                 "NOTSET": 0
                 }
-        original_levelno=record.levelno
         for level in level_dict:
             if level == record.msg[:len(level)]:
                 record.msg=record.msg[len(level)+2:]
                 record.levelname=level
                 record.levelno=level_dict[level]
-        if record.levelno >= original_levelno:
-            return True
-        else:
-            return False
+                break
+        return True
 
 class Logger(object):
     level_relations = {         #日志级别关系映射
@@ -222,6 +218,5 @@ class Logger(object):
             format_str=logging.Formatter(fmt)                           # 设置日志格式
             self.logger.addHandler(self.ph)
             """
-
 if __name__ == "__main__":
     main()
