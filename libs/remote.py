@@ -1,11 +1,42 @@
 #!/usr/bin/env python3
-# coding:utf8
+# *-* coding:utf8 *-*
+# 2020-11-26 11:21:38
 # sky
 
 import paramiko
-import os
+import os, json
+from libs.common import Logger
+from libs.env import log_file, log_file_level, remote_python_exec
 
-class Client(object):
+log=Logger({"file": log_file_level}, logger_name="remote", log_file=log_file)
+
+class soft(object):
+    def  __init__(self, ip, port, ssh):
+        self.ip=ip
+        self.port=port
+        self.ssh=ssh
+
+    def init(self, py_file, init_args):
+        command=f"{remote_python_exec} {py_file} '{json.dumps(init_args)}'"
+        log.logger.debug(f"init: {command=}")
+        status=self.ssh.exec(self.ip, self.port, command)
+        return status
+
+    def control(self, py_file, action, args_dict):
+        command=f"{remote_python_exec} {py_file} {action} '{json.dumps(args_dict)}'"
+        log.logger.debug(f"{action=}: {command=}")
+        status=self.ssh.exec(self.ip, self.port, command)
+        return status
+    
+    def install(self, py_file, args_dict):
+        status=self.control(py_file, "install", args_dict)
+        return status
+
+    def start(self, py_file, args_dict):
+        status=self.control(py_file, "start", args_dict)
+        return status
+
+class ssh(object):
     def __init__(self):
         self.ssh=paramiko.SSHClient()
         #self.ssh.load_system_host_keys()
@@ -19,16 +50,16 @@ class Client(object):
             self.ssh.connect(ip, port=port, username=user, password=password, timeout=1)     # 正常连接
             status=0
             msg="正常连接"
-        except paramiko.ssh_exception.NoValidConnectionsError as e:                                         # 端口无法连接
+        except paramiko.ssh_exception.NoValidConnectionsError as e:               # 端口无法连接
             status=1
             msg="端口无法连接"
-        except paramiko.ssh_exception.AuthenticationException as e:                                         # 密码错误
+        except paramiko.ssh_exception.AuthenticationException as e:               # 密码错误
             status=2
             msg="密码错误"
-        except Exception as e:                                                                              # 未知错误
+        except Exception as e:                                                    # 未知错误
             status=3
             msg=f"未知错误, 无法连接({e})"
-        self.ssh.close()
+        #self.ssh.close()
         return status, msg
 
     def gen_keys(self):
@@ -51,13 +82,14 @@ class Client(object):
                 f.write(key_pub_and_sign)
             return 1
 
-    def exec(self, ip, port, commands, user='root'):
+    def exec(self, ip, port, commands, get_pty=1, user='root'):
         self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=3)
         """
         stdin, stdout, stderr=self.ssh.exec_command(commands)
         return stdin, stdout, stderr
         """
-        status=self.ssh.exec_command(commands, get_pty=1)
+        status=self.ssh.exec_command(commands, get_pty=get_pty)
+        #log.logger.debug(f"exec: {commands=}")
         return status
 
     def free_pass_set(self, ip, port, password, user='root'):
@@ -95,19 +127,4 @@ class Client(object):
 
     def __del__(self):
         self.ssh.close()
-
-if __name__ == "__main__":
-    from  common import Logger
-    #import logging
-    #log=logging.getLogger("aaa")
-    #log=logging.getLogger()
-    a=Client()
-
-    a.gen_keys()
-    #status=a.password_conn("192.168.1.174", 22, "dreamsoft")
-    a.free_pass_set("dev", 22, "dreamsoft")
-    #a.free_pass_set("192.168.1.173", 22, "dreamsoft")
-    #msg=a.exec("192.168.1.174", 22, "df -h")
-    #a.scp("192.168.1.174", 22, "root", "/tmp/b", "/root/b")
-    log=Logger("a.log", "info", "all")
 
