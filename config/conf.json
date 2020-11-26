@@ -21,9 +21,5 @@
      "glusterfs": 1,
      "elasticsearch": 1, 
      "rabbitmq": 1
-  }, 
-  "log":{
-    "log_dir": "./logs", 
-    "log_level": "info"
   }
 }
