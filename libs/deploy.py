@@ -7,14 +7,13 @@ import locale, json, os, time, sys
 from dialog import Dialog
 from textwrap import dedent
 from libs.common import Logger
-from libs.client import Client
-from libs.install import soft
+from libs.remote import ssh, soft
 #from threading import Thread
 
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, \
-        interface
+        interface, test_mode
 
 if not os.path.exists(logs_dir):
     os.makedirs(logs_dir, exist_ok=1)
@@ -47,16 +46,27 @@ class Deploy(object):
         self.init_file=init_file
         self.arch_file=arch_file
         self.project_file=project_file
-        self.ssh=Client()
 
     def connect_test(self, init_dict):
+        """
+            测试init.json的账号, 密码, 端口
+
+            return:
+                flag,                       
+                connect_msg={
+                "status": N, 
+                "msg": msg
+                }
+                
+        """
+        ssh_client=ssh()
         connect_msg={}
         flag=0
         for node in init_dict:
             ip=init_dict[node].get("ip")
             port=init_dict[node].get("port")
             password=init_dict[node].get("root_password")
-            status, msg=self.ssh.password_conn(ip, port, password)
+            status, msg=ssh_client.password_conn(ip, port, password)
             if status != 0:
                 flag=1
             connect_msg[node]={
@@ -68,17 +78,18 @@ class Deploy(object):
     def get_host_msg(self, init_dict):
         """获取主机信息
         """
+        ssh_client=ssh()
         all_host_info={}
         get_msg_py="./bin/host.py"
-        for i in init_dict:
-            ip=init_dict[i].get("ip")
-            port=init_dict[i].get("port")
+        for node in init_dict:
+            ip=init_dict[node].get("ip")
+            port=init_dict[node].get("port")
 
             remote_file=f"{remote_code_dir}/{get_msg_py.split('/')[-1]}"
-            self.ssh.scp(ip, port, "root", get_msg_py, remote_file)
+            ssh_client.scp(ip, port, "root", get_msg_py, remote_file)
             get_msg_command=f"{remote_python_exec} {remote_file}"
-            self.log.logger.debug(f"获取{i}主机信息: {get_msg_command=}")
-            status=self.ssh.exec(ip, port, get_msg_command)
+            self.log.logger.debug(f"获取{node}主机信息: {get_msg_command=}")
+            status=ssh_client.exec(ip, port, get_msg_command, get_pty=0)
 
             stdout_msg=status[1].read().strip().decode("utf8")
             stderr_msg=status[2].read().strip().decode("utf8")
@@ -87,7 +98,7 @@ class Deploy(object):
                 msg=stdout_msg
             else:
                 msg=stderr_msg
-            all_host_info[i]=[state_value, msg]
+            all_host_info[node]=[state_value, msg]
         return all_host_info
 
     def json_ana(init_dict, conf_dict, arch_dict):
@@ -112,81 +123,6 @@ class Deploy(object):
         soft_list=conf_dict.get("software").keys()
         check(arch_dict, soft_list, init_host_list)
 
-    def init(self, init_dict, local_python3_file, mode_log):
-        """主机环境初始化
-            * 生成秘钥
-            * 免密码登录
-            * 设置hostname
-            * 配置hosts
-            * 关闭firewalld
-            * 关闭selinux
-            * 配置Python3环境
-            * nproc nofile
-            * 接口连通性测试
-        """
-
-        try:
-            if self.ssh.gen_keys():
-                mode_log.logger.info("本机生成密钥对\n")
-            else:
-                mode_log.logger.info("本机已存在密钥对\n")
-
-            # 获取所有hosts
-            hosts_list=[]
-            for i in init_dict:
-                hosts_list.append(f"{init_dict[i].get('ip')} {i}")
-            # 初始化
-            for i in init_dict:
-                mode_log.logger.info(f"主机{i}环境初始化...")
-                ip=init_dict[i].get("ip")
-                port=init_dict[i].get("port")
-                password=init_dict[i].get("root_password")
-
-                self.ssh.free_pass_set(ip, port, password)
-                mode_log.logger.info(f"免密码登录设置完成")
-                
-                # 传输Python
-                remote_python3_file=f"{remote_python_transfer_dir}/{local_python3_file.split('/')[-1]}"
-                mode_log.logger.debug(f"传输Python安装包...")
-                self.ssh.scp(ip, port, "root", local_python3_file, remote_python3_file)
-                command=f"tar -xf {remote_python3_file} -C {remote_python_install_dir}"
-                mode_log.logger.debug(f"配置Python环境...")
-                mode_log.logger.debug(f"{command=}")
-                status=self.ssh.exec(ip, port, command)
-                if status[1].channel.recv_exit_status() != 0:
-                    mode_log.logger.error(f"Python3安装报错, 进程退出: {status[2].read().decode('utf8')}")
-                    sys.exit()
-                else:
-                    mode_log.logger.info(f"配置Python3环境完成")
-
-                # 执行init.py
-                init_py="./bin/init.py"
-                self.ssh.scp(ip, port, "root", "./libs/common.py", f"{remote_code_dir}/libs/common.py")
-                self.ssh.scp(ip, port, "root", "./libs/env.py", f"{remote_code_dir}/libs/env.py")
-                self.ssh.scp(ip, port, "root", init_py, f"{remote_code_dir}/init.py")
-                host_str="\n".join(hosts_list)
-                init_args={
-                        "hostname": i, 
-                        "hosts": host_str, 
-                        "interface": interface, 
-                        }
-                command=f"{remote_python_exec} {remote_code_dir}/init.py '{json.dumps(init_args)}'"
-                self.log.logger.debug(f"{i}远程初始化...")
-                self.log.logger.debug(f"{command=}")
-                status=self.ssh.exec(ip, port, command)
-
-                for line in status[1]:
-                     mode_log.logger.info(line.strip())
-                for line in status[2]:
-                     mode_log.logger.error(line.strip())
-                if status[1].channel.recv_exit_status() != 0:
-                    self.log.logger.error(f"{i}远程初始化失败")
-
-                self.log.logger.info("")
-            return "1"
-        except Exception as e:
-            return e
-
     '''
     def get_weight(self, soft_weight_dict, soft_install_list):
         """ 返回各软件占服务器的权重
@@ -205,13 +141,101 @@ class Deploy(object):
             soft_install_dict[i]=round(soft_install_dict[i]/weight_sum, 2)
         return soft_install_dict
     '''
+    def init(self, init_dict, local_python3_file):
+        """主机环境初始化
+            * 生成秘钥
+            * 免密码登录
+            * 设置hostname
+            * 配置hosts
+            * 关闭firewalld
+            * 关闭selinux
+            * 配置Python3环境
+            * nproc nofile
+            * 接口连通性测试
+        """
+        try:
+            ssh_client=ssh()
+            if ssh_client.gen_keys():
+                self.log.logger.info("本机生成密钥对\n")
+            else:
+                self.log.logger.info("本机已存在密钥对\n")
 
-    def control(self, init_dict, arch_dict, action, log):
+            # 获取所有hosts
+            hosts_list=[]
+            for node in init_dict:
+                hosts_list.append(f"{init_dict[node].get('ip')} {node}")
+
+            # 初始化
+            for node in init_dict:
+                self.log.logger.info(f"***主机{node}环境初始化***")
+
+                ip=init_dict[node].get("ip")
+                port=init_dict[node].get("port")
+                password=init_dict[node].get("root_password")
+
+                ssh_client.free_pass_set(ip, port, password)
+                self.log.logger.info(f"免密码登录设置完成")
+                
+                # 传输Python
+                remote_python3_file=f"{remote_python_transfer_dir}/{local_python3_file.split('/')[-1]}"
+                self.log.logger.debug(f"传输Python安装包...")
+                ssh_client.scp(ip, port, "root", local_python3_file, remote_python3_file)
+
+                command=f"tar -xf {remote_python3_file} -C {remote_python_install_dir}"
+                self.log.logger.debug(f"配置Python环境")
+                status=ssh_client.exec(ip, port, command)
+                if status[1].channel.recv_exit_status() != 0:
+                    self.log.logger.error(f"Python3安装报错, 进程退出: {status[2].read().decode('utf8')}")
+                    sys.exit()
+                else:
+                    self.log.logger.info(f"配置Python3环境完成")
+
+                # 执行init.py
+                init_py="./bin/init.py"
+                trans_files_dict={
+                        "lib_file": ["./libs/common.py", f"{remote_code_dir}/libs/common.py"],
+                        "env_file": ["./libs/env.py", f"{remote_code_dir}/libs/env.py"],
+                        "py_file": [init_py, f"{remote_code_dir}/{init_py.split('/')[-1]}"]
+                        }
+                init_args={
+                        "hostname": node, 
+                        "hosts": hosts_list, 
+                        "interface": interface, 
+                        }
+                soft_control=soft(ip, port, ssh_client)
+                status=self.control(ip, port, "init", trans_files_dict, init_args, ssh_client, soft_control)
+
+                for line in status[1]:
+                    self.log.logger.info(line.strip())
+                if status[1].channel.recv_exit_status() != 0:
+                    self.log.logger.error(f"{node}远程初始化失败")
+                else:
+                    self.log.logger.info(f"{node}远程初始化完成")
+            return True
+        except Exception as e:
+            return e
+
+    def control(self, ip, port, action, trans_files_dict, args_dict, ssh_client, soft_control):
+        for trans_file in trans_files_dict:
+            src, dst=trans_files_dict[trans_file]
+            ssh_client.scp(ip, port, "root", src, dst)
+            self.log.logger.debug(f"传输文件: {trans_file}, {src=}, {dst=}")
+
+        remote_py_file=trans_files_dict["py_file"][1]
+        if action=="init":
+            status=soft_control.init(remote_py_file, args_dict)
+        elif action=="install":
+            args_dict["pkg_file"]=trans_files_dict["pkg_file"][1]
+            status=soft_control.install(remote_py_file, args_dict)
+        elif action=="start":
+            status=soft_control.start(remote_py_file, args_dict)
+        return status
+
+    def control_bak(self, action, trans_files_dict):
         flag=True
         for node in arch_dict:
-            log.logger.info(f"*****{node}节点*****")
+            self.log.logger.info(f"*****{node}节点*****")
             ssh_port=init_dict[node].get("port")
-            Install=soft(node, ssh_port)
 
             for softname in arch_dict[node]["software"]:
                 log.logger.info(f"{softname}{action[0]}...")
@@ -244,14 +268,49 @@ class Deploy(object):
                     log.logger.info(f"{softname}{action[0]}完成")
         return flag
 
-    def install(self, init_dict, arch_dict, log):
-        action=("安装", "install")
-        result=self.control(init_dict, arch_dict, action, log)
-        return result
+    def install(self, init_dict, arch_dict):
+        if test_mode:
+            trans_files_dict={
+                    "lib_file": ["./libs/common.py", f"{remote_code_dir}/libs/common.py"], 
+                    "env_file": ["./libs/env.py", f"{remote_code_dir}/libs/env.py"]
+                    }
+        else:
+            trans_files_dict={}
 
-    def start(self, init_dict, arch_dict, log):
-        action=("启动", "start")
-        result=self.control(init_dict, arch_dict, action, log)
+        flag=True
+        for node in arch_dict:
+            self.log.logger.info(f"***{node}安装***")
+            port=init_dict[node]["port"]
+            ssh_client=ssh()
+            soft_control=soft(node, port, ssh_client)
+            for softname in arch_dict[node]["software"]:
+                self.log.logger.info(f"{softname}安装...")
+
+                pkg_file=self.conf_dict["location"].get(softname)
+                trans_files_dict.update(
+                        {
+                            "py_file": [f"./bin/{softname}.py", f"{remote_code_dir}/{softname}.py"], 
+                            "pkg_file": [pkg_file, f"{remote_pkgs_dir}/{pkg_file.split('/')[-1]}"]
+                            }
+                        )
+
+                # 去除located结尾的/
+                located_dir=arch_dict[node]["located"]
+                if located_dir.endswith("/"):
+                    arch_dict[node]["located"]=located_dir[0:-1]
+
+                status=self.control(node, port, "install", trans_files_dict, arch_dict[node], ssh_client, soft_control)
+                for line in status[1]:
+                    self.log.logger.info(line.strip())
+                if status[1].channel.recv_exit_status() == 0:
+                    self.log.logger.info(f"{softname}安装完成")
+                else:
+                    self.log.logger.error(f"{softname}安装失败")
+                    flag=False
+        return flag
+
+    def start(self, arch_dict):
+        result=self.control("start", trans_files_dict, arch_dict)
         return result
 
 class text_deploy(Deploy):
@@ -260,6 +319,7 @@ class text_deploy(Deploy):
     def __init__(self, conf_file, init_file, arch_file, project_file):
         super(text_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
         self.log=Logger({"file": log_file_level, "console": log_console_level}, log_file=log_file)
+        self.ssh_client=ssh()
 
     def check(self):
         '''
@@ -280,15 +340,18 @@ class text_deploy(Deploy):
             sys.exit()
 
         local_python3_file=self.conf_dict["location"].get("python3")
-        status=super(text_deploy, self).init(init_dict, local_python3_file, self.log)
-        if status=="1":
+        status=super(text_deploy, self).init(init_dict, local_python3_file)
+        if status is True:
             self.log.logger.info("初始化结束\n")
             self.log.logger.info("各主机信息如下:")
             all_host_info=self.get_host_msg(init_dict)
             for node in all_host_info:
                 if all_host_info[node][0] == 0:
-                    self.log.logger.debug(all_host_info[node][1])
-                    node_info_dict=json.loads(all_host_info[node][1][6:])
+                    node_info=all_host_info[node][1]
+                    self.log.logger.debug(f"{node_info=}")
+                    node_info=node_info[node_info.index("{"):]
+                    #self.log.logger.debug(f"{node_info=}")
+                    node_info_dict=json.loads(node_info)
                     node_info=dedent(f"""
                     主机名: {node}
                     发行版本: \t{node_info_dict['os_name']}
@@ -310,7 +373,7 @@ class text_deploy(Deploy):
             init_dict=json.load(init_f)
             arch_dict=json.load(arch_f)
         self.log.logger.info("集群安装...\n")
-        result=super(text_deploy, self).install(init_dict, arch_dict, self.log)
+        result=super(text_deploy, self).install(init_dict, arch_dict)
         if result:
             self.log.logger.info("集群安装完成")
         else:
