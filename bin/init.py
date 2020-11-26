@@ -7,18 +7,18 @@ from subprocess import run
 from libs.common import Logger, port_connect
 from libs.env import log_remote_level
 
-
 def exec_command(command):
-    command_list=commond.split(" ")
     try:
-        result=run(command)
+        result=run(command, capture_output=True, encoding="utf8", shell=True)
+        return True, result
     except Exception as e:
-        pass
-
-    return result
+        result=e
+        return False, result
 
 def main():
-    log=Logger({"remote": log_remote_level})
+    log=Logger({"remote": log_remote_level}, logger_name="init")
+
+    os.system("sleep 3")
 
     return_value=0
     args_json=sys.argv[1]
@@ -26,24 +26,30 @@ def main():
     args=json.loads(args_json)
 
     hostname=args["hostname"]
-    hosts_str=args["hosts"]
+    hosts_list=args["hosts"]
 
-
-    log.logger.info(f"设置主机名为{hostname}...")
+    log.logger.info(f"设置主机名为{hostname}")
     hostname_cmd=f"hostnamectl set-hostname {hostname}"
-    resutl=exec_command(["hostnamectl", "set-hostname", {hostname}])
     log.logger.debug(f"{hostname_cmd=}")
-    result=os.system(hostname_cmd)
-    if result != 0:
-        log.logger.error(f"设置主机名失败")
+    status, result=exec_command(hostname_cmd)
+    if status:
+        if result.returncode != 0:
+            log.logger.error(f"设置主机名失败: {result.stderr}")
+            return_value=1
+    else:
+        log.logger.error(f"设置主机名失败: {result}")
         return_value=1
 
-    log.logger.info(f"关闭防火墙...")
+    log.logger.info(f"关闭防火墙")
     firewalld_cmd=f"systemctl disable firewalld && systemctl stop firewalld"
     log.logger.debug(f"{firewalld_cmd=}")
-    result=os.system(firewalld_cmd)
-    if result != 0:
-        log.logger.info(f"关闭防火墙失败...")
+    status, result=exec_command(firewalld_cmd)
+    if status:
+        if result.returncode != 0:
+            log.logger.error(f"关闭防火墙失败: {result.stderr}")
+            return_value=1
+    else:
+        log.logger.error(f"关闭防火墙失败: {result}")
         return_value=1
 
     # 关闭selinux
@@ -61,29 +67,47 @@ def main():
             log.logger.info(f"关闭SELinux")
             with open(selinux_conf_file, "w") as f:
                 f.writelines(text)
-            result=os.system("setenforce 0")
-            if result != 0 and result != 256:
+            status, result=exec_command("setenforce 0")
+            if status:
+                if result.returncode != 0 and result.returncode != 256:
+                    return_value=1
+                    log.logger.error(f"关闭SELinux失败: {result.stderr}")
+            else:
                 return_value=1
-                log.logger.info(f"关闭SELinux失败")
+                log.logger.error(f"关闭SELinux失败: {result}")
 
     # 更改nofile, nproc
     value=65536
-    status, msg=subprocess.getstatusoutput("ulimit -n")
-    nofile_value=int(msg)
-    status, msg=subprocess.getstatusoutput("ulimit -u")
-    nproc_value=int(msg)
-
     ulimit_conf_file="/etc/security/limits.conf"
-    try:
-        if nofile_value < value:
-            with open(ulimit_conf_file, "a") as f:
-                f.write("root - nofile 65536\n")
-        if nproc_value < value:
-            with open(ulimit_conf_file, "a") as f:
-                f.write("root - nproc 65536\n")
-        log.logger.info("用户权限已提升")
-    except Exception as e:
-        log.logger.error(f"权限提升错误: {e}")
+
+    status, result=exec_command("ulimit -n")
+    if status:
+        if result.returncode==0:
+            nofile_value=int(result.stdout)
+            if nofile_value < value:
+                with open(ulimit_conf_file, "a") as f:
+                    f.write("root - nofile 65536\n")
+                log.logger.info(f"设置nofile值为{value}")
+        else:
+            log.logger.error(f"获取nofile失败: {result.stderr}")
+            return_value=1
+    else:
+        log.logger.error(f"获取nofile失败: {result}")
+        return_value=1
+
+    status, result=exec_command("ulimit -u")
+    if status:
+        if result.returncode==0:
+            nproc_value=int(result.stdout)
+            if nproc_value < value:
+                with open(ulimit_conf_file, "a") as f:
+                    f.write("root - nproc 65536\n")
+                log.logger.info(f"设置nproc值为{value}")
+        else:
+            log.logger.error(f"获取nproc失败: {result.stderr}")
+            return_value=1
+    else:
+        log.logger.error(f"获取nproc失败: {result}")
         return_value=1
 
     # 配置hosts
@@ -91,17 +115,16 @@ def main():
         hosts_file="/etc/hosts"
         with open(hosts_file, "r") as f:
             host_text_list=f.readlines()
-            host_list=hosts_str.split("\n")
             added_hosts=[]
-            for i in host_list:
-                i=f"{i}\n"          # 添加换行符
-                if i not in host_text_list:
-                    added_hosts.append(i)
+            for hosts in hosts_list:
+                hosts=f"{hosts}\n"          # 添加换行符
+                if hosts not in host_text_list:
+                    added_hosts.append(hosts)
         with open(hosts_file, "a") as f:
             f.writelines(added_hosts)
         log.logger.info(f"hosts配置完成")
     except Exception as e:
-        log.logger.error(f"hosts配置失败")
+        log.logger.error(f"hosts配置失败: {e}")
         return_value=1
 
     # 接口链通测试
@@ -110,8 +133,6 @@ def main():
             log.logger.info(f"{interface}接口连通")
         else:
             log.logger.warning(f"{interface}接口无法连通")
-            return_value=1
-
     sys.exit(return_value)
 
 if __name__ == "__main__":

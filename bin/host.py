@@ -25,7 +25,7 @@ def format_size(byte):
 
 def main():
     try:
-        log=Logger({"remote": log_remote_level})
+        log=Logger({"remote": log_remote_level}, logger_name="host")
         host_info_dict={}
 
         os_name, hostname, kernel_version=list(platform.uname())[0:3]
