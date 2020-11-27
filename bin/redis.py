@@ -3,38 +3,48 @@
 # sky
 
 import sys, os, json
-import psutil
 from libs import common
+from libs.env import log_remote_level, redis_src, redis_dst, redis_pkg_dir, redis_version
 
 def main():
-    action, weight, soft_file, conf_json=sys.argv[1:5]
+    action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
-    soft_name="Redis"
-    sentinel_soft_name="Sentinel"
-    log=common.Logger(None, "info", "remote")
-    dst="redis"
-    redis_port=6379
-    sentinel_port=26379
-    role="stand-alone"
-
     located=conf_dict.get("located")
-    if action=="install":
-        # 安装
-        value, msg=common.install(soft_file,"redis-", dst, None, located)
-        if value==1:
-            log.logger.info(f"{soft_name}安装完成")
-        else:
-            log.logger.info(f"{soft_name}安装失败: {msg}")
-            return 
+    log=common.Logger({"remote": log_remote_level}, loggger_name="redis")
 
-        # 配置
+    redis_dir=f"{located}/{redis_dst}"
+    redis_info_dict=conf_dict["redis_info"]
+    redis_port=redis_info_dict["db_info"]["redis_port"]
+
+    # 是否启用sentinel
+    sentinel_info=redis_info_dict.get("sentinel_info")
+    if  sentinel_info is None:
+        sentinel_flag=0
+    else:
+        sentinel_flag=1
+
+    flag=0
+    # 安装
+    if action=="install":
+        pkg_file=conf_dict["pkg_file"]
+        value, msg=common.install(pkg_file, redis_src, redis_dst, None, located)
+        if not value:
+            flag=1
+            log.logger.error(msg)
+            sys.exit(flag)
+
+        password=redis_info_dict["db_info"].get("redis_password")
+        redis_mem=redis_info_dict["db_info"].get("redis_mem")
+
+        # 环境配置
+        log.logger.debug("环境配置")
         sysctl_conf_file="/etc/sysctl.d/redis.conf"
         sysctl_conf_text="""\
-                net.core.somaxconn=1024
+                net.core.somaxconn=2048
                 vm.overcommit_memory=1
         """
         redis_sh_text=f"""\
-                export REDIS_HOME={located}/dst
+                export REDIS_HOME={redis_dir}
                 export PATH=$REDIS_HOME/bin:$PATH
         """
         hugepage_disabled=f"echo never > /sys/kernel/mm/transparent_hugepage/enabled\n"
@@ -55,60 +65,24 @@ def main():
                     "mode": "w"
                     }
                 }
-        result, msg=common.config(config_dict)
 
-        if result == 1:
-            log.logger.info(f"{soft_name}配置环境变量完成")
-            result=os.system(f"sysctl -p {sysctl_conf_file} &> /dev/null && echo never > /sys/kernel/mm/transparent_hugepage/enabled")
-            if result == 0:
-                log.logger.info(f"{soft_name}环境变量生效")
-            else:
-                log.logger.error(f"{soft_name}环境变量未生效: {result}")
+        # redis配置, 根据主从配置redis文件
+        log.logger.debug("配置redis")
+        if redis_info_dict.get("cluster_info") is None:
+            role="stand-alone"
         else:
-            log.logger.error(f"{soft_name}配置环境变量失败: {msg}")
-
-        password=conf_dict.get("redis_info").get("db_info").get("redis_password")
-        mem=psutil.virtual_memory()
-        mem=int(mem[0] * float(weight) /1024/1024)
-
-        # 配置sentinel文件
-        # 若存在集群设置, 则配置sentinel
-        cluster_info_dict=conf_dict.get("redis_info").get("cluster_info")
-        if cluster_info_dict is not None:
+            cluster_info_dict=redis_info_dict["cluster_info"]
             role=cluster_info_dict.get("role")
-            master_host=cluster_info_dict.get("master_host")
-            sentinel_conf_text=f"""\
-                    protected-mode no
-                    port {sentinel_port}
-                    daemonize yes
-                    dir "{located}/{dst}/data"
-                    logfile "{located}/{dst}/logs/sentinel.log"
-                    sentinel monitor mymaster {master_host} {redis_port} 1
-                    sentinel auth-pass mymaster {password}
-                    sentinel deny-scripts-reconfig yes
-                    sentinel down-after-milliseconds mymaster 5000
-            """
-            config_dict={
-                    "sentinel_conf": {
-                        "config_file": f"{located}/{dst}/conf/sentinel.conf", 
-                        "config_context": sentinel_conf_text, 
-                        "mode": "w"
-                        }
-                    }
-            result, msg=common.config(config_dict)
-            if result==1:
-                log.logger.info(f"{sentinel_soft_name}配置完成")
-            else:
-                log.logger.error(f"{sentinel_soft_name}配置失败: {msg}")
-        else:
-            #role="master"
-            master_host=""
+        log.logger.debug(f"{role=}")
 
-        # 根据主从配置redis文件
         if role=="stand-alone" or role=="master":
             slaveof_master_port=""
         elif role=="slave":
-            slaveof_master_port=f"slaveof {master_host} {redis_port}"
+            master_host=cluster_info_dict.get("master_host")
+            master_port=cluster_info_dict.get("master_port")
+            slaveof_master_port=f"slaveof {master_host} {master_port}"
+        log.logger.debug(f"{slaveof_master_port=}")
+
         redis_conf_text=f"""\
                 protected-mode no
                 port {redis_port}
@@ -117,9 +91,9 @@ def main():
                 tcp-keepalive 300
                 daemonize yes
                 supervised no
-                pidfile "{located}/{dst}/redis.pid"
+                pidfile "{redis_dir}/redis.pid"
                 loglevel notice
-                logfile "{located}/{dst}/logs/redis.log"
+                logfile "{redis_dir}/logs/redis.log"
                 # syslog-enabled no
                 # syslog-ident redis
                 # syslog-facility local0
@@ -135,7 +109,7 @@ def main():
                 rdbchecksum yes
 
                 dbfilename "dump.rdb"
-                dir "{located}/{dst}/data"
+                dir "{redis_dir}/data"
 
                 {slaveof_master_port}
 
@@ -156,7 +130,7 @@ def main():
                 replica-priority 100
 
                 # maxclients 10000
-                maxmemory {mem}M
+                maxmemory {redis_mem}
                 # maxmemory-policy noeviction
 
                 lazyfree-lazy-eviction no
@@ -203,47 +177,96 @@ def main():
                 hz 10
                 aof-rewrite-incremental-fsync yes
                 """
-        config_dict={
-                "redis_conf": {
-                    "config_file": f"{located}/{dst}/conf/redis.conf", 
-                    "config_context": redis_conf_text, 
-                    "mode": "w"
+        config_dict.update(
+                {
+                    "redis_conf": {
+                        "config_file": f"{redis_dir}/conf/redis.conf",
+                        "config_context": redis_conf_text,
+                        "mode": "w"
+                        }
                     }
-                }
+                )
+
+        # Sentinel配置
+        if sentinel_flag:
+            log.logger.debug("配置sentinel")
+            sentinel_port=sentinel_info.get("sentinel_port")
+            monitor_host=sentinel_info.get("monitor_host")
+            monitor_port=sentinel_info.get("monitor_port")
+
+            sentinel_conf_text=f"""\
+                    protected-mode no
+                    port {sentinel_port}
+                    daemonize yes
+                    dir "{redis_dir}/data"
+                    logfile "{redis_dir}/logs/sentinel.log"
+                    sentinel monitor mymaster {monitor_host} {monitor_port} 1
+                    sentinel auth-pass mymaster {password}
+                    sentinel deny-scripts-reconfig yes
+                    sentinel down-after-milliseconds mymaster 5000
+            """
+            config_dict.update(
+                    {
+                        "sentinel_conf": {
+                            "config_file": f"{redis_dir}/conf/sentinel.conf",
+                            "config_context": sentinel_conf_text,
+                            "mode": "w"
+                            }
+                        }
+                    )
+
+        log.logger.debug(f"写入配置文件: {json.dumps(config_dict)}")
         result, msg=common.config(config_dict)
-        if result==1:
-            log.logger.info(f"{soft_name}({role})配置优化完成")
+        if result:
+            command=f"sysctl -p {sysctl_conf_file} && echo never > /sys/kernel/mm/transparent_hugepage/enabled"
+            log.logger.debug(f"刷新配置: {command=}")
+            status, result=common.exec_command(command)
+            if status:
+                if result.returncode != 0:
+                    log.logger.error(f"{result.stderr}")
+                    flag=1
+            else:
+                log.logger.error(result)
+                flag=1
         else:
-            log.logger.error(f"{soft_name}({role})配置优化失败: {msg}")
+            log.logger.error(msg)
+            flag=1
 
     elif action=="start":
-        cluster_flag=0
-        cluster_info_dict=conf_dict.get("redis_info").get("cluster_info")
-        if cluster_info_dict is not None:
-            cluster_flag=1
-            role=cluster_info_dict.get("role")
-
-        ## exec使用get_pty, redis配置为后台运行, 但未启动完全时, 断开依然会停止, 故使用sleep 2让其完全启动
-        redis_start_command=f"cd {located}/{dst} && bin/redis-server conf/redis.conf"
-        result=os.system(redis_start_command)
-        if result==0:
-            if common.port_exist(redis_port):
-                log.logger.info(f"{soft_name}({role})启动成功")
+        # exec使用get_pty, redis配置为后台运行, 但未启动完全时, 断开依然会停止, 故使用sleep 2让其完全启动
+        redis_start_command=f"cd {redis_dir} && bin/redis-server conf/redis.conf"
+        log.logger.debug(f"redis启动: {redis_start_command=}")
+        status, result=common.exec_command(redis_start_command)
+        if status:
+            if result.returncode != 0:
+                log.logger.error(result.stderr)
+                flag=1
             else:
-                log.logger.error(f"{soft_name}({role})启动超时")
+                log.logger.debug(f"检测端口: {redis_port} ")
+                if not common.port_exist([redis_port]):
+                    flag=1
         else:
-            log.logger.error(f"{soft_name}({role})启动失败")
+            log.logger.error(result)
+            flag=1
 
-        if cluster_flag:
-            sentinel_start_command=f"cd {located}/{dst} && bin/redis-sentinel conf/sentinel.conf"
-            result=os.system(sentinel_start_command)
-            if result==0:
-                if common.port_exist(sentinel_port):
-                    log.logger.info(f"{sentinel_soft_name}启动成功")
+        if sentinel_flag:
+            sentinel_port=sentinel_info.get("sentinel_port")
+            sentinel_start_command=f"cd {redis_dir} && bin/redis-sentinel conf/sentinel.conf"
+            log.logger.debug(f"sentinel启动: {sentinel_start_command=}")
+            status, result=common.exec_command(sentinel_start_command)
+            if status:
+                if result.returncode != 0:
+                    log.logger.error(result.stderr)
+                    flag=1
                 else:
-                    log.logger.error(f"{sentinel_soft_name}启动超时")
+                    log.logger.debug(f"检测端口: {sentinel_port} ")
+                    if not common.port_exist([sentinel_port]):
+                        flag=1
             else:
-                log.logger.error(f"{sentinel_soft_name}启动失败")
+                log.logger.error(result)
+                flag=1
+
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()

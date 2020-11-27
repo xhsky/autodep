@@ -4,11 +4,17 @@
     "located": "/data", 
     "redis_info":{
        "db_info":{                                                          // 单机信息
-         "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599"      // 密码
+         "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599",     // 密码(集群密码须相同)
+         "redis_port": 6379,                                                // redis端口
+         "redis_mem": "200M"                                                // redis最大使用内存
        }, 
-       "cluster_info":{                                                     // 集群信息
-         "role": "master",                                                  // 角色
-         "master_host": "redis1"                                            // master主机
+       "cluster_info":{                                                     // 主从集群信息
+         "role": "master"                                                   // 主机角色  master|slave
+       }, 
+       "sentinel_info":{                                                    // 启用sentinel
+         "sentinel_port": 26379,                                            // sentinel端口
+         "monitor_host": "redis1",                                            // 监控的主机
+         "monitor_port": 6379                                               // 监控的端口
        }
     }
   }, 
@@ -17,11 +23,19 @@
     "located": "/data", 
     "redis_info":{
        "db_info":{
-         "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599"
+         "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599", 
+         "redis_port": 6379, 
+         "redis_mem": "200M"
        }, 
        "cluster_info":{
          "role": "slave", 
-         "master_host": "redis1"
+         "master_host": "redis1",                                           // 角色若为"slave", 则需指定master主机
+         "master_port": 6379                                                // 角色若为"slave", 则需指定master端口
+       }, 
+       "sentinel_info":{                                                    
+         "sentinel_port": 26379,
+         "monitor_host": "redis1",
+         "monitor_port": 6379
        }
     }
   } 
