@@ -4,21 +4,42 @@
 
 import tarfile, psutil
 import os, time, socket
+from subprocess import run
 import textwrap
 from logging import handlers
 import logging
 
-def port_exist(port, seconds=300):
-    N=0
-    while True:
-        time.sleep(1)
-        N=N+1
-        if N >= seconds:
-            return False
-        for i in psutil.net_connections():
-            if port==i[3][1] and i[6] is not None:
-                print(f"{i=}, {N=}")
-                return True
+
+def exec_command(command):
+    try:
+        result=run(command, capture_output=True, encoding="utf8", shell=True, timeout=45)
+        return True, result
+    except Exception as e:
+        result=str(e)
+        return False, result
+
+def port_exist(port_list, seconds=120):
+    result=[]
+    for port in port_list:
+        N=0
+        while True:
+            time.sleep(1)
+            N=N+1
+            if N >= seconds:
+                result.append(False)
+                break
+            for i in psutil.net_connections(kind="inet"):
+                if port==i[3][1] and i[6] is not None:
+                    result.append(True)
+                    break
+            else:
+                continue
+            break
+                
+    if False in result:
+        return False
+    else:
+        return True
 
 def port_connect(host, port):
     s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -74,7 +95,7 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
         else:
             return True, None
     except Exception as e:
-        return False, e
+        return False, str(e)
 
 def config(config_dict):
     """
