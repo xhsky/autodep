@@ -3,17 +3,8 @@
 # sky
 
 import sys, os, json
-from subprocess import run
-from libs.common import Logger, port_connect
+from libs.common import Logger, port_connect, exec_command
 from libs.env import log_remote_level
-
-def exec_command(command):
-    try:
-        result=run(command, capture_output=True, encoding="utf8", shell=True)
-        return True, result
-    except Exception as e:
-        result=e
-        return False, result
 
 def main():
     log=Logger({"remote": log_remote_level}, logger_name="init")
