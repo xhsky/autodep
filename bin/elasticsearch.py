@@ -4,7 +4,6 @@
 # sky
 
 import sys, os, json
-import psutil
 from libs import common
 from libs.env import log_remote_level, elasticsearch_src, elasticsearch_dst, elasticsearch_pkg_dir, elasticsearch_version
 
@@ -18,6 +17,10 @@ def main():
 
     http_port=conf_dict["elasticsearch_info"]["port"]["http_port"]
     transport=conf_dict["elasticsearch_info"]["port"]["transport"]
+    port_list=[
+            http_port, 
+            transport
+            ]
 
     flag=0
     # 安装
@@ -25,11 +28,16 @@ def main():
         pkg_file=conf_dict["pkg_file"]
         command="id -u elastic &> /dev/null || useradd elastic"
         log.logger.debug(f"创建用户: {command=}")
-        os.system(command)
+        status, result=common.exec_command(command)
+        if status:
+            if result.returncode != 0:
+                log.logger.error(result.stderr)
+        else:
+            log.logger.error(result)
         value, msg=common.install(pkg_file, elasticsearch_src, elasticsearch_dst, elasticsearch_pkg_dir, located)
         if not value:
-            flag=1
             log.logger.error(msg)
+            flag=1
             sys.exit(flag)
 
         # 配置
@@ -104,27 +112,37 @@ def main():
         log.logger.debug(f"写入配置文件: {json.dumps(config_dict)=}")
         result, msg=common.config(config_dict)
         if result:
-            command=f"chown -R elastic:elastic {located}/{elasticsearch_src}* &> /dev/null && sysctl -p {sysctl_conf_file} &> /dev/null"
+            command=f"chown -R elastic:elastic {located}/{elasticsearch_src}*  && sysctl -p {sysctl_conf_file}"
             log.logger.debug(f"配置环境: {command=}")
-            result=os.system(command)
-            if result!=0:
-                flag=1
-                log.logger.error(f"配置错误: {result}")
+            status, result=common.exec_command(command)
+            if status:
+                if result.returncode != 0:
+                    log.logger.error(result.stderr)
+                    flag=1
+            else:
+                log.logger.error(result)
+                flag=1  
         else:
-            flag=1
             log.logger.error(msg)
+            flag=1
 
         sys.exit(flag)
 
     elif action=="start":
-        command=f"su elastic -l -c 'cd {es_dir}; ./bin/elasticsearch -d -p elasticsearch.pid'" 
+        command=f"su elastic -l -c 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'" 
         log.logger.debug(f"{command=}")
-        result=os.system(command)
-        log.logger.debug(f"{http_port=}")
-        if result==0:
-            if not common.port_exist(http_port):
-                flag=2
+
+        status, result=common.exec_command(command)
+        if status:
+            if result.returncode != 0:
+                log.logger.error(result.stderr)
+                flag=1
+            else:
+                log.logger.debug(f"检测端口: {port_list=}")
+                if not common.port_exist(port_list):
+                    flag=2
         else:
+            log.logger.error(result)
             flag=1
 
         sys.exit(flag)
