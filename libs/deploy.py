@@ -218,8 +218,8 @@ class Deploy(object):
     def control(self, ip, port, action, trans_files_dict, args_dict, ssh_client, soft_control):
         for trans_file in trans_files_dict:
             src, dst=trans_files_dict[trans_file]
-            ssh_client.scp(ip, port, "root", src, dst)
             self.log.logger.debug(f"传输文件: {trans_file}, {src=}, {dst=}")
+            ssh_client.scp(ip, port, "root", src, dst)
 
         remote_py_file=trans_files_dict["py_file"][1]
         if action=="init":
@@ -293,7 +293,6 @@ class Deploy(object):
                             "pkg_file": [pkg_file, f"{remote_pkgs_dir}/{pkg_file.split('/')[-1]}"]
                             }
                         )
-
                 # 去除located结尾的/
                 located_dir=arch_dict[node]["located"]
                 if located_dir.endswith("/"):
@@ -309,9 +308,43 @@ class Deploy(object):
                     flag=False
         return flag
 
-    def start(self, arch_dict):
-        result=self.control("start", trans_files_dict, arch_dict)
-        return result
+    def start(self, init_dict, arch_dict):
+        if test_mode:
+            trans_files_dict={
+                    "lib_file": ["./libs/common.py", f"{remote_code_dir}/libs/common.py"], 
+                    "env_file": ["./libs/env.py", f"{remote_code_dir}/libs/env.py"]
+                    }
+        else:
+            trans_files_dict={}
+
+        flag=True
+        for node in arch_dict:
+            self.log.logger.info(f"***{node}启动***")
+            port=init_dict[node]["port"]
+            ssh_client=ssh()
+            soft_control=soft(node, port, ssh_client)
+            for softname in arch_dict[node]["software"]:
+                self.log.logger.info(f"{softname}启动...")
+
+                trans_files_dict.update(
+                        {
+                            "py_file": [f"./bin/{softname}.py", f"{remote_code_dir}/{softname}.py"]
+                            }
+                        )
+                # 去除located结尾的/
+                located_dir=arch_dict[node]["located"]
+                if located_dir.endswith("/"):
+                    arch_dict[node]["located"]=located_dir[0:-1]
+
+                status=self.control(node, port, "start", trans_files_dict, arch_dict[node], ssh_client, soft_control)
+                for line in status[1]:
+                    self.log.logger.info(line.strip())
+                if status[1].channel.recv_exit_status() == 0:
+                    self.log.logger.info(f"{softname}启动完成")
+                else:
+                    self.log.logger.error(f"{softname}启动失败")
+                    flag=False
+        return flag
 
 class text_deploy(Deploy):
     '''文本安装'''
@@ -384,7 +417,7 @@ class text_deploy(Deploy):
             init_dict=json.load(init_f)
             arch_dict=json.load(arch_f)
         self.log.logger.info("集群启动...\n")
-        result=super(text_deploy, self).start(init_dict, arch_dict, self.log)
+        result=super(text_deploy, self).start(init_dict, arch_dict)
         if result:
             self.log.logger.info("集群启动完成")
         else:
