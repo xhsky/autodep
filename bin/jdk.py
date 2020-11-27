@@ -4,27 +4,29 @@
 
 import sys, json
 from libs import common
+from libs.env import log_remote_level, jdk_src, jdk_dst, jdk_pkg_dir, jdk_version
 
 def main():
-    action, weight, soft_file, conf_json=sys.argv[1:5]
+    action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
-    located=conf_dict.get("located")
-    soft_name="jdk"
 
-    log=common.Logger(None, "info", "remote")
+    log=common.Logger({"remote": log_remote_level})
 
+    flag=0
     # 安装
     if action=="install":
-        value, msg=common.install(soft_file, "jdk", "jdk", None, located)
-        if value==1:
-            log.logger.info(f"{soft_name}安装完成")
-        else:
-            log.logger.error(f"Error: 解压安装包失败: {msg}")
-            return 
+        located=conf_dict.get("located")
+        pkg_file=conf_dict["pkg_file"]
+        value, msg=common.install(pkg_file, jdk_src, jdk_dst, jdk_pkg_dir, located)
+        if not value:
+            flag=1
+            log.logger.error(msg)
+            sys.exit(flag)
 
         # 配置
+        jdk_dir=f"{located}/{jdk_dst}"
         jdk_sh_context=f"""\
-                export JAVA_HOME={located}/jdk
+                export JAVA_HOME={jdk_dir}
                 export PATH=$JAVA_HOME/bin:$PATH
         """
         config_dict={
@@ -34,14 +36,15 @@ def main():
                     "mode": "w"
                     }
                 }
+        log.logger.debug(f"写入配置文件: {json.dumps(config_dict)=}")
         result, msg=common.config(config_dict)
-        if result==1:
-            log.logger.info(f"{soft_name}配置完成")
-        else:
-            log.logger.error(f"{soft_name}配置出错: {msg}")
+        if not result:
+            log.logger.error(msg)
+            flag=1
+        sys.exit(flag)
 
-    if action=="start":
-        log.logger.info(f"{soft_name}无须启动")
+    elif action=="start":
+        sys.exit(flag)
 
 if __name__ == "__main__":
     main()

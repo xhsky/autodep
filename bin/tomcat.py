@@ -3,43 +3,56 @@
 # sky
 
 import sys, os, json
-import psutil
 import shutil
 from libs import common
+from libs.env import log_remote_level, tomcat_src, tomcat_dst, tomcat_pkg_dir, tomcat_version
 
 def main():
-    action, weight, soft_file, conf_json=sys.argv[1:5]
+    action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
     located=conf_dict.get("located")
-    soft_name="Tomcat"
-    log=common.Logger(None, "info", "remote")
-    dst="tomcat"
 
+    log=common.Logger({"remote": log_remote_level}, loggger_name="tomcat")
+    tomcat_dir=f"{located}/{tomcat_dst}"
+    tomcat_info_dict=conf_dict["tomcat_info"]
+    http_port=tomcat_info_dict["port"].get("http_port")
+    shutdown_port=tomcat_info_dict["port"].get("shutdown_port")
+    #ajp_port=tomcat_info_dict["port"].get("ajp_port")
+    ajp_port=8009
+    port_list=[
+            http_port, 
+            shutdown_port
+            ]
+
+    flag=0
     # 安装
     if action=="install":
-        value, msg=common.install(soft_file, "apache-tomcat-", dst, None, located)
-        if value==1:
-            log.logger.info(f"{soft_name}安装完成")
-        else:
-            log.logger.info(f"{soft_name}安装失败: {msg}")
-            return 
+        pkg_file=conf_dict["pkg_file"]
+        value, msg=common.install(pkg_file, tomcat_src, tomcat_dst, tomcat_pkg_dir, located)
+        if not value:
+            log.logger.error(msg)
+            flag=1
+            sys.exit(flag)
 
         # 配置
         try:
             # 删除tomcat原有程序目录
-            webapps_dir=f"{located}/{dst}/webapps"
+            log.logger.debug("删除默认程序")
+            webapps_dir=f"{tomcat_dir}/webapps"
             for i in os.listdir(webapps_dir):
                 shutil.rmtree(f"{webapps_dir}/{i}")
         except Exception as e:
-            log.logger.error(f"{soft_name}删除原有项目出错: {e}")
+            log.logger.error(str(e))
 
-        mem=psutil.virtual_memory()
-        jvm_mem=int(mem[0] * float(weight) /1024/1024)
+        jvm_mem=tomcat_info_dict.get("jvm_mem")
+        min_threads, max_threads=tomcat_info_dict.get("threads")
+        max_connections=tomcat_info_dict.get("max_connections")
+
         tomcat_sh_context=f"""\
-            export CATALINA_HOME={located}/{dst}
+            export CATALINA_HOME={tomcat_dir}
             export PATH=$CATALINA_HOME/bin:$PATH
         """
-        server_xml_context="""\
+        server_xml_context=f"""\
             <?xml version="1.0" encoding="UTF-8"?>
             <!--
               Licensed to the Apache Software Foundation (ASF) under one or more
@@ -61,7 +74,7 @@ def main():
                  define subcomponents such as "Valves" at this level.
                  Documentation at /docs/config/server.html
              -->
-            <Server port="8005" shutdown="SHUTDOWN">
+            <Server port="{shutdown_port}" shutdown="SHUTDOWN">
               <Listener className="org.apache.catalina.startup.VersionLoggerListener" />
               <!-- Security listener. Documentation at /docs/config/listeners.html
               <Listener className="org.apache.catalina.security.SecurityListener" />
@@ -108,17 +121,17 @@ def main():
                      APR (HTTP/AJP) Connector: /docs/apr.html
                      Define a non-SSL/TLS HTTP/1.1 Connector on port 8080
                 -->
-                <Connector port="8080" protocol="HTTP/1.1"
+                <Connector port="{http_port}" protocol="HTTP/1.1"
                            maxHttpHeaderSize="8192"  
-                           maxThreads="1500"  
-                           minSpareThreads="400"  
+                           maxThreads="{max_threads}"  
+                           minSpareThreads="{min_threads}"  
                            enableLookups="false"  
                            compression="on"  
                            compressionMinSize="2048"  
                            URIEncoding="utf-8"  
-                           acceptCount="600"  
+                           acceptCount="300"  
                            disableUploadTimeout="true"
-                           maxConnections="10000"
+                           maxConnections="{max_connections}"
                            connectionTimeout="20000"
                            redirectPort="8443" />
                 <!-- A "Connector" using the shared thread pool-->
@@ -168,7 +181,7 @@ def main():
                 <!--
                 <Connector protocol="AJP/1.3"
                            address="::1"
-                           port="8009"
+                           port="{ajp_port}"
                            redirectPort="8443" />
                 -->
 
@@ -228,7 +241,7 @@ def main():
 
             JAVA_OPTS="-server -XX:+AggressiveOpts -XX:+UseBiasedLocking -XX:+DisableExplicitGC -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSParallelRemarkEnabled -XX:+UseFastAccessorMethods -XX:+UseCMSInitiatingOccupancyOnly -Djava.security.egd=file:/dev/./urandom -Djava.awt.headless=true"
 
-            JAVA_OPTS="$JAVA_OPTS -Xms{jvm_mem}M -Xmx{jvm_mem}M -Xss512k -XX:LargePageSizeInBytes=128M -XX:MaxTenuringThreshold=11 -XX:MetaspaceSize=200m -XX:MaxMetaspaceSize=256m -XX:MaxNewSize=256m"
+            JAVA_OPTS="$JAVA_OPTS -Xms{jvm_mem} -Xmx{jvm_mem} -Xss512k -XX:LargePageSizeInBytes=128M -XX:MaxTenuringThreshold=11 -XX:MetaspaceSize=200m -XX:MaxMetaspaceSize=256m -XX:MaxNewSize=256m"
 
             UMASK=0022
 
@@ -236,12 +249,12 @@ def main():
             """
         config_dict={
                 "server_xml": {
-                    "config_file": f"{located}/{dst}/conf/server.xml", 
+                    "config_file": f"{tomcat_dir}/conf/server.xml", 
                     "config_context": server_xml_context, 
                     "mode": "w"
                     }, 
                 "setenv_sh":{
-                    "config_file": f"{located}/{dst}/bin/setenv.sh", 
+                    "config_file": f"{tomcat_dir}/bin/setenv.sh", 
                     "config_context": setevn_sh_context, 
                     "mode": "w"
                     }, 
@@ -252,28 +265,43 @@ def main():
                 }
             }
 
+        log.logger.debug(f"写入配置文件: {json.dumps(config_dict)=}")
         result, msg=common.config(config_dict)
-        if result==1:
-            command=f"{located}/{dst}/bin/catalina.sh configtest &> /dev/null"
-            value=os.system(command)
+        if result:
+            command=f"{tomcat_dir}/bin/catalina.sh configtest"
+            log.logger.debug(f"配置文件检测: {command=}")
+            status, result=common.exec_command(command)
             # 返回值32512为apr未安装报错, 忽略
-            if value==0 or value==32512:
-                log.logger.info(f"{soft_name}配置优化完成")
+            if status:
+                if result.returncode != 0 and result.returncode != 32512:
+                    log.logger.error(result.stderr)
+                    flag=1
             else:
-                log.logger.error(f"{soft_name}配置优化失败:{value}")
+                log.logger.error(msg)
+                flag=1
         else:
-            log.logger.error(f"{soft_name}配置写入失败:{msg}")
+            log.logger.error(msg)
+            flag=1
+
+        sys.exit(flag)
 
     elif action=="start":
-        command=f"set -m ; {located}/{dst}/bin/catalina.sh start &> /dev/null" 
-        result=os.system(command)
-        if result==0:
-            if common.port_exist(8080, 300):
-                log.logger.info(f"{soft_name}启动完成")
+        command=f"set -m ; {tomcat_dir}/bin/catalina.sh start" 
+        log.logger.debug(f"{command=}")
+        status, result=common.exec_command(command)
+        if status:
+            if result.returncode != 0:
+                log.logger.error(result.stderr)
+                flag=1
             else:
-                log.logger.error(f"{soft_name}启动超时")
+                log.logger.debug(f"检测端口: {port_list=}")
+                if not common.port_exist(port_list):
+                    flag=2
         else:
-            log.logger.error(f"Error: {soft_name}启动失败")
+            log.logger.error(result)
+            flag=1
+
+        sys.exit(flag)
 
 if __name__ == "__main__":
     main()

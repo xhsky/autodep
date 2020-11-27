@@ -1,11 +1,18 @@
 {
   "web1":{
     "software": ["jdk", "tomcat"], 
-    "located": "/data/"
-  }, 
-  "web2":{
-    "software": ["jdk", "tomcat"], 
-    "located": "/data/"
+    "located": "/data/", 
+    "tomcat_info":{
+      "jvm_mem": "1G",                              // jvm内存
+      "threads":[400, 1500],                        // tomcat并发线程极值
+      "max_connections": 10000,                     // 最大连接数
+      "port": {
+        "http_port": 8080,                
+        "shutdown_port": 8005, 
+        "ajp_port": 8009
+      }
+
+    }
   } 
 }
 
