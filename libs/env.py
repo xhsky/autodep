@@ -36,10 +36,10 @@ elasticsearch_dst="elasticsearch"
 elasticsearch_pkg_dir=None
 elasticsearch_version="7.8.1"
 
-tomcat_src="tomcat"
+tomcat_src="apache-tomcat-"
 tomcat_dst="tomcat"
-tomcat_pkg_dir=""
-tomcat_server="8.5.51"
+tomcat_pkg_dir=None
+tomcat_version="8.5.51"
 
 glusterfs_src="glusterfs"
 glusterfs_dst="glusterfs"
@@ -48,7 +48,7 @@ glusterfs_version="7.5"
 
 jdk_src="jdk"
 jdk_dst="jdk"
-jdk_pkg_dir=""
+jdk_pkg_dir=None
 jdk_version="8u251"
 
 mysql_src="mysql"
@@ -66,7 +66,7 @@ rabbitmq_dst="rabbitmq"
 rabbitmq_pkg_dir=None
 rabbitmq_version="3.8.7"
 
-redis_src="redis"
+redis_src="redis-"
 redis_dst="redis"
 redis_pkg_dir=None
 redis_version="5.0.7"
