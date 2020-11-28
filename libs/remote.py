@@ -24,7 +24,7 @@ class soft(object):
 
     def control(self, py_file, action, args_dict):
         command=f"{remote_python_exec} {py_file} {action} '{json.dumps(args_dict)}'"
-        log.logger.debug(f"{action=}: {command=}")
+        log.logger.debug(f"{action=}: {command}")
         status=self.ssh.exec(self.ip, self.port, command)
         return status
     
