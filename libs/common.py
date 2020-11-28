@@ -128,7 +128,7 @@ def config(config_dict):
                         f.write(context)
         return True, None
     except Exception as e:
-        return False, e
+        return False, str(e)
 
 class MessageFilter(logging.Filter):
     """
