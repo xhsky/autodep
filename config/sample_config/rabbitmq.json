@@ -4,12 +4,18 @@
     "located": "/data/", 
     "rabbitmq_info":{
       "cluster_name": "mq_cluster",             // 集群名称, 需相同
-      "node_type": "disc",                      // 节点类型, 第一个写的mq节点必须为disc
+      "port":{
+        "rabbitmq_port": 5672,                  // rabbitmq端口
+        "epmd_port": 4369,                      // epmd端口
+        "beam_port": 25672                      // beam端口
+      }, 
+      "erlang_mem": "2G",                       // erlang内存
+      "node_type": "disc",                      // 节点类型. disc|ram. 第一个写的mq节点必须为disc
       "members": ["mq", "mq1","mq2"],           // 集群成员
-      "vhosts": ["/vhost"],                     // 虚拟机名称
+      "vhosts": ["/vhost"],                     // 虚拟机名称, 其它节点不用写
       "users": ["a1"],                          // 用户
       "passwords": ["111111"]                   // 密码, vhost-user-password 一一对应
-     }
+    }
   }, 
   "mq1":{
     "software": ["rabbitmq"], 
@@ -17,8 +23,14 @@
     "rabbitmq_info":{
       "cluster_name": "mq_cluster", 
       "node_type": "ram", 
-      "members": ["mq", "mq1","mq2"]
-     }
+      "members": ["mq", "mq1","mq2"], 
+      "port":{
+        "rabbitmq_port": 5672,
+        "epmd_port": 4369,
+        "beam_port": 25672
+      }, 
+      "erlang_mem": "2G"
+    }
   },
   "mq2":{
     "software": ["rabbitmq"], 
@@ -26,8 +38,14 @@
     "rabbitmq_info":{
       "cluster_name": "mq_cluster", 
       "node_type": "ram", 
-      "members": ["mq", "mq1","mq2"]
-     }
+      "members": ["mq", "mq1","mq2"], 
+      "port":{
+        "rabbitmq_port": 5672,
+        "epmd_port": 4369,
+        "beam_port": 25672
+      }, 
+      "erlang_mem": "2G"
+    }
   }
 }
 
