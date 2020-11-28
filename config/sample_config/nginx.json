@@ -3,6 +3,9 @@
     "software": ["nginx"], 
     "located": "/data/", 
     "nginx_info":{                    
-      "proxy_hosts": ["web1", "web2"]         // 指定后端代理的主机名
+      "nginx_port": 80,                           // nginx端口
+      "worker_processes": 2,                      // work进程数, 一般与cpu核心数相同
+      "proxy_hosts": ["web1:8080", "web2:8080"]   // 指定后端代理的主机名及端口
      }
+  }
 }

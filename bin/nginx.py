@@ -2,40 +2,53 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, os, json
-import psutil
+import sys, json
 from libs import common
+from libs.env import log_remote_level, nginx_src, nginx_dst, nginx_pkg_dir, nginx_version
 
 def main():
-    action, weight, soft_file, conf_json=sys.argv[1:5]
+    action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
     located=conf_dict.get("located")
-    soft_name="Nginx"
 
-    log=common.Logger(None, "info", "remote")
+    nginx_dir=f"{located}/{nginx_dst}"
+    nginx_info_dict=conf_dict["nginx_info"]
+    nginx_port=nginx_info_dict.get("nginx_port")
+    port_list=[
+            nginx_port
+            ]
+
+    log=common.Logger({"remote": log_remote_level}, loggger_name="nginx")
 
     # 安装
+    flag=0
     if action=="install":
-        os.system("id -u nginx &> /dev/null || useradd -r nginx")
-        value, msg=common.install(soft_file, "nginx-", "nginx", None, located)
-        if value==1:
-            log.logger.info(f"{soft_name}安装完成")
+        pkg_file=conf_dict["pkg_file"]
+        command="id -u nginx &> /dev/null || useradd -r nginx"
+        log.logger.debug(f"创建用户: {command=}")
+        status, result=common.exec_command(command)
+        if status:
+            if result.returncode != 0:
+                log.logger.error(result.stderr)
         else:
-            log.logger.error(f"{soft_name}安装失败: {msg}")
-            return 
+            log.logger.error(result)
+
+        value, msg=common.install(pkg_file, nginx_src, nginx_dst, nginx_pkg_dir, located)
+        if not value:
+            log.logger.error(msg)
+            flag=1
+            sys.exit(flag)
 
         # 配置
-        cpu_count=int(psutil.cpu_count() * float(weight))
-        if cpu_count==0:
-            cpu_count=1
+        worker_processes=nginx_info_dict.get("worker_processes")
+
         # proxy
-        tomcat_servers=""
-        for i in conf_dict.get("nginx_info").get("proxy_hosts"):
-            tomcat_servers=f"{tomcat_servers}server {i}:8080;\n                "
-        
+        upstream_servers=""
+        for proxy_host in nginx_info_dict.get("proxy_hosts"):
+            upstream_servers=f"{upstream_servers}server {proxy_host};" 
         nginx_conf_text=f"""\
                 user  nginx;
-                worker_processes  {cpu_count};
+                worker_processes  {worker_processes};
 
                 #error_log  logs/error.log;
                 #error_log  logs/error.log  notice;
@@ -67,7 +80,6 @@ def main():
                     sendfile        on;
                     tcp_nopush     on;
                     tcp_nodelay on;
-                    #keepalive_timeout  0;
                     keepalive_timeout  65;
 
                     # gzip
@@ -81,13 +93,13 @@ def main():
                     underscores_in_headers on;
 
                     # load 
-                    upstream tomcat_servers {{
-                        ip_hash;
-                        {tomcat_servers}
+                    upstream upstream_servers {{
+                        # ip_hash;
+                        {upstream_servers}
                     }}
 
                     server {{
-                        listen       80;
+                        listen       {nginx_port};
                         server_name  localhost;
 
                         #charset koi8-r;
@@ -95,7 +107,7 @@ def main():
                         #access_log  logs/host.access.log  main;
 
                         location / {{
-                          proxy_pass http://tomcat_servers;
+                          proxy_pass http://upstream_servers;
                           proxy_set_header Host $host; 
                           proxy_set_header X-Real-IP $remote_addr;
                           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -103,7 +115,7 @@ def main():
                     }}
                 }}
                 """
-        nginx_conf_file=f"{located}/nginx/conf/nginx.conf"
+        nginx_conf_file=f"{nginx_dir}/conf/nginx.conf"
         config_dict={
                 "nginx_conf":{
                     "config_file": nginx_conf_file, 
@@ -111,27 +123,42 @@ def main():
                     "mode": "w"
                     }
                 }
+        log.logger.debug(f"写入配置文件: {json.dumps(config_dict)=}")
         result, msg=common.config(config_dict)
-        if result==1:
-            command=f"cd {located}/nginx ;./sbin/nginx -t &> /dev/null"
-            if os.system(command) == 0:
-                log.logger.info(f"{soft_name}配置优化完成")
+        if result:
+            command=f"cd {nginx_dir} && ./sbin/nginx -t"
+            log.logger.debug(f"检测配置文件: {command=}")
+            status, result=common.exec_command(command)
+            if status:
+                if result.returncode != 0:
+                    log.logger.error(result.stderr)
+                    flag=1
             else:
-                log.logger.error(f"{soft_name}配置优化失败")
+                log.logger.error(result)
+                flag=1  
         else:
-            log.logger.error(f"{soft_name}配置文件写入失败:{msg}")
+            log.logger.error(msg)
+            flag=1
+
+        sys.exit(flag)
 
     elif action=="start":
-        start_command=f"cd {located}/nginx ; ./sbin/nginx &> /dev/null"
-        result=os.system(start_command)
-        if result==0:
-            status=common.port_exist(80, 300)
-            if status==1:
-                log.logger.info(f"{soft_name}启动完成")
+        start_command=f"cd {nginx_dir} ; ./sbin/nginx"
+        log.logger.debug(f"{start_command=}")
+        status, result=common.exec_command(start_command)
+        if status:
+            if result.returncode != 0:
+                log.logger.error(result.stderr)
+                flag=1
             else:
-                log.logger.error(f"{soft_name}启动超时")
+                log.logger.debug(f"检测端口: {port_list=}")
+                if not common.port_exist(port_list):
+                    flag=2
         else:
-            log.logger.error(f"Error: {soft_name}启动失败")
+            log.logger.error(result)
+            flag=1
+
+        sys.exit(flag)
 
 if __name__ == "__main__":
     main()

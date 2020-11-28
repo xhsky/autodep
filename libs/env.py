@@ -56,7 +56,7 @@ mysql_dst="mysql"
 mysql_pkg_dir=""
 mysql_version="8.0.19"
 
-nginx_src="nginx"
+nginx_src="nginx-"
 nginx_dst="nginx"
 nginx_pkg_dir=None
 nginx_version="1.17.9"
