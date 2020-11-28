@@ -10,9 +10,9 @@ from logging import handlers
 import logging
 
 
-def exec_command(command):
+def exec_command(command, timeout=45):
     try:
-        result=run(command, capture_output=True, encoding="utf8", shell=True, timeout=45)
+        result=run(command, capture_output=True, encoding="utf8", shell=True, timeout=timeout)
         return True, result
     except Exception as e:
         result=str(e)
