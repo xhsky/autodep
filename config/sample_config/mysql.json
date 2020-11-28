@@ -5,6 +5,9 @@
     "mysql_info":{
         "db_info":{                                             // 单机信息
           "root_password": "DreamSoft_135",                     // root密码, 需符合复杂度规则
+          "mysql_port": 3306,                                   // MySQL端口
+          "innodb_mem": "8G",                                   // mysql最大内存
+          "max_connections": 1500,                              // 最大连接数
           "server_id": 1,                                       // 集群中唯一
           "business_db": ["db1", "db2"],                        // 业务数据库
           "business_user": ["user1", "user2"],                  // 相应用户
@@ -22,13 +25,16 @@
         "db_info":{
           "root_password": "DreamSoft_246", 
           "server_id": 2,                         
+          "mysql_port": 3306,                                   // MySQL端口
+          "innodb_mem": "2G",                                   // mysql最大内存
+          "max_connections": 1500,                              // 最大连接数
           "business_db": ["db3", "db4"],                        // 业务数据库. 若为slave, 此处不可同步数据库
           "business_user": ["user3", "user4"],                  // 相应用户, 同上
           "business_password": ["Dreamdb_333", "Dreamdb_444"]   // 相应密码, 同上
         }, 
         "cluster_info":{                                        // 主从配置slave信息
           "role": "slave" ,                                     // 角色
-          "sync_host": "db1",                                   // 同步主机
+          "sync_host": "db1:3306",                              // 同步主机
           "sync_dbs": ["db1", "db2"]                            // 同步数据库名, 即在master中的业务数据库
         }
     }

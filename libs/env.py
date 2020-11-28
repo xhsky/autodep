@@ -51,19 +51,20 @@ jdk_dst="jdk"
 jdk_pkg_dir=None
 jdk_version="8u251"
 
-mysql_src="mysql"
+mysql_src="mysql-"
 mysql_dst="mysql"
-mysql_pkg_dir=""
+mysql_pkg_dir="pkg"
 mysql_version="8.0.19"
+mysql_user="mysql"
 
 nginx_src="nginx-"
 nginx_dst="nginx"
 nginx_pkg_dir=None
 nginx_version="1.17.9"
 
-rabbitmq_src="rabbitmq"
+rabbitmq_src="rabbitmq_server-"
 rabbitmq_dst="rabbitmq"
-rabbitmq_pkg_dir=None
+rabbitmq_pkg_dir="pkg"
 rabbitmq_version="3.8.7"
 
 redis_src="redis-"
