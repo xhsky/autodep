@@ -3,7 +3,7 @@
 # Date: 2020年 08月 11日 星期二 15:28:06 CST
 # sky
 
-import sys, os, json
+import sys, json
 from libs import common
 from libs.env import log_remote_level, elasticsearch_src, elasticsearch_dst, elasticsearch_pkg_dir, elasticsearch_version
 
@@ -109,7 +109,7 @@ def main():
                     "mode": "w"
                     }
                 }
-        log.logger.debug(f"写入配置文件: {json.dumps(config_dict)=}")
+        log.logger.debug(f"写入配置文件: {json.dumps(config_dict)}")
         result, msg=common.config(config_dict)
         if result:
             command=f"chown -R elastic:elastic {located}/{elasticsearch_src}*  && sysctl -p {sysctl_conf_file}"
