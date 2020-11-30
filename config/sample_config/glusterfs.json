@@ -5,7 +5,11 @@
     "glusterfs_info":{
         "server_info":{                       // 服务端配置
           "volume_dir": "/data_db",           // 服务端提供共享的原始目录
-          "members":["web2", "web3"]          // 集群成员
+          "members":["web2", "web3"],         // 集群成员
+          "port": {
+            "glusterd_port": 24007,           // glusterd端口
+            "volume_port": 49152              // 共享卷端口
+          }
         }, 
         "client_info":{                       // 客户端配置
           "mounted_host": "web3",             // 指定挂载的服务端主机名
@@ -19,7 +23,11 @@
     "glusterfs_info":{
         "server_info":{
           "volume_dir": "/data_db", 
-          "members":["web2", "web3"]
+          "members":["web2", "web3"], 
+          "port": {
+            "glusterd_port": 24007,  
+            "volume_port": 49152    
+          }
         }, 
         "client_info":{
           "mounted_host": "web2", 

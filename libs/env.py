@@ -9,7 +9,7 @@ log_console_level="info"
 log_file_level="debug"
 log_remote_level="debug"
 
-test_mode=True
+test_mode=False
 
 remote_python_transfer_dir="/tmp"
 remote_python_install_dir="/opt"
@@ -41,9 +41,11 @@ tomcat_dst="tomcat"
 tomcat_pkg_dir=None
 tomcat_version="8.5.51"
 
-glusterfs_src="glusterfs"
+glusterfs_src="glusterfs-"
 glusterfs_dst="glusterfs"
-glusterfs_pkg_dir=""
+glusterfs_all_pkg_dir="glusterfs_all"
+glusterfs_client_pkg_dir="glusterfs_client"
+glusterfs_volume_name="g_data_test"
 glusterfs_version="7.5"
 
 jdk_src="jdk"
