@@ -45,7 +45,7 @@ glusterfs_src="glusterfs-"
 glusterfs_dst="glusterfs"
 glusterfs_all_pkg_dir="glusterfs_all"
 glusterfs_client_pkg_dir="glusterfs_client"
-glusterfs_volume_name="g_data_test"
+glusterfs_volume_name="g_data"
 glusterfs_version="7.5"
 
 jdk_src="jdk"
