@@ -18,7 +18,7 @@ class soft(object):
 
     def init(self, py_file, init_args):
         command=f"{remote_python_exec} {py_file} '{json.dumps(init_args)}'"
-        log.logger.debug(f"init: {command=}")
+        log.logger.debug(f"init: {command}")
         status=self.ssh.exec(self.ip, self.port, command)
         return status
 
