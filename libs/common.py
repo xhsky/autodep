@@ -4,7 +4,7 @@
 
 import tarfile, psutil
 import os, time, socket
-from subprocess import run
+from subprocess import run, call
 import textwrap
 from logging import handlers
 import logging
@@ -76,20 +76,39 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
 
             not_intall_pkg_list=[]  # 判断rpm是否已安装
             for i in pkg_list:
-                command=f"rpm -q {i[:-4]} &> /dev/null"
+                command=f"rpm -qpi {pkg_dir}/{i} | head -n 1"
                 log.logger.debug(f"{command=}")
-                if os.system(command) != 0:
-                    not_intall_pkg_list.append(i)
+                status, result=exec_command(command)
+                if status:
+                    if result.returncode != 0:
+                        return False, result.stderr
+                    else:
+                        pkg_name=result.stdout.split(":")[1].strip()
+                        command=f"rpm -q {pkg_name}"
+                        log.logger.debug(f"{command=}")
+                        status, result=exec_command(command)
+                        if status:
+                            if result.returncode != 0:
+                                not_intall_pkg_list.append(i)
+                        else:
+                            return False, result
+                else:
+                    return False, result
 
+            log.logger.debug(f"未安装包: {not_intall_pkg_list=}")
             if len(not_intall_pkg_list) == 0:
                 return True, None
             else:
                 pkgs=" ".join(not_intall_pkg_list)
                 command=f"cd {pkg_dir} && rpm -Uvh {pkgs} &> /dev/null"
-                log.logger.info(f"{command=}")
-                result=os.system(command)
-                if result==0: 
-                    return True, None
+                log.logger.debug(f"{command=}")
+                status, result=exec_command(command)
+                if status:
+                    if result.returncode != 0:
+                        log.logger.error(f"{result.returncode=}")
+                        return False, result.stderr
+                    else:
+                        return True, None
                 else:
                     return False, result
         else:
