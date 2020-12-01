@@ -67,7 +67,7 @@ nginx_version="1.17.9"
 rabbitmq_src="rabbitmq_server-"
 rabbitmq_dst="rabbitmq"
 rabbitmq_pkg_dir="pkg"
-rabbitmq_version="3.8.7"
+rabbitmq_version="3.8.9"
 
 redis_src="redis-"
 redis_dst="redis"
