@@ -50,8 +50,8 @@ def main():
         node_type=rabbitmq_info_dict.get("node_type")
 
         mq_env_text=f"""\
-                RABBITMQ_NODE_IP_ADDRESS=0.0.0.0
-                RABBITMQ_DIST_PORT={beam_port}
+                NODE_IP_ADDRESS=0.0.0.0
+                DIST_PORT={beam_port}
                 ERL_EPMD_PORT={epmd_port}
         """
         mq_env_file=f"{rabbitmq_dir}/etc/rabbitmq/rabbitmq-env.conf"
@@ -129,7 +129,7 @@ def main():
                 flag=1
             else:
                 log.logger.debug(f"检测端口: {port_list=}")
-                if not common.port_exist(port_list):
+                if not common.port_exist(port_list, seconds=180):
                     flag=2
                 else:
                     # 设置账号, vhost及权限
