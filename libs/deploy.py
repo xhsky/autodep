@@ -4,12 +4,6 @@
 # sky
 
 import locale, json, os, time, sys
-from dialog import Dialog
-from textwrap import dedent
-from libs.common import Logger
-from libs.remote import ssh, soft
-#from threading import Thread
-
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, \
@@ -17,6 +11,11 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, \
 
 if not os.path.exists(logs_dir):
     os.makedirs(logs_dir, exist_ok=1)
+
+from textwrap import dedent
+from libs.common import Logger
+from libs.remote import ssh, soft
+#from threading import Thread
 
 """
 class MyThread(Thread):
@@ -425,6 +424,8 @@ class text_deploy(Deploy):
 
 class graphics_deploy(Deploy):
     '''文本图形化安装'''
+
+    from dialog import Dialog
 
     def __init__(self, conf_file, init_file, arch_file, project_file):
         super(graphics_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
