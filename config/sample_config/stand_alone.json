@@ -2,17 +2,37 @@
   "node":{
     "software": ["elasticsearch", "ffmpeg", "mysql", "rabbitmq", "redis", "nginx", "jdk", "tomcat"], 
     "located": "/data", 
+    "tomcat_info":{
+      "jvm_mem": "1G", 
+      "threads":[400, 1500],         
+      "max_connections": 10000,     
+      "port": {
+        "http_port": 8080,                
+        "shutdown_port": 8005, 
+        "ajp_port": 8009
+      }
+    },
     "nginx_info":{                         
-      "proxy_hosts": ["node"]
+      "nginx_port": 80,   
+      "worker_processes": 2,  
+      "proxy_hosts": ["node:8080"]
     },   
     "elasticsearch_info":{
       "cluster_name": "es_cluster", 
+      "jvm_mem": "2G",  
+      "port": {
+        "http_port": 9200,
+        "transport": 9300
+      }, 
       "members":["node"]
     },  
     "mysql_info":{
         "db_info":{
           "root_password": "DreamSoft_135", 
           "server_id": 1, 
+          "mysql_port": 3306,  
+          "innodb_mem": "8G", 
+          "max_connections": 1500, 
           "business_db": ["db1", "db2"], 
           "business_user": ["user1", "user2"], 
           "business_password": ["Dreamdb_111", "Dreamdb_222"]
@@ -21,14 +41,22 @@
     "rabbitmq_info":{
       "cluster_name": "mq_cluster", 
       "node_type": "disc", 
+      "port":{
+        "rabbitmq_port": 5672,  
+        "epmd_port": 4369,     
+        "beam_port": 25672    
+      }, 
+      "erlang_mem": "2G",    
       "members": ["node"], 
-			"vhosts": ["/vhost"],                  
+      "vhosts": ["/vhost"],                  
       "users": ["a1"],                      
       "passwords": ["111111"]
      }, 
-		"redis_info":{
+     "redis_info":{
        "db_info":{
-         "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599"
+         "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599",
+         "redis_port": 6379,                                          
+         "redis_mem": "200M"                                         
        }
     }
   }
