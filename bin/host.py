@@ -39,7 +39,7 @@ def main():
                 with open(redhat_file, "r") as f:
                     os_name=f.read().strip()
 
-        host_info_dict["hostname"]=hostname
+        #host_info_dict["hostname"]=hostname
         host_info_dict["os_name"]=os_name
         host_info_dict["kernel_version"]=kernel_version
 
