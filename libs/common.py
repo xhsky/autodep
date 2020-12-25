@@ -3,7 +3,7 @@
 # sky
 
 import tarfile, psutil
-import os, time, socket
+import os, time, socket, sys
 from subprocess import run, call
 import textwrap
 from logging import handlers
@@ -203,8 +203,12 @@ class platform_handler(logging.Handler):
                     "content": msg, 
                     "number": self.log_number
                     }
-            print(f"{data=}")
-            result=requests.post(self.url, data=json.dumps(data), headers=headers, timeout=10)
+            #print(f"{data=}")
+            try:
+                result=requests.post(self.url, data=json.dumps(data), headers=headers, timeout=10)
+            except requests.exceptions.ConnectionError:
+                print(f"Error: 平台接口({self.url})无法连接")
+                sys.exit(1)
 
 class Logger(object):
     level_relations = {         #日志级别关系映射
