@@ -1191,11 +1191,15 @@ class platform_deploy(Deploy):
                     "Content-Type": "application/json"
                     }
             url=f"http://{interface['platform_info'][0]}:{interface['platform_info'][1]}{interface['platform_info'][2]}"
-            result=requests.post(url, data=json.dumps(all_host_dict), headers=headers, timeout=10)
-            if result.status_code==200:
-                self.log.logger.info(f"主机信息发送完成")
-            else:
-                self.log.logger.error(f"主机信息发送失败: {result.json().get('message')}")
+            try:
+                result=requests.post(url, data=json.dumps(all_host_dict), headers=headers, timeout=10)
+                if result.status_code==200:
+                    self.log.logger.info(f"主机信息发送完成")
+                else:
+                    self.log.logger.error(f"主机信息发送失败: {result.json().get('message')}")
+            except requests.exceptions.ConnectionError:
+                print(f"Error: 平台接口({url})无法连接")
+                sys.exit()
         else:
             self.log.logger.error(f"初始化失败: {status}")
 
@@ -1204,15 +1208,22 @@ class platform_deploy(Deploy):
             init_dict=json.load(init_f)
             arch_dict=json.load(arch_f)
         self.log.logger.info("集群安装...\n")
-        super(text_deploy, self).install(init_dict, arch_dict, self.log)
+        result=super(platform_deploy, self).install(init_dict, arch_dict)
+        if result:
+            self.log.logger.info("集群安装完成")
+        else:
+            self.log.logger.error("集群安装失败")
 
     def start(self):
         with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
             init_dict=json.load(init_f)
             arch_dict=json.load(arch_f)
         self.log.logger.info("集群启动...\n")
-        super(text_deploy, self).install(init_dict, arch_dict, self.log)
-
+        result=super(platform_deploy, self).start(init_dict, arch_dict)
+        if result:
+            self.log.logger.info("集群启动完成")
+        else:
+            self.log.logger.error("集群启动失败")
     
 if __name__ == "__main__":
     main()
