@@ -79,12 +79,12 @@ def main():
             ]
 
     cluster_info_dict=mysql_info_dict.get("cluster_info")
+    my_client_cnf_file="/etc/my_client.cnf"
     if cluster_info_dict is None:
         cluster_flag=0
         role="stand-alone"
     else:
         cluster_flag=1
-        my_client_cnf_file="/etc/my_client.cnf"
         role=cluster_info_dict.get("role")
 
     # 安装
