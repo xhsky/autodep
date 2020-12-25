@@ -8,6 +8,7 @@ log_file=f"{logs_dir}/autodep.log"
 log_console_level="info"
 log_file_level="debug"
 log_remote_level="debug"
+log_platform_level="debug"
 
 test_mode=False
 
@@ -20,9 +21,10 @@ remote_code_dir=f"{remote_python_dir}/code"
 remote_pkgs_dir=f"{remote_python_dir}/pkgs"
 
 interface={
-        "mail": ["smtp.dreamdt.cn", 25],        # 邮件接口
-        "sms": ["smartone.10690007.com", 80],   # 短信接口
-        "platform": ["", 80]                    # 公司平台接口
+        "mail": ["smtp.dreamdt.cn", 25, None],                              # 邮件接口
+        "sms": ["smartone.10690007.com", 80, "/proxysms/mt"],               # 短信接口
+        "platform_log": ["192.168.0.81", 8115, "/project/deploy/sendLog"],  # 公司平台日志接口
+        "platform_info": ["192.168.0.81", 8115, "/project/deploy/sendDetection"],  # 公司平台信息接口
         }
 
 # link
