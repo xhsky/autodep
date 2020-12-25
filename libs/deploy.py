@@ -3,8 +3,8 @@
 # 2020-10-21 17:37:47
 # sky
 
-import locale, json, os, time, sys
-from libs.env import logs_dir, log_file, log_file_level, log_console_level, \
+import locale, json, os, time, sys, requests
+from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, \
         interface, test_mode
@@ -38,13 +38,13 @@ class Deploy(object):
     '''集群部署
     '''
     def __init__(self, conf_file, init_file, arch_file, project_file):
-        with open(conf_file, "r", encoding="utf8") as conf_f:
+        with open(conf_file, "r", encoding="utf8") as conf_f, open(project_file, "r", encoding="utf8") as project_f:
             self.conf_dict=json.load(conf_f)
             self.soft=self.conf_dict["software"].keys()
+            self.project_dict=json.load(project_f)
 
         self.init_file=init_file
         self.arch_file=arch_file
-        self.project_file=project_file
 
     def connect_test(self, init_dict):
         """
@@ -1138,8 +1138,16 @@ class platform_deploy(Deploy):
     '''平台安装'''
 
     def __init__(self, conf_file, init_file, arch_file, project_file):
-        super(text_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
-        self.log=Logger(["file", "console", "paltform"], self.log_level, self.log_file)
+        super(platform_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
+
+        self.project_id=self.project_dict.get("project_id")
+        self.log=Logger({"platform": log_platform_level, "file": log_file_level}, 
+                log_file=log_file, logger_name="platform", 
+                platform_host=interface["platform_log"][0], 
+                platform_port=interface["platform_log"][1], 
+                platform_url=interface["platform_log"][2], 
+                project_id=self.project_id
+                )
 
     def check(self):
         '''
@@ -1157,14 +1165,37 @@ class platform_deploy(Deploy):
             self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
             for node_msg in connect_msg:
                 self.log.logger.info(f"{node_msg[0]}:\t{node_msg[2]}")
-            exit()
+            sys.exit()
 
         local_python3_file=self.conf_dict["location"].get("python3")
-        status=super(text_deploy, self).init(init_dict, local_python3_file, self.log)
-        if status=="OK":
+        status=super(platform_deploy, self).init(init_dict, local_python3_file)
+        if status:
             self.log.logger.info("初始化完成\n")
-            self.log.logger.info("各主机信息如下:")
-            self.get_host_msg(init_dict, self.log)
+            self.log.logger.info("获取主机信息. . .")
+            all_host_info=self.get_host_msg(init_dict)
+            all_host_dict={
+                    "rwid": self.project_id
+                    }
+            for node in all_host_info:
+                if all_host_info[node][0] == 0:
+                    node_info=all_host_info[node][1]
+                    self.log.logger.debug(f"{node_info=}")
+                    node_info=node_info[node_info.index("{"):]
+                    all_host_dict[node]=json.loads(node_info)
+                else:
+                    all_host_dict[node]={
+                            "error_info": all_host_info[node][1]
+                            } 
+
+            headers={
+                    "Content-Type": "application/json"
+                    }
+            url=f"http://{interface['platform_info'][0]}:{interface['platform_info'][1]}{interface['platform_info'][2]}"
+            result=requests.post(url, data=json.dumps(all_host_dict), headers=headers, timeout=10)
+            if result.status_code==200:
+                self.log.logger.info(f"主机信息发送完成")
+            else:
+                self.log.logger.error(f"主机信息发送失败: {result.json().get('message')}")
         else:
             self.log.logger.error(f"初始化失败: {status}")
 
