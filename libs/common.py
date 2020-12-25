@@ -8,7 +8,7 @@ from subprocess import run, call
 import textwrap
 from logging import handlers
 import logging
-
+import requests, json
 
 def exec_command(command, timeout=45):
     try:
@@ -179,6 +179,33 @@ class MessageRewrite(logging.Filter):
                 break
         return True
 
+class platform_handler(logging.Handler):
+    def __init__(self, host, url, method, project_id):
+        logging.Handler.__init__(self)
+        self.url=f"http://{host}{url}"
+        self.project_id=project_id
+
+        method=method.upper()
+        self.method=method
+
+        self.log_number=0
+
+    def emit(self, record):
+        msg=self.format(record)
+        if self.method == "POST":
+            headers={
+                    "Content-Type": "application/json"
+                    #"Content-length": str(len(msg))
+                    }
+            self.log_number+=1
+            data={
+                    "rwid": self.project_id, 
+                    "content": msg, 
+                    "number": self.log_number
+                    }
+            print(f"{data=}")
+            result=requests.post(self.url, data=json.dumps(data), headers=headers, timeout=10)
+
 class Logger(object):
     level_relations = {         #日志级别关系映射
         'debug':logging.DEBUG,
@@ -250,13 +277,16 @@ class Logger(object):
             self.gh.setFormatter(format_str)
             self.logger.addHandler(self.gh)                             # 把对象加到logger里
         if log_to_platform:
-            pass
-            """
+            host=f"{kwargs['platform_host']}:{kwargs['platform_port']}"
+            url=kwargs["platform_url"]
+            project_id=kwargs["project_id"]
+
             fmt="%(levelname)s: %(message)s"
-            self.ph=handlers.HTTPHandler(host, url, method="POST")
-            self.ph.setLevel(self.level_relations[mode_level_dict["platform"]])
+            self.ph=platform_handler(host, url, "POST", project_id)
             format_str=logging.Formatter(fmt)                           # 设置日志格式
+            self.ph.setFormatter(format_str)
+            self.ph.setLevel(self.level_relations[mode_level_dict["platform"]])
             self.logger.addHandler(self.ph)
-            """
+
 if __name__ == "__main__":
     main()
