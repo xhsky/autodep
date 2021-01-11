@@ -92,6 +92,10 @@
 1. 按文档编译，编译后目录为`/opt/redis-<version>`
 2. 将编译目录打包为`redis-<version>-bin.tar.gz`
 
+### RocketMQ
+
+1. 从官网下载(https://rocketmq.apache.org/release_notes/)
+2. 压缩格式改为tar.gz(解压后使用tar压缩, 仅后缀名更改)
 
 
 ## ext打包
@@ -99,3 +103,4 @@
 1. 建立`ext`目录
 2. 将以上打包好的各软件放入`ext`目录中
 3. 根据操作系统及CPU架构不同，将`ext`目录打包为`ext-<version>-<dis>-<arch>.tar.gz`
+

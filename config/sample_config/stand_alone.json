@@ -1,6 +1,6 @@
 {
   "node":{
-    "software": ["elasticsearch", "ffmpeg", "mysql", "erlang", "rabbitmq", "redis", "nginx", "jdk", "tomcat"], 
+    "software": ["elasticsearch", "ffmpeg", "mysql", "erlang", "rabbitmq", "redis", "nginx", "jdk", "tomcat", "rocketmq"], 
     "located": "/data", 
     "tomcat_info":{
       "jvm_mem": "1G", 
@@ -52,12 +52,24 @@
       "users": ["a1"],                      
       "passwords": ["111111"]
      }, 
-     "redis_info":{
+    "redis_info":{
        "db_info":{
          "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599",
          "redis_port": 6379,                                          
          "redis_mem": "200M"                                         
        }
+    }, 
+    "rocketmq_info":{
+      "cluster_name": "mq_cluster",
+      "port":{
+        "namesrv_port": 9876,  
+        "fast_remote_port": 10909,
+        "remote_port": 10911     
+      }, 
+      "namesrv_mem": "1G",        
+      "broker_mem": "2G",          
+      "broker_name": "node",        
+      "namesrvs": ["node:9876"]      
     }
   }
 }

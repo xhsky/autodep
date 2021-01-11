@@ -1,0 +1,35 @@
+{
+  "mq1":{
+    "software": ["java", "rocketmq"], 
+    "located": "/data/", 
+    "rocketmq_info":{
+      "cluster_name": "mq_cluster",               // 集群名称, 需相同
+      "port":{
+        "namesrv_port": 9876,                     // nameserver端口
+        "fast_remote_port": 10909,                // fastRemotingServer端口
+        "remote_port": 10911                      // remotingServer端口
+      }, 
+      "namesrv_mem": "1G",                        // nameserver内存(broker_mem的一半)
+      "broker_mem": "2G",                         // broker内存
+      "broker_name": "mq1",                       // broker名称, 唯一
+      "namesrvs": ["mq1:9876", "mq2:9876"]        // 集群成员, host:namesrv_port
+    }
+  }, 
+  "mq2":{
+    "software": ["java", "rocketmq"], 
+    "located": "/data/", 
+    "rocketmq_info":{
+      "cluster_name": "mq_cluster",               // 集群名称, 需相同
+      "port":{
+        "namesrv_port": 9876,                     // nameserver端口
+        "fast_remote_port": 10909,                // fastRemotingServer端口
+        "remote_port": 10911                      // remotingServer端口
+      }, 
+      "namesrv_mem": "1G",                        // nameserver内存(broker_mem的一半)
+      "broker_mem": "2G",                         // broker内存
+      "broker_name": "mq2",                       // broker名称, 唯一
+      "namesrvs": ["mq1:9876", "mq2:9876"]        // 集群成员, host:namesrv_port
+    }
+  }
+}
+
