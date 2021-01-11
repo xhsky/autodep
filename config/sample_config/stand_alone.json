@@ -1,6 +1,6 @@
 {
   "node":{
-    "software": ["elasticsearch", "ffmpeg", "mysql", "rabbitmq", "redis", "nginx", "jdk", "tomcat"], 
+    "software": ["elasticsearch", "ffmpeg", "mysql", "erlang", "rabbitmq", "redis", "nginx", "jdk", "tomcat"], 
     "located": "/data", 
     "tomcat_info":{
       "jvm_mem": "1G", 

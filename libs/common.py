@@ -63,7 +63,10 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
             if i.startswith(link_src):
                 src=f"{located}/{i}"
                 break
-        dst=f"{located}/{link_dst}"
+        if link_dst.startswith("/"):
+            dst=link_dst
+        else:
+            dst=f"{located}/{link_dst}"
         if os.path.exists(dst) and os.path.islink(dst):
             os.remove(dst)
         log.logger.debug(f"建立软连接: {src=} ==> {dst=}")

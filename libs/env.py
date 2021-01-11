@@ -10,7 +10,8 @@ log_file_level="debug"
 log_remote_level="debug"
 log_platform_level="debug"
 
-test_mode=False
+test_mode=True
+fixed_dir="/opt"
 
 remote_python_transfer_dir="/tmp"
 remote_python_install_dir="/opt"
@@ -55,6 +56,11 @@ jdk_dst="jdk"
 jdk_pkg_dir=None
 jdk_version="8u251"
 
+erl_src="erlang"
+erl_dst="erlang"
+erl_pkg_dir=None
+erl_version="23.2"
+
 mysql_src="mysql-"
 mysql_dst="mysql"
 mysql_pkg_dir="pkg"
@@ -68,7 +74,7 @@ nginx_version="1.17.9"
 
 rabbitmq_src="rabbitmq_server-"
 rabbitmq_dst="rabbitmq"
-rabbitmq_pkg_dir="pkg"
+rabbitmq_pkg_dir=None
 rabbitmq_version="3.8.9"
 
 redis_src="redis-"

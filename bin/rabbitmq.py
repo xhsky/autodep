@@ -8,9 +8,6 @@ from libs import common
 from libs.env import log_remote_level, rabbitmq_src, rabbitmq_dst, rabbitmq_pkg_dir, rabbitmq_version
 
 def main():
-    """
-        将erlang.rpm放入rabbitmq.tar.gz的pkg目录中
-    """
     action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
     located=conf_dict.get("located")
