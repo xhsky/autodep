@@ -1,34 +1,38 @@
 {
   "mq1":{
-    "software": ["java", "rocketmq"], 
-    "located": "/data/", 
+    "software": ["jdk", "rocketmq"], 
+    "located": "/data1/", 
     "rocketmq_info":{
-      "cluster_name": "mq_cluster",               // 集群名称, 需相同
+      "cluster_name": "mq_cluster",
+      "replica_name": "mq1",      
+      "replica_role": "master",	
       "port":{
-        "namesrv_port": 9876,                     // nameserver端口
-        "fast_remote_port": 10909,                // fastRemotingServer端口
-        "remote_port": 10911                      // remotingServer端口
+        "namesrv_port": 9876,  
+        "fast_remote_port": 10909, 
+        "remote_port": 10911, 
+        "ha_port": 10912
       }, 
-      "namesrv_mem": "1G",                        // nameserver内存(broker_mem的一半)
-      "broker_mem": "2G",                         // broker内存
-      "broker_name": "mq1",                       // broker名称, 唯一
-      "namesrvs": ["mq1:9876", "mq2:9876"]        // 集群成员, host:namesrv_port
+      "namesrv_mem": "1G",       
+      "broker_mem": "4G",       
+      "namesrvs": ["mq1:9876", "mq2:9876"] 
     }
   }, 
   "mq2":{
-    "software": ["java", "rocketmq"], 
-    "located": "/data/", 
+    "software": ["jdk", "rocketmq"], 
+    "located": "/data1/", 
     "rocketmq_info":{
-      "cluster_name": "mq_cluster",               // 集群名称, 需相同
+      "cluster_name": "mq_cluster",
+      "replica_name": "mq2",      
+      "replica_role": "master",	
       "port":{
-        "namesrv_port": 9876,                     // nameserver端口
-        "fast_remote_port": 10909,                // fastRemotingServer端口
-        "remote_port": 10911                      // remotingServer端口
+        "namesrv_port": 9876,  
+        "fast_remote_port": 10909, 
+        "remote_port": 10911, 
+        "ha_port": 10912
       }, 
-      "namesrv_mem": "1G",                        // nameserver内存(broker_mem的一半)
-      "broker_mem": "2G",                         // broker内存
-      "broker_name": "mq2",                       // broker名称, 唯一
-      "namesrvs": ["mq1:9876", "mq2:9876"]        // 集群成员, host:namesrv_port
+      "namesrv_mem": "1G",       
+      "broker_mem": "4G",       
+      "namesrvs": ["mq1:9876", "mq2:9876"] 
     }
   }
 }
