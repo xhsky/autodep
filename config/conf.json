@@ -10,7 +10,8 @@
     "glusterfs": "../ext/glusterfs-7.5-rpm.tar.gz",
     "elasticsearch": "../ext/elasticsearch-7.8.1-linux-x86_64.tar.gz", 
     "erlang": "../ext/erlang_23_2.tar.gz", 
-    "rabbitmq": "../ext/rabbitmq-server-generic-unix-3.8.9.tar.xz"
+    "rabbitmq": "../ext/rabbitmq-server-generic-unix-3.8.9.tar.xz", 
+    "rocketmq": "../ext/rocketmq-all-4.8.0-bin-release.tar.gz"
   }, 
   "software": {
      "nginx": 1,
