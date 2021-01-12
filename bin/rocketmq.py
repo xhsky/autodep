@@ -127,7 +127,7 @@ def main():
         elif replica_role=="slave":
             broker_id=1
             broker_role="SLAVE"
-        members_list=", ".join(rocketmq_info_dict.get("namesrvs"))
+        members_list=";".join(rocketmq_info_dict.get("namesrvs"))
 
         ## 添加启动脚本, 原脚本无法远程后台启动
         start_sh_text=f"""\
