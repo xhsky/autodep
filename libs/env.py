@@ -77,6 +77,11 @@ rabbitmq_dst="rabbitmq"
 rabbitmq_pkg_dir=None
 rabbitmq_version="3.8.9"
 
+rocketmq_src="rocketmq-all-"
+rocketmq_dst="rocketmq"
+rocketmq_pkg_dir=None
+rocketmq_version="4.8.0"
+
 redis_src="redis-"
 redis_dst="redis"
 redis_pkg_dir=None
