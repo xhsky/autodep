@@ -114,10 +114,11 @@ class ssh(object):
         sftp.close()
 
     def scp(self, ip, port, user, local_file, remote_file):
-        self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=1)
+        self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=3)
         sftp=self.ssh.open_sftp()
-        sftp.put(local_file, remote_file, confirm=True)
+        result=sftp.put(local_file, remote_file, confirm=True)
         sftp.close()
+        return result
 
     def get(self, ip, port, user, remote_file, local_file):
         self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=1)
