@@ -9,6 +9,7 @@ import textwrap
 from logging import handlers
 import logging
 import requests, json
+from libs.env import interface
 
 def exec_command(command, timeout=45):
     try:
@@ -206,7 +207,6 @@ class platform_handler(logging.Handler):
                     "content": msg, 
                     "number": self.log_number
                     }
-            #print(f"{data=}")
             try:
                 result=requests.post(self.url, data=json.dumps(data), headers=headers, timeout=10)
             except requests.exceptions.ConnectionError:
@@ -284,8 +284,15 @@ class Logger(object):
             self.gh.setFormatter(format_str)
             self.logger.addHandler(self.gh)                             # 把对象加到logger里
         if log_to_platform:
+            """
             host=f"{kwargs['platform_host']}:{kwargs['platform_port']}"
             url=kwargs["platform_url"]
+            """
+            platform_host=interface["platform_log"][0]
+            platform_port=interface["platform_log"][1]
+            host=f"{platform_host}:{platform_port}"
+            url=interface["platform_log"][2]
+
             project_id=kwargs["project_id"]
 
             fmt="%(levelname)s: %(message)s"
@@ -294,6 +301,21 @@ class Logger(object):
             self.ph.setFormatter(format_str)
             self.ph.setLevel(self.level_relations[mode_level_dict["platform"]])
             self.logger.addHandler(self.ph)
+
+
+def post_platform(info_dict):
+    headers={
+            "Content-Type": "application/json"
+            }
+    url=f"http://{interface['platform_info'][0]}:{interface['platform_info'][1]}{interface['platform_info'][2]}"
+    try:
+        result=requests.post(url, data=json.dumps(info_dict), headers=headers, timeout=10)
+        if result.status_code==200:
+            return True, ""
+        else:
+            return False, result.json().get('message')
+    except requests.exceptions.ConnectionError:
+        return False, f"平台接口({url})无法连接"
 
 if __name__ == "__main__":
     main()

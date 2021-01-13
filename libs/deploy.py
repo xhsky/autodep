@@ -1141,6 +1141,7 @@ class platform_deploy(Deploy):
         super(platform_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
 
         self.project_id=self.project_dict.get("project_id")
+        """
         self.log=Logger({"platform": log_platform_level, "file": log_file_level}, 
                 log_file=log_file, logger_name="platform", 
                 platform_host=interface["platform_log"][0], 
@@ -1148,7 +1149,11 @@ class platform_deploy(Deploy):
                 platform_url=interface["platform_log"][2], 
                 project_id=self.project_id
                 )
-
+        """
+        self.log=Logger({"platform": log_platform_level, "file": log_file_level}, 
+                log_file=log_file, logger_name="platform", 
+                project_id=self.project_id
+                )
     def check(self):
         '''
             校验配置文件
