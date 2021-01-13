@@ -10,11 +10,17 @@ log_file_level="debug"
 log_remote_level="debug"
 log_platform_level="debug"
 
+log_update_level="info"
+log_update_file=f"{logs_dir}/update.log"
+update_status_file=f"{logs_dir}/update.json"
+code_saved_remote_dir="/tmp"
+update_version_file="code_version"
+
 test_mode=True
 fixed_dir="/opt"
 
 remote_python_transfer_dir="/tmp"
-remote_python_install_dir="/opt"
+remote_python_install_dir=fixed_dir
 remote_python_dir=f"{remote_python_install_dir}/python3"
 remote_python_exec=f"{remote_python_dir}/bin/python3"
 
