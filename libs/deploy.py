@@ -7,13 +7,14 @@ import locale, json, os, time, sys, requests
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, \
-        interface, test_mode
+        interface, test_mode, \
+        init_stats_file, install_stats_file, start_stats_file
 
 if not os.path.exists(logs_dir):
     os.makedirs(logs_dir, exist_ok=1)
 
 from textwrap import dedent
-from libs.common import Logger
+from libs.common import Logger, post_info
 from libs.remote import ssh, soft
 #from threading import Thread
 
@@ -34,6 +35,7 @@ class MyThread(Thread):
             return None
 """
 
+
 class Deploy(object):
     '''集群部署
     '''
@@ -42,9 +44,66 @@ class Deploy(object):
             self.conf_dict=json.load(conf_f)
             self.soft=self.conf_dict["software"].keys()
             self.project_dict=json.load(project_f)
+            self.project_id=self.project_dict['project_id']
+            self.project_name=self.project_dict['project_name']
 
         self.init_file=init_file
         self.arch_file=arch_file
+
+        self.init_stats_dict={
+                "project_id": self.project_id, 
+                "mode": "init", 
+                "stats":{}
+                }
+        self.install_stats_dict={
+                "project_id": self.project_id, 
+                "mode": "install", 
+                "stats":{}
+                }
+        self.start_stats_dict={
+                "project_id": self.project_id, 
+                "mode": "start", 
+                "stats":{}
+                }
+
+    def _to_init_dict(self, all_host_info):
+        """
+        将获取的环境检测信息转为发送平台的dict
+        """
+        all_host_dict={}
+        for node in all_host_info:
+            if all_host_info[node][0] == 0:
+                # 将str转为json
+                node_info=all_host_info[node][1]
+                node_info=node_info[node_info.index("{"):]
+
+                all_host_dict[node]=json.loads(node_info)
+            else:
+                all_host_dict[node]={
+                        "error_info": all_host_info[node][1]
+                        } 
+        return all_host_dict
+
+    def generate_info(self, mode, info_dict, **kwargs):
+        """
+        信息生成: 平台, 文件
+        """
+
+        if mode=="platform":
+            info="状态信息已发送至平台"
+            error_info="状态信息发送失败"
+            file_=None
+        elif mode=="file":
+            info="状态信息已写入文件"
+            error_info="状态信息写入失败"
+            file_=kwargs["stats_file"]
+
+        self.log.logger.debug(f"状态信息: {json.dumps(info_dict)}")
+        result, message=post_info(mode, info_dict, file_)
+        if result:
+            self.log.logger.info(info)
+        else:
+            self.log.logger.error(f"{error_info}: {message}")
 
     def connect_test(self, init_dict):
         """
@@ -92,12 +151,12 @@ class Deploy(object):
 
             stdout_msg=status[1].read().strip().decode("utf8")
             stderr_msg=status[2].read().strip().decode("utf8")
-            state_value=status[1].channel.recv_exit_status()
-            if  state_value != 0:
+            stats_value=status[1].channel.recv_exit_status()
+            if  stats_value != 0:
                 msg=stdout_msg
             else:
                 msg=stderr_msg
-            all_host_info[node]=[state_value, msg]
+            all_host_info[node]=[stats_value, msg]
         return all_host_info
 
     def json_ana(init_dict, conf_dict, arch_dict):
@@ -152,22 +211,25 @@ class Deploy(object):
             * nproc nofile
             * 接口连通性测试
         """
-        try:
-            ssh_client=ssh()
-            if ssh_client.gen_keys():
-                self.log.logger.info("本机生成密钥对\n")
-            else:
-                self.log.logger.info("本机已存在密钥对\n")
+        ssh_client=ssh()
+        if ssh_client.gen_keys():
+            self.log.logger.info("本机生成密钥对\n")
+        else:
+            self.log.logger.info("本机已存在密钥对\n")
 
-            # 获取所有hosts
-            hosts_list=[]
-            for node in init_dict:
-                hosts_list.append(f"{init_dict[node].get('ip')} {node}")
+        # 获取所有hosts
+        hosts_list=[]
+        for node in init_dict:
+            hosts_list.append(f"{init_dict[node].get('ip')} {node}")
 
-            # 初始化
-            for node in init_dict:
-                self.log.logger.info(f"***主机{node}环境初始化***")
+        # 初始化
+        init_result=True
+        for node in init_dict:
+            self.log.logger.info(f"***主机{node}环境初始化***")
+            stats_value=True
+            stats_message=""
 
+            try:
                 ip=init_dict[node].get("ip")
                 port=init_dict[node].get("port")
                 password=init_dict[node].get("root_password")
@@ -184,8 +246,12 @@ class Deploy(object):
                 self.log.logger.debug(f"配置Python环境")
                 status=ssh_client.exec(ip, port, command)
                 if status[1].channel.recv_exit_status() != 0:
-                    self.log.logger.error(f"Python3安装报错, 进程退出: {status[2].read().decode('utf8')}")
-                    sys.exit()
+                    error_info=f"Python3安装报错, 进程退出: {status[2].read().decode('utf8')}"
+                    self.log.logger.error(error_info)
+                    init_result=error_info
+                    stats_value=False
+                    stats_message=error_info
+                    break
                 else:
                     self.log.logger.info(f"配置Python3环境完成")
 
@@ -207,12 +273,24 @@ class Deploy(object):
                 for line in status[1]:
                     self.log.logger.info(line.strip())
                 if status[1].channel.recv_exit_status() != 0:
-                    self.log.logger.error(f"{node}远程初始化失败")
+                    error_info=f"{node}远程初始化失败"
+                    self.log.logger.error(error_info)
+                    init_result=error_info
+                    stats_value=False
+                    stats_message=error_info
+                    break
                 else:
                     self.log.logger.info(f"{node}远程初始化完成")
-            return True
-        except Exception as e:
-            return e
+            except Exception as e:
+                init_result=str(e)
+                stats_value=False
+                stats_message=str(e)
+
+            self.init_stats_dict["stats"][node]={
+                    "stats_value": stats_value, 
+                    "stats_message": stats_message
+                    }
+        return init_result
 
     def control(self, ip, port, action, trans_files_dict, args_dict, ssh_client, soft_control):
         for trans_file in trans_files_dict:
@@ -279,11 +357,13 @@ class Deploy(object):
         flag=True
         for node in arch_dict:
             self.log.logger.info(f"***{node}安装***")
+            self.install_stats_dict["stats"][node]={}
             port=init_dict[node]["port"]
             ssh_client=ssh()
             soft_control=soft(node, port, ssh_client)
             for softname in arch_dict[node]["software"]:
                 self.log.logger.info(f"{softname}安装...")
+                stats_value=True
 
                 pkg_file=self.conf_dict["location"].get(softname)
                 trans_files_dict.update(
@@ -304,7 +384,9 @@ class Deploy(object):
                     self.log.logger.info(f"{softname}安装完成")
                 else:
                     self.log.logger.error(f"{softname}安装失败")
+                    stats_value=False
                     flag=False
+                self.install_stats_dict["stats"][node][softname]=stats_value
         return flag
 
     def start(self, init_dict, arch_dict):
@@ -319,11 +401,13 @@ class Deploy(object):
         flag=True
         for node in arch_dict:
             self.log.logger.info(f"***{node}启动***")
+            self.start_stats_dict["stats"][node]={}
             port=init_dict[node]["port"]
             ssh_client=ssh()
             soft_control=soft(node, port, ssh_client)
             for softname in arch_dict[node]["software"]:
                 self.log.logger.info(f"{softname}启动...")
+                stats_value=True
 
                 trans_files_dict.update(
                         {
@@ -342,7 +426,9 @@ class Deploy(object):
                     self.log.logger.info(f"{softname}启动完成")
                 else:
                     self.log.logger.error(f"{softname}启动失败")
+                    stats_value=False
                     flag=False
+                self.start_stats_dict["stats"][node][softname]=stats_value
         return flag
 
 class text_deploy(Deploy):
@@ -374,9 +460,11 @@ class text_deploy(Deploy):
         local_python3_file=self.conf_dict["location"].get("python3")
         status=super(text_deploy, self).init(init_dict, local_python3_file)
         if status is True:
-            self.log.logger.info("初始化结束\n")
-            self.log.logger.info("各主机信息如下:")
+            self.log.logger.info("初始化完成\n")
+            self.log.logger.info("获取主机信息...")
             all_host_info=self.get_host_msg(init_dict)
+            self.init_stats_dict["host_info"]=self._to_init_dict(all_host_info)
+
             for node in all_host_info:
                 if all_host_info[node][0] == 0:
                     node_info=all_host_info[node][1]
@@ -400,6 +488,9 @@ class text_deploy(Deploy):
         else:
             self.log.logger.error(f"初始化失败: {status}")
 
+        # 生成初始化信息至文件
+        self.generate_info("file", self.init_stats_dict, stats_file=init_stats_file)
+
     def install(self):
         with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
             init_dict=json.load(init_f)
@@ -410,6 +501,7 @@ class text_deploy(Deploy):
             self.log.logger.info("集群安装完成")
         else:
             self.log.logger.error("集群安装失败")
+        self.generate_info("file", self.install_stats_dict, stats_file=install_stats_file)
 
     def start(self):
         with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
@@ -421,6 +513,7 @@ class text_deploy(Deploy):
             self.log.logger.info("集群启动完成")
         else:
             self.log.logger.error("集群启动失败")
+        self.generate_info("file", self.start_stats_dict, stats_file=start_stats_file)
 
 class graphics_deploy(Deploy):
     '''文本图形化安装'''
@@ -1139,21 +1232,11 @@ class platform_deploy(Deploy):
 
     def __init__(self, conf_file, init_file, arch_file, project_file):
         super(platform_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
+        self.log=Logger({"platform": log_platform_level, "file": log_file_level}, 
+                log_file=log_file, logger_name="platform", 
+                project_id=self.project_id
+                )
 
-        self.project_id=self.project_dict.get("project_id")
-        """
-        self.log=Logger({"platform": log_platform_level, "file": log_file_level}, 
-                log_file=log_file, logger_name="platform", 
-                platform_host=interface["platform_log"][0], 
-                platform_port=interface["platform_log"][1], 
-                platform_url=interface["platform_log"][2], 
-                project_id=self.project_id
-                )
-        """
-        self.log=Logger({"platform": log_platform_level, "file": log_file_level}, 
-                log_file=log_file, logger_name="platform", 
-                project_id=self.project_id
-                )
     def check(self):
         '''
             校验配置文件
@@ -1176,37 +1259,13 @@ class platform_deploy(Deploy):
         status=super(platform_deploy, self).init(init_dict, local_python3_file)
         if status:
             self.log.logger.info("初始化完成\n")
-            self.log.logger.info("获取主机信息. . .")
+            self.log.logger.info("获取主机信息...")
             all_host_info=self.get_host_msg(init_dict)
-            all_host_dict={
-                    "rwid": self.project_id
-                    }
-            for node in all_host_info:
-                if all_host_info[node][0] == 0:
-                    node_info=all_host_info[node][1]
-                    self.log.logger.debug(f"{node_info=}")
-                    node_info=node_info[node_info.index("{"):]
-                    all_host_dict[node]=json.loads(node_info)
-                else:
-                    all_host_dict[node]={
-                            "error_info": all_host_info[node][1]
-                            } 
-
-            headers={
-                    "Content-Type": "application/json"
-                    }
-            url=f"http://{interface['platform_info'][0]}:{interface['platform_info'][1]}{interface['platform_info'][2]}"
-            try:
-                result=requests.post(url, data=json.dumps(all_host_dict), headers=headers, timeout=10)
-                if result.status_code==200:
-                    self.log.logger.info(f"主机信息发送完成")
-                else:
-                    self.log.logger.error(f"主机信息发送失败: {result.json().get('message')}")
-            except requests.exceptions.ConnectionError:
-                print(f"Error: 平台接口({url})无法连接")
-                sys.exit()
+            self.init_stats_dict["host_info"]=self._to_init_dict(all_host_info)
         else:
             self.log.logger.error(f"初始化失败: {status}")
+        # 信息发送平台
+        self.generate_info("platform", self.init_stats_dict)
 
     def install(self):
         with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
@@ -1218,6 +1277,7 @@ class platform_deploy(Deploy):
             self.log.logger.info("集群安装完成")
         else:
             self.log.logger.error("集群安装失败")
+        self.generate_info("platform", self.install_stats_dict)
 
     def start(self):
         with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
@@ -1229,6 +1289,7 @@ class platform_deploy(Deploy):
             self.log.logger.info("集群启动完成")
         else:
             self.log.logger.error("集群启动失败")
+        self.generate_info("platform", self.start_stats_dict)
     
 if __name__ == "__main__":
     main()
