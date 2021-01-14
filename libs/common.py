@@ -80,20 +80,27 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
 
             not_intall_pkg_list=[]  # 判断rpm是否已安装
             for i in pkg_list:
-                command=f"rpm -qpi {pkg_dir}/{i} | head -n 1"
+                command=f"rpm -qpi {pkg_dir}/{i} | head -n 3"
                 log.logger.debug(f"{command=}")
                 status, result=exec_command(command)
                 if status:
                     if result.returncode != 0:
                         return False, result.stderr
                     else:
-                        pkg_name=result.stdout.split(":")[1].strip()
-                        command=f"rpm -q {pkg_name}"
+                        #pkg_name=result.stdout.split(":")[1].strip()
+                        pkg_info=result.stdout.split("\n")
+                        pkg_name=pkg_info[0].split(":")[1].strip()
+                        pkg_version=pkg_info[2].split(":")[1].strip()
+                        command=f"rpm -qi {pkg_name}"
                         log.logger.debug(f"{command=}")
                         status, result=exec_command(command)
                         if status:
                             if result.returncode != 0:
                                 not_intall_pkg_list.append(i)
+                            else:                                               # 判断已安装的pkg与未安装的pkg的版本大小, 未安装的pkg版本大则安装
+                                installed_pkg_version=result.stdout.split("\n")[2].split(":")[1].strip()
+                                if pkg_version > installed_pkg_version:
+                                    not_intall_pkg_list.append(i)
                         else:
                             return False, result
                 else:
@@ -303,19 +310,28 @@ class Logger(object):
             self.ph.setLevel(self.level_relations[mode_level_dict["platform"]])
             self.logger.addHandler(self.ph)
 
-def post_platform(info_dict):
-    headers={
-            "Content-Type": "application/json"
-            }
-    url=f"http://{interface['platform_info'][0]}:{interface['platform_info'][1]}{interface['platform_info'][2]}"
-    try:
-        result=requests.post(url, data=json.dumps(info_dict), headers=headers, timeout=10)
-        if result.status_code==200:
-            return True, ""
-        else:
-            return False, result.json().get('message')
-    except requests.exceptions.ConnectionError:
-        return False, f"平台接口({url})无法连接"
+def post_info(mode, info_dict, add=None):
+    data=json.dumps(info_dict)
+    if mode=="platform":
+        headers={
+                "Content-Type": "application/json"
+                }
+        url=f"http://{interface['platform_info'][0]}:{interface['platform_info'][1]}{interface['platform_info'][2]}"
+        try:
+            result=requests.post(url, data=data, headers=headers, timeout=10)
+            if result.status_code==200:
+                return True, ""
+            else:
+                return False, result.json().get('message')
+        except requests.exceptions.ConnectionError:
+            return False, f"平台接口({url})无法连接"
+    elif mode=="file":
+        try:
+            with open(add, "w", encoding="utf8") as f:
+                f.write(data)
+                return True, ""
+        except Exception as e:
+            return False, str(e)
 
 if __name__ == "__main__":
     main()
