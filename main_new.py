@@ -47,7 +47,7 @@ def main():
         if opt in ("-g", "--graphics"):
             d=deploy.graphics_deploy(conf_file, init_file, arch_file, project_file)
             d.show()
-            sys.exit(0)
+            break
         elif opt in ("-t", "--text"):
             d=deploy.text_deploy(conf_file, init_file, arch_file, project_file)
             if arg=="init":
@@ -58,7 +58,7 @@ def main():
                 d.start()
             else:
                 print(print_usage_info())
-            sys.exit(0)
+            break
         elif opt in ("-p", "--platform"):
             d=deploy.platform_deploy(conf_file, init_file, arch_file, project_file)
             if arg=="init":
@@ -69,7 +69,7 @@ def main():
                 d.start()
             else:
                 print(print_usage_info())
-            sys.exit(0)
+            break
         elif opt in ("-h", "--help"):
             print(print_usage_info())
         else:
