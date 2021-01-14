@@ -61,14 +61,16 @@
     }, 
     "rocketmq_info":{
       "cluster_name": "mq_cluster",
+      "replica_name": "node",
+      "replica_role": "master",
       "port":{
         "namesrv_port": 9876,  
         "fast_remote_port": 10909,
-        "remote_port": 10911     
+        "remote_port": 10911,
+        "ha_port": 10912    
       }, 
       "namesrv_mem": "1G",        
-      "broker_mem": "2G",          
-      "broker_name": "node",        
+      "broker_mem": "2G",              
       "namesrvs": ["node:9876"]      
     }
   }
