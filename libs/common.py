@@ -205,7 +205,8 @@ class platform_handler(logging.Handler):
             data={
                     "rwid": self.project_id, 
                     "content": msg, 
-                    "number": self.log_number
+                    "number": self.log_number, 
+                    "level": record.levelname
                     }
             try:
                 result=requests.post(self.url, data=json.dumps(data), headers=headers, timeout=10)
@@ -301,7 +302,6 @@ class Logger(object):
             self.ph.setFormatter(format_str)
             self.ph.setLevel(self.level_relations[mode_level_dict["platform"]])
             self.logger.addHandler(self.ph)
-
 
 def post_platform(info_dict):
     headers={
