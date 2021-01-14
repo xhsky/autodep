@@ -210,7 +210,7 @@ class platform_handler(logging.Handler):
                     }
             self.log_number+=1
             data={
-                    "rwid": self.project_id, 
+                    "project_id": self.project_id, 
                     "content": msg, 
                     "number": self.log_number, 
                     "level": record.levelname
