@@ -29,12 +29,13 @@ def config_jvm(file_, jvm_mem, log):
                         else:
                             mem=int(jvm_mem[:-1])
                             unit=jvm_mem[-1]
-                            if mem==0:
-                                mem=500
+                            xmn_mem=int(mem/2)
+                            if xmn_mem==0:
+                                xmn_mem=500
                                 unit="m"
                         if option.endswith('\"'):
                                 unit=f"{unit}\""
-                        line_list[option_index]=f"-Xmn{int(mem/2)}{unit}"
+                        line_list[option_index]=f"-Xmn{xmn_mem}{unit}"
                 line=" ".join(line_list)
                 log.logger.debug(f"jvm_str: {line}")
                 text[line_index]=f"{line}\n"
