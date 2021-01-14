@@ -12,9 +12,13 @@ log_platform_level="debug"
 
 log_update_level="info"
 log_update_file=f"{logs_dir}/update.log"
-update_status_file=f"{logs_dir}/update.json"
 code_saved_remote_dir="/tmp"
 update_version_file="code_version"
+
+init_stats_file=f"{logs_dir}/init.json"
+install_stats_file=f"{logs_dir}/install.json"
+start_stats_file=f"{logs_dir}/start.json"
+update_stats_file=f"{logs_dir}/update.json"
 
 test_mode=True
 fixed_dir="/opt"
