@@ -19,6 +19,7 @@ def main():
     if not os.path.exists(dest_dir):
         try:
             log.logger.info(f"建立目录...")
+            log.logger.debug(f"{dest_dir=}")
             os.makedirs(dest_dir, exist_ok=1)
         except Exception as e:
             log.logger.error(f"无法建立目录: {str(e)}")
@@ -39,19 +40,23 @@ def main():
                     time_format=time.strftime("%Y%m%d-%H:%M:%S", time.localtime())
                     save_dir=f"{code_saved_remote_dir}/{code_dir_name}_{time_format}"
 
-                    log.logger.info(f"移动'{code_dir}'至'{save_dir}'...")
+                    log.logger.info(f"备份'{code_dir}'至'{save_dir}'...")
                     shutil.move(code_dir, save_dir)
+                log.logger.debug(f"解压'{tar_file}'至'{dest_dir}'")
                 tar.extractall(dest_dir)
 
             log.logger.info(f"标记版本号({version})...")
-            with open(f"{code_dir}/{update_version_file}", "w", encoding="utf8") as f:
+            version_file=f"{code_dir}/{update_version_file}"
+            log.logger.debug(f"版本记录文件: {version_file}")
+            with open(version_file, "w", encoding="utf8") as f:
                 f.write(str(version))
 
             log.logger.info("清理更新包...")
+            log.logger.debug(f"# rm {tar_file}")
             os.remove(tar_file)
 
     except Exception as e:
-        log.logger.error("更新失败: {str(e)}")
+        log.logger.error(f"更新失败: {str(e)}")
         sys.exit(1)
     
 if __name__ == "__main__":

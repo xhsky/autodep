@@ -14,14 +14,13 @@ from libs import common, remote
 from libs.env import log_update_level, log_update_file, \
         log_console_level, log_platform_level, \
         remote_pkgs_dir, remote_code_dir, \
-        update_status_file, remote_python_exec, \
+        update_stats_file, remote_python_exec, \
         test_mode
 
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("--mode", type=str, choices=["console", "platform"], help="更新方式")
     parser.add_argument("--id", type=str, help="项目id")
-    #parser.add_argument("--log_level", type=str, choices=["gz", "jar"], help="更新类型. gz|jar")
     parser.add_argument("--package", type=str, help="更新包. 压缩格式为tar.gz且必须为绝对路径")
     parser.add_argument("--host", type=str, help="更新主机. <host1>:<port>,<host2>:<port>")
     parser.add_argument("--dest", type=str, help="更新地址. /path")
@@ -31,16 +30,17 @@ def main():
     project_id=args.id
     version=args.version
 
-    mode_level_dict={
+    mode_level_dict={                   # 定义日志级别
             "file": log_update_level
             }
     if args.mode.lower()=="console":
         mode_level_dict["console"]=log_console_level
-        update_status_file_flag=True
-    if args.mode.lower()=="platform":
+        update_mode="file"
+        update_stats_addr=update_stats_file
+    elif args.mode.lower()=="platform":
         mode_level_dict["platform"]=log_platform_level
-        update_status_file_flag=False
-    #print(f"{mode_level_dict}")
+        update_mode="platform"
+        update_stats_addr="平台"
     log=common.Logger(mode_level_dict, log_file=log_update_file, project_id=project_id) 
 
     try:
@@ -50,7 +50,6 @@ def main():
             sys.exit(1)
 
         package_all_name=package.split("/")[-1]
-        #package_name, package_version=package_all_name[:-7].split("-")
         dest=args.dest
         host_list=[]
         for host_str in args.host.split(","):
@@ -65,23 +64,25 @@ def main():
         log.logger.error(f"参数解析错误. {str(e)}")
         sys.exit(1)
 
-    update_status_dict={
+    update_stats_dict={
             "project_id": project_id, 
             "mode": "code_update", 
             "version": version, 
-            "status":{}
+            "stats":{}
             }
+    log.logger.info("开始更新:")
     for node in host_list:
         host=node[0]
         port=node[1]
         
         log.logger.info(f"'{host}'主机更新:") 
-        log.logger.info(f"传输更新包...")
         ssh=remote.ssh()
         remote_update_package=f"{remote_pkgs_dir}/{package_all_name}"
         update_py_file="update.py"
         remote_update_py=f"{remote_code_dir}/{update_py_file}"
         try:
+            log.logger.info(f"传输更新包...")
+            log.logger.debug(f"{package} --> {host}:{remote_update_package}")
             ssh.scp(host, port, "root", package, remote_update_package)
             ssh.scp(host, port, "root", f"./bin/{update_py_file}", remote_update_py)
             if test_mode:
@@ -108,18 +109,14 @@ def main():
         else:
             log.logger.error(f"{host}更新失败\n")
             flag=False
-        update_status_dict["status"][host]=flag
+        update_stats_dict["stats"][host]=flag
 
-    if update_status_file_flag:
-        with open(update_status_file, "w", encoding="utf8") as f:
-            json.dump(update_status_dict, f)
-            log.logger.info(f"更新信息已写入'{update_status_file}'文件")
+    log.logger.debug(f"更新信息: {json.dumps(update_stats_dict)}")
+    result, message=common.post_info(update_mode, update_stats_dict, update_stats_addr)
+    if result:
+        log.logger.info(f"更新信息已生成至'{update_stats_addr}'")
     else:
-        result, message=common.post_platform(update_status_dict)
-        if result:
-            log.logger.info("更新信息已发送平台")
-        else:
-            log.logger.error(f"更新信息发送失败: {message}")
+        log.logger.error(f"更新信息生成失败: {message}")
 
 if __name__ == "__main__":
     main()
