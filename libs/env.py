@@ -18,7 +18,8 @@ update_version_file="code_version"
 init_stats_file=f"{logs_dir}/init.json"
 install_stats_file=f"{logs_dir}/install.json"
 start_stats_file=f"{logs_dir}/start.json"
-update_stats_file=f"{logs_dir}/update.json"
+code_update_stats_file=f"{logs_dir}/code_update.json"
+db_update_stats_file=f"{logs_dir}/db_update.json"
 
 test_mode=True
 fixed_dir="/opt"
