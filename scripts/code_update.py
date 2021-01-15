@@ -14,7 +14,7 @@ from libs import common, remote
 from libs.env import log_update_level, log_update_file, \
         log_console_level, log_platform_level, \
         remote_pkgs_dir, remote_code_dir, \
-        update_stats_file, remote_python_exec, \
+        code_update_stats_file, remote_python_exec, \
         test_mode
 
 def main():
@@ -36,7 +36,7 @@ def main():
     if args.mode.lower()=="console":
         mode_level_dict["console"]=log_console_level
         update_mode="file"
-        update_stats_addr=update_stats_file
+        update_stats_addr=code_update_stats_file
     elif args.mode.lower()=="platform":
         mode_level_dict["platform"]=log_platform_level
         update_mode="platform"
