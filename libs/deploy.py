@@ -3,12 +3,13 @@
 # 2020-10-21 17:37:47
 # sky
 
-import locale, json, os, time, sys, requests
+import locale, json, os, time, sys, requests, tarfile
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, \
         interface, test_mode, \
-        init_stats_file, install_stats_file, start_stats_file
+        init_stats_file, install_stats_file, start_stats_file, update_stats_file, \
+        update_config_file_name
 
 if not os.path.exists(logs_dir):
     os.makedirs(logs_dir, exist_ok=1)
@@ -16,6 +17,7 @@ if not os.path.exists(logs_dir):
 from textwrap import dedent
 from libs.common import Logger, post_info
 from libs.remote import ssh, soft
+from libs import update
 #from threading import Thread
 
 """
@@ -46,6 +48,7 @@ class Deploy(object):
             self.project_dict=json.load(project_f)
             self.project_id=self.project_dict['project_id']
             self.project_name=self.project_dict['project_name']
+            self.project_data=self.project_dict['project_data']
 
         self.init_file=init_file
         self.arch_file=arch_file
@@ -63,6 +66,12 @@ class Deploy(object):
         self.start_stats_dict={
                 "project_id": self.project_id, 
                 "mode": "start", 
+                "stats":{}
+                }
+        self.update_stats_dict={
+                "project_id": self.project_id, 
+                "mode": "update", 
+                "result": True, 
                 "stats":{}
                 }
 
@@ -121,10 +130,10 @@ class Deploy(object):
         connect_msg={}
         flag=0
         for node in init_dict:
-            ip=init_dict[node].get("ip")
+            #ip=init_dict[node].get("ip")
             port=init_dict[node].get("port")
             password=init_dict[node].get("root_password")
-            status, msg=ssh_client.password_conn(ip, port, password)
+            status, msg=ssh_client.password_conn(node, port, password)
             if status != 0:
                 flag=1
             connect_msg[node]={
@@ -140,14 +149,14 @@ class Deploy(object):
         all_host_info={}
         get_msg_py="./bin/host.py"
         for node in init_dict:
-            ip=init_dict[node].get("ip")
+            #ip=init_dict[node].get("ip")
             port=init_dict[node].get("port")
 
             remote_file=f"{remote_code_dir}/{get_msg_py.split('/')[-1]}"
-            ssh_client.scp(ip, port, "root", get_msg_py, remote_file)
+            ssh_client.scp(node, port, "root", get_msg_py, remote_file)
             get_msg_command=f"{remote_python_exec} {remote_file}"
             self.log.logger.debug(f"获取{node}主机信息: {get_msg_command=}")
-            status=ssh_client.exec(ip, port, get_msg_command, get_pty=0)
+            status=ssh_client.exec(node, port, get_msg_command, get_pty=0)
 
             stdout_msg=status[1].read().strip().decode("utf8")
             stderr_msg=status[2].read().strip().decode("utf8")
@@ -217,11 +226,6 @@ class Deploy(object):
         else:
             self.log.logger.info("本机已存在密钥对\n")
 
-        # 获取所有hosts
-        hosts_list=[]
-        for node in init_dict:
-            hosts_list.append(f"{init_dict[node].get('ip')} {node}")
-
         # 初始化
         init_result=True
         for node in init_dict:
@@ -230,21 +234,21 @@ class Deploy(object):
             stats_message=""
 
             try:
-                ip=init_dict[node].get("ip")
+                #ip=init_dict[node].get("ip")
                 port=init_dict[node].get("port")
                 password=init_dict[node].get("root_password")
 
-                ssh_client.free_pass_set(ip, port, password)
+                ssh_client.free_pass_set(node, port, password)
                 self.log.logger.info(f"免密码登录设置完成")
                 
                 # 传输Python
                 remote_python3_file=f"{remote_python_transfer_dir}/{local_python3_file.split('/')[-1]}"
                 self.log.logger.debug(f"传输Python安装包...")
-                ssh_client.scp(ip, port, "root", local_python3_file, remote_python3_file)
+                ssh_client.scp(node, port, "root", local_python3_file, remote_python3_file)
 
                 command=f"tar -xf {remote_python3_file} -C {remote_python_install_dir}"
                 self.log.logger.debug(f"配置Python环境")
-                status=ssh_client.exec(ip, port, command)
+                status=ssh_client.exec(node, port, command)
                 if status[1].channel.recv_exit_status() != 0:
                     error_info=f"Python3安装报错, 进程退出: {status[2].read().decode('utf8')}"
                     self.log.logger.error(error_info)
@@ -263,12 +267,12 @@ class Deploy(object):
                         "py_file": [init_py, f"{remote_code_dir}/{init_py.split('/')[-1]}"]
                         }
                 init_args={
-                        "hostname": node, 
-                        "hosts": hosts_list, 
+                        #"hostname": node, 
+                        #"hosts": hosts_list, 
                         "interface": interface, 
                         }
-                soft_control=soft(ip, port, ssh_client)
-                status=self.control(ip, port, "init", trans_files_dict, init_args, ssh_client, soft_control)
+                soft_control=soft(node, port, ssh_client)
+                status=self.control(node, port, "init", trans_files_dict, init_args, ssh_client, soft_control)
 
                 for line in status[1]:
                     self.log.logger.info(line.strip())
@@ -355,6 +359,12 @@ class Deploy(object):
             trans_files_dict={}
 
         flag=True
+
+        # 获取所有hosts
+        hosts_list=[]
+        for node in arch_dict:
+            hosts_list.append(f"{arch_dict[node].get('ip')} {node}")
+
         for node in arch_dict:
             self.log.logger.info(f"***{node}安装***")
             self.install_stats_dict["stats"][node]={}
@@ -431,6 +441,49 @@ class Deploy(object):
                 self.start_stats_dict["stats"][node][softname]=stats_value
         return flag
 
+    def update(self, package_list):
+        """
+        """
+        if len(package_list)==0:
+            self.log.logger.info("使用项目包")
+            package_list=self.project_data
+
+        result=True
+        for package in package_list:
+            package_name=package.split("/")[-1]
+            self.log.logger.info(f"{package_name}更新")
+            self.update_stats_dict["stats"][package_name]={}
+            if os.path.exists(package):
+                try:
+                    self.log.logger.debug("获取更新配置文件")
+                    with tarfile.open(package, "r", encoding="utf8") as tar:
+                        tar.extract(update_config_file_name, remote_code_dir)
+                        with open(f"{remote_code_dir}/{update_config_file_name}", "r", encoding="utf8") as f:
+                            update_dict=json.load(f)
+                            self.log.logger.debug(f"更新配置: {update_dict}")
+                        mode=update_dict["mode"]
+                        if mode=="code":
+                            status, hosts_update_dict=update.code_update(package, update_dict, self.log)
+                        elif mode=="db":
+                            status, hosts_update_dict=update.db_update(package, update_dict, self.log)
+                        else:
+                            message=f"{mode}类型不匹配"
+                            self.log.logger.error(message)
+                            hosts_update_dict={}
+                            status=False
+
+                        if not status:
+                            result=False
+                        self.update_stats_dict["stats"][package_name]=hosts_update_dict
+                except Exception as e:
+                    self.log.logger.error(f"更新失败: {str(e)}")
+                    result=False
+            else:
+                self.log.logger.error(f"该文件{package}不存在")
+                result=False
+        self.update_stats_dict["result"]=result
+        return result
+
 class text_deploy(Deploy):
     '''文本安装'''
 
@@ -453,8 +506,8 @@ class text_deploy(Deploy):
         flag, connect_msg=self.connect_test(init_dict)
         if flag==1:
             self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
-            for node in connect_msg:
-                self.log.logger.info(f"{node}:\t{connect_msg[node]['msg']}")
+            for ip in connect_msg:
+                self.log.logger.info(f"{ip}:\t{connect_msg[ip]['msg']}")
             sys.exit()
 
         local_python3_file=self.conf_dict["location"].get("python3")
@@ -473,7 +526,7 @@ class text_deploy(Deploy):
                     #self.log.logger.debug(f"{node_info=}")
                     node_info_dict=json.loads(node_info)
                     node_info=dedent(f"""
-                    主机名: {node}
+                    主机: {node}
                     发行版本: \t{node_info_dict['os_name']}
                     内核版本: \t{node_info_dict['kernel_version']}
                     CPU:      \t{node_info_dict['CPU'][0]}({node_info_dict['CPU'][1]}%)
@@ -514,6 +567,15 @@ class text_deploy(Deploy):
         else:
             self.log.logger.error("集群启动失败")
         self.generate_info("file", self.start_stats_dict, stats_file=start_stats_file)
+
+    def update(self, package_list):
+        self.log.logger.info("开始更新...")
+        result=super(text_deploy, self).update(package_list)
+        if result:
+            self.log.logger.info("更新完成")
+        else:
+            self.log.logger.error("更新失败")
+        self.generate_info("file", self.update_stats_dict, stats_file=update_stats_file)
 
 class graphics_deploy(Deploy):
     '''文本图形化安装'''
@@ -1290,6 +1352,15 @@ class platform_deploy(Deploy):
         else:
             self.log.logger.error("集群启动失败")
         self.generate_info("platform", self.start_stats_dict)
-    
+
+    def update(self, package_list):
+        self.log.logger.info("开始更新...")
+        result=super(platform_deploy, self).update(package_list)
+        if result:
+            self.log.logger.info("更新完成")
+        else:
+            self.log.logger.error("更新失败")
+        self.generate_info("platform", self.update_stats_dict)
+
 if __name__ == "__main__":
     main()
