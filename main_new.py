@@ -27,16 +27,16 @@ def print_usage_info():
 
 def main():
     try:
-        options, args=getopt.getopt(sys.argv[1:], "t:p:gh", ["text=", "platform=", "graphics", "help"])
+        options, args=getopt.getopt(sys.argv[1:], "t:p:g:h", ["text=", "platform=", "graphics=", "help"])
     except getopt.GetoptError:
         print(print_usage_info())
-        sys.exit(0)
+        sys.exit(1)
 
     #print(f"{options=}, {args=}")
 
-    if len(options)==0 or len(args)!=0:
+    if len(options)==0:
         print(print_usage_info())
-        sys.exit(0)
+        sys.exit(1)
 
     conf_file="./config/conf.json"
     init_file="./config/init.json"
@@ -56,6 +56,10 @@ def main():
                 d.install()
             elif arg=="start":
                 d.start()
+            elif arg=="update":
+                d.update(args)
+            elif arg=="deploy":
+                d.deploy()
             else:
                 print(print_usage_info())
             break
@@ -67,6 +71,10 @@ def main():
                 d.install()
             elif arg=="start":
                 d.start()
+            elif arg=="update":
+                d.update(args)
+            elif arg=="deploy":
+                d.deploy()
             else:
                 print(print_usage_info())
             break
