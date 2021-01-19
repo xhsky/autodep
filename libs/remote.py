@@ -4,6 +4,7 @@
 # sky
 
 import paramiko
+import pymysql
 import os, json
 from libs.common import Logger
 from libs.env import log_file, log_file_level, remote_python_exec
@@ -129,3 +130,22 @@ class ssh(object):
     def __del__(self):
         self.ssh.close()
 
+class DB(object):
+    """
+    数据库操作
+    """
+    def __init__(self, db_type, host, port, user, password, db_name, **kwargs):
+        self._db_type=db_type
+        if self._db_type.lower()=="mysql":
+            self.conn=pymysql.connect(host=host, port=port, user=user, passwd=password, db=db_name, charset='utf8mb4')
+            self.cursor=self.conn.cursor()
+
+    def exec(self, sql):
+        self.cursor.execute(sql)
+
+    def commit(self):
+        self.conn.commit()
+
+    def __del__(self):
+        self.cursor.close()
+        self.conn.close()
