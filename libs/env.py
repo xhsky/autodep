@@ -11,15 +11,16 @@ log_remote_level="debug"
 log_platform_level="debug"
 log_update_level="debug"
 
-log_update_file=f"{logs_dir}/update.log"
+#log_update_file=f"{logs_dir}/update.log"
 code_saved_remote_dir="/tmp"
-update_version_file="code_version"
+#update_version_file="code_version"
 
 init_stats_file=f"{logs_dir}/init.json"
 install_stats_file=f"{logs_dir}/install.json"
 start_stats_file=f"{logs_dir}/start.json"
-code_update_stats_file=f"{logs_dir}/code_update.json"
-db_update_stats_file=f"{logs_dir}/db_update.json"
+update_stats_file=f"{logs_dir}/update.json"
+
+update_config_file_name="update.json"
 
 test_mode=True
 fixed_dir="/opt"
@@ -31,6 +32,8 @@ remote_python_exec=f"{remote_python_dir}/bin/python3"
 
 remote_code_dir=f"{remote_python_dir}/code"
 remote_pkgs_dir=f"{remote_python_dir}/pkgs"
+
+update_package_dir=remote_pkgs_dir
 
 interface={
         "mail": ["smtp.dreamdt.cn", 25, None],                              # 邮件接口
