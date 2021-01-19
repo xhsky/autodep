@@ -6,58 +6,53 @@
 import sys, json, os, time
 import tarfile, shutil
 from libs import common
-from libs.env import log_remote_level, code_saved_remote_dir, update_version_file
+from libs.env import log_remote_level, code_saved_remote_dir
 
 def main():
     args_dict=json.loads(sys.argv[1])
     log=common.Logger({"remote": log_remote_level})
 
+    type_=args_dict.get("type")
     tar_file=args_dict.get("tar_file")
-    dest_dir=args_dict.get("dest_dir")
-    version=args_dict.get("version")
+    dest=args_dict.get("dest")
 
-    if not os.path.exists(dest_dir):
+    if not os.path.exists(dest):
         try:
             log.logger.info(f"建立目录...")
-            log.logger.debug(f"{dest_dir=}")
-            os.makedirs(dest_dir, exist_ok=1)
+            log.logger.debug(f"{dest=}")
+            os.makedirs(dest, exist_ok=1)
         except Exception as e:
             log.logger.error(f"无法建立目录: {str(e)}")
             exit(1)
 
     try:
-        with tarfile.open(tar_file, "r") as tar:
-            file_list=tar.getmembers()
-            code_dir_name=file_list[0].name
-            code_dir=f"{dest_dir}/{code_dir_name}"
-
-            if len(file_list) == 2 and file_list[1].name.endswith("jar"):            # 后端更新
-                log.logger.info("后端更新...")
-                tar.extractall(dest_dir)
-            else:                               # 前端更新
-                log.logger.info("前端更新...")
-                if os.path.exists(code_dir):
+        with tarfile.open(tar_file, "r", encoding="utf8") as tar:
+            if type_=="backend":
+                log.logger.info("开始后端更新...")
+                tar.extractall(dest)
+            elif type_=="frontend":
+                log.logger.info("开始前端更新...")
+                for i in tar.getmembers():
+                    if i.isdir():
+                        code_dir_name=i.name
+                        break
+                code_dir_abs=f"{dest}/{code_dir_name}"
+                if os.path.exists(code_dir_abs):
                     time_format=time.strftime("%Y%m%d-%H:%M:%S", time.localtime())
                     save_dir=f"{code_saved_remote_dir}/{code_dir_name}_{time_format}"
-
-                    log.logger.info(f"备份'{code_dir}'至'{save_dir}'...")
-                    shutil.move(code_dir, save_dir)
-                log.logger.debug(f"解压'{tar_file}'至'{dest_dir}'")
-                tar.extractall(dest_dir)
-
-            log.logger.info(f"标记版本号({version})...")
-            version_file=f"{code_dir}/{update_version_file}"
-            log.logger.debug(f"版本记录文件: {version_file}")
-            with open(version_file, "w", encoding="utf8") as f:
-                f.write(str(version))
+                    log.logger.info(f"备份'{code_dir_abs}'至'{save_dir}'...")
+                    shutil.move(code_dir_abs, save_dir)
+                log.logger.debug(f"解压'{tar_file}'至'{dest}'")
+                tar.extractall(dest)
+            else:
+                log.logger.error(f"{type_}不匹配")
+                sys.exit(2)
 
             log.logger.info("清理更新包...")
-            log.logger.debug(f"# rm {tar_file}")
             os.remove(tar_file)
-
     except Exception as e:
         log.logger.error(f"更新失败: {str(e)}")
         sys.exit(1)
-    
+
 if __name__ == "__main__":
     main()
