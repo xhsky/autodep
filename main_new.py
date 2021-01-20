@@ -14,14 +14,18 @@ def print_usage_info():
         Usage: {sys.argv[0]} OPTIONS [COMMAND]
 
         Options:
-            -t, --text string          以文本方式安装
-            -g, --graphics             以图形方式安装
-            -p, --paltform string      以平台方式安装
+            -t, --text command          以文本方式安装
+            -g, --graphics              以图形方式安装
+            -p, --paltform command      以平台方式安装
 
         Commands:
-            init                       文本方式初始化
-            install                    文本方式安装
-            start                      文本方式启动
+            init                       集群初始化
+            install                    集群安装
+            start                      集群启动
+            update [package]           项目数据部署/更新
+            deploy                     集群部署(install, start, update)
+
+
     """)
     return usage_info
 
