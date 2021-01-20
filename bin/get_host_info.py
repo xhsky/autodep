@@ -64,7 +64,7 @@ def main():
         host_info_dict["Mem"]=[format_size(mem_total), mem_used_percent]
 
         # port
-        host_info_dict["port"]={}
+        host_info_dict["Port"]={}
         all_port=psutil.net_connections(kind='inet')
         for i in all_port:
             if len(i[3])!=0:
