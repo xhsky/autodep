@@ -1369,6 +1369,7 @@ class platform_deploy(Deploy):
         else:
             self.log.logger.error("集群安装失败")
         self.generate_info("platform", self.install_stats_dict)
+        return result
 
     def start(self):
         with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
@@ -1381,6 +1382,7 @@ class platform_deploy(Deploy):
         else:
             self.log.logger.error("集群启动失败")
         self.generate_info("platform", self.start_stats_dict)
+        return result
 
     def update(self, package_list=[]):
         self.log.logger.info("开始更新...")
@@ -1390,6 +1392,7 @@ class platform_deploy(Deploy):
         else:
             self.log.logger.error("更新失败")
         self.generate_info("platform", self.update_stats_dict)
+        return result
 
     def deploy(self):
         """
