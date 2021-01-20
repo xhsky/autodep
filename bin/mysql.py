@@ -264,7 +264,7 @@ def main():
         #init_command=f"{mysql_dir}/bin/mysqld --initialize --user={mysql_user} --datadir={mysql_dir}/{my_data}"
         init_command=f"{mysql_dir}/bin/mysqld --initialize --user={mysql_user}"
         log.logger.debug(f"初始化中: {init_command=}")
-        status, result=common.exec_command(init_command, timeout=120)
+        status, result=common.exec_command(init_command, timeout=600)
         if status:
             if result.returncode != 0:
                 log.logger.error(result.stderr)
