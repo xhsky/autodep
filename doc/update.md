@@ -46,9 +46,9 @@
   - code.tar.gz
     - code
       - code.jar
-    - code_update.json
+    - update.json
     	{
-      	"type": "code",				                  // 代码更新
+      	"mode": "code",				                  // 代码更新
       	"update_info":{
       	  "type": "backend",				          // 后端代码
       	  "host": ["host1","host2:port"],		 	  // 更新的主机
