@@ -537,10 +537,10 @@ class text_deploy(Deploy):
                     内核版本: \t{node_info_dict['kernel_version']}
                     CPU:      \t{node_info_dict['CPU'][0]}({node_info_dict['CPU'][1]}%)
                     内存:     \t{node_info_dict['Mem'][0]}({node_info_dict['Mem'][1]}%)""")
-                    for disk in node_info_dict["disk"]:
-                        node_info=f"{node_info}\n磁盘({disk}): \t{node_info_dict['disk'][disk][0]}({node_info_dict['disk'][disk][1]}%)"
-                    for port in node_info_dict["port"]:
-                        node_info=f"{node_info}\n端口({port}): \t{node_info_dict['port'][port][1]}/{node_info_dict['port'][port][0]}"
+                    for disk in node_info_dict["Disk"]:
+                        node_info=f"{node_info}\n磁盘({disk}): \t{node_info_dict['Disk'][disk][0]}({node_info_dict['Disk'][disk][1]}%)"
+                    for port in node_info_dict["Port"]:
+                        node_info=f"{node_info}\n端口({port}): \t{node_info_dict['Port'][port][1]}/{node_info_dict['Port'][port][0]}"
                     self.log.logger.info(node_info)
                 else:
                     self.log.logger.error(all_host_info[node][1])
