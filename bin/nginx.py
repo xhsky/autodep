@@ -2,7 +2,7 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, json
+import sys, json, shutil, os
 from libs import common
 from libs.env import log_remote_level, nginx_src, nginx_dst, nginx_pkg_dir, nginx_version
 
@@ -13,10 +13,8 @@ def main():
 
     nginx_dir=f"{located}/{nginx_dst}"
     nginx_info_dict=conf_dict["nginx_info"]
-    nginx_port=nginx_info_dict.get("nginx_port")
-    port_list=[
-            nginx_port
-            ]
+    vhosts_info_dict=nginx_info_dict["vhost_info"]
+    port_list=[int(port) for port in vhosts_info_dict.keys()]
 
     log=common.Logger({"remote": log_remote_level}, loggger_name="nginx")
 
@@ -43,9 +41,30 @@ def main():
         worker_processes=nginx_info_dict.get("worker_processes")
 
         # proxy
-        upstream_servers=""
-        for proxy_host in nginx_info_dict.get("proxy_hosts"):
-            upstream_servers=f"{upstream_servers}server {proxy_host};" 
+        vhosts_name="vhosts"
+        vhosts_dir=f"{nginx_dir}/conf/{vhosts_name}"
+        try:
+            log.logger.debug(f"创建vhosts目录: {vhosts_dir}")
+            os.makedirs(vhosts_dir, exist_ok=1)
+
+            with open(f"{vhosts_dir}/0_upstream.conf", "w", encoding="utf8") as f:
+                for port in vhosts_info_dict:
+                    config_file=vhosts_info_dict[port]["config"]
+                    log.logger.debug(f"添加vhost: {config_file} --> {vhosts_dir}/{port}.conf")
+                    shutil.copy(config_file, f"{vhosts_dir}/{port}.conf")
+
+                    proxy_name=vhosts_info_dict[port]["proxy_name"]
+                    upstream_servers=f"\nupstream {proxy_name} {{"
+                    for proxy_host in vhosts_info_dict[port].get("proxy_hosts"):
+                        upstream_servers=f"{upstream_servers}\n\tserver {proxy_host};" 
+                    else:
+                        upstream_servers=f"{upstream_servers}\n}}" 
+                    f.write(upstream_servers)
+        except Exception as e:
+            log.logger.error(f"创建vhosts配置失败: {str(e)}")
+            flag=1
+            sys.exit(flag)
+
         nginx_conf_text=f"""\
                 user  nginx;
                 worker_processes  {worker_processes};
@@ -92,27 +111,7 @@ def main():
                     # proxy header
                     underscores_in_headers on;
 
-                    # load 
-                    upstream upstream_servers {{
-                        # ip_hash;
-                        {upstream_servers}
-                    }}
-
-                    server {{
-                        listen       {nginx_port};
-                        server_name  localhost;
-
-                        #charset koi8-r;
-
-                        #access_log  logs/host.access.log  main;
-
-                        location / {{
-                          proxy_pass http://upstream_servers;
-                          proxy_set_header Host $host; 
-                          proxy_set_header X-Real-IP $remote_addr;
-                          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                        }}
-                    }}
+                    include vhosts/*.conf;
                 }}
                 """
         nginx_conf_file=f"{nginx_dir}/conf/nginx.conf"
