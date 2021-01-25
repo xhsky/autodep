@@ -44,14 +44,14 @@ def main():
         host_info_dict["kernel_version"]=kernel_version
 
         # disk
-        host_info_dict["disk"]={}
+        host_info_dict["Disk"]={}
         all_disk=psutil.disk_partitions()
         for i in all_disk:
             mounted=i[1]
             size=psutil.disk_usage(mounted)
             total=size[0]
             used_percent=size[3]
-            host_info_dict["disk"][mounted]=[format_size(total), used_percent]
+            host_info_dict["Disk"][mounted]=[format_size(total), used_percent]
 
         # cpu
         cpu_count=psutil.cpu_count()
@@ -73,7 +73,7 @@ def main():
                     if i[5]!="ESTABLISHED":
                         process_name=psutil.Process(pid).name()
                         port=i[3][1]
-                        host_info_dict["port"][port]=[pid, process_name]
+                        host_info_dict["Port"][port]=[pid, process_name]
         log.logger.info(json.dumps(host_info_dict))
         sys.exit(0)
     except Exception as e:
