@@ -22,7 +22,7 @@
 		"ip1":{
 			"os_name": "CentOS Linux release 7.5.1804 (Core)",
 			"kernel_version": "3.10.0-862.el7.x86_64",
-			"disk": {
+			"Disk": {
 				"/path1": ["总大小", N],
 				"/path2": ["总大小", N]
 			}
