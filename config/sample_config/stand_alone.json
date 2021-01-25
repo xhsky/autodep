@@ -13,10 +13,15 @@
       }
     },
     "nginx_info":{                         
-      "nginx_port": 80,   
       "worker_processes": 2,  
-      "proxy_hosts": ["node:8080"]
-    },   
+      "vhost_info":{
+        "80":{
+          "config_file": "/path/file1",
+          "proxy_name": "backend1",
+          "proxy_hosts": ["web1:8080", "web2:8080"]
+        }
+    	}
+		},
     "elasticsearch_info":{
       "cluster_name": "es_cluster", 
       "jvm_mem": "2G",  
