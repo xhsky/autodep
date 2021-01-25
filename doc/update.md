@@ -27,7 +27,7 @@
             "type": "frontend",			            // 前端代码
             "hosts": ["host1","host2:port"],		    // 更新的主机
             "dest": "/path/dir",			            // 更新路径
-            "version": "11111",			  	        // 代码版本
+            "version": "11111"			  	        // 代码版本
       	}
      }
   ```
@@ -53,7 +53,7 @@
       	  "type": "backend",				          // 后端代码
       	  "host": ["host1","host2:port"],		 	  // 更新的主机
           "dest": "/path/dir",			              // 更新路径
-          "version": "11111",			  	          // 代码版本
+          "version": "11111"			  	          // 代码版本
       	}
      }
   ```
