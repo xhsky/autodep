@@ -29,7 +29,6 @@ class Deploy(object):
             self.project_dict=json.load(project_f)
             self.project_id=self.project_dict['project_id']
             self.project_name=self.project_dict['project_name']
-            self.project_data=self.project_dict['project_data']
 
         self.init_file=init_file
         self.arch_file=arch_file
@@ -452,7 +451,7 @@ class Deploy(object):
         """
         if len(package_list)==0:
             self.log.logger.info("使用项目包")
-            package_list=self.project_data
+            package_list=self.project_dict['project_data']
 
         result=True
         for package in package_list:
