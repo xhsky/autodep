@@ -5,12 +5,12 @@
     "nginx_info":{                    
       "worker_processes": 2, 
       "vhost_info":{
-         80:{
+         "80":{
            "config_file": "/path/file1", 
            "proxy_name": "backend1", 
            "proxy_hosts": ["web1:8080", "web2:8080"]   
          }, 
-         81:{
+         "81":{
            "config_file": "/path/file1", 
            "proxy_name": "backend2", 
            "proxy_hosts": ["web1:8080", "web2:8080"]   
