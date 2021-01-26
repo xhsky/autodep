@@ -6,6 +6,7 @@
 logs_dir="./logs"
 log_file=f"{logs_dir}/autodep.log"
 log_console_level="info"
+log_graphics_level="info"
 log_file_level="debug"
 log_remote_level="debug"
 log_platform_level="debug"
