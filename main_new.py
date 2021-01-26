@@ -31,7 +31,7 @@ def print_usage_info():
 
 def main():
     try:
-        options, args=getopt.getopt(sys.argv[1:], "t:p:g:h", ["text=", "platform=", "graphics=", "help"])
+        options, args=getopt.getopt(sys.argv[1:], "t:p:gh", ["text=", "platform=", "graphics", "help"])
     except getopt.GetoptError:
         print(print_usage_info())
         sys.exit(1)
