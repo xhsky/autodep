@@ -49,7 +49,7 @@ def main():
 
             with open(f"{vhosts_dir}/0_upstream.conf", "w", encoding="utf8") as f:
                 for port in vhosts_info_dict:
-                    config_file=vhosts_info_dict[port]["config"]
+                    config_file=vhosts_info_dict[port]["config_file"]
                     log.logger.debug(f"添加vhost: {config_file} --> {vhosts_dir}/{port}.conf")
                     shutil.copy(config_file, f"{vhosts_dir}/{port}.conf")
 
