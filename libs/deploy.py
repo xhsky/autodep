@@ -4,7 +4,7 @@
 # sky
 
 import locale, json, os, time, sys, requests, tarfile
-from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, \
+from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, log_graphics_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, \
         interface, test_mode, \
@@ -350,19 +350,20 @@ class Deploy(object):
         for node in arch_dict:
             self.log.logger.info(f"***{node}安装***")
             self.install_stats_dict["stats"][node]={}
+            ip=arch_dict[node]["ip"]
             port=init_dict[arch_dict[node]["ip"]]["port"]
             ssh_client=ssh()
 
             self.log.logger.info("设置hosts")
             set_hosts_file="set_hosts.py"
-            ssh_client.scp(node, port, "root", f"./bin/{set_hosts_file}", f"{remote_code_dir}/{set_hosts_file}")
+            ssh_client.scp(ip, port, "root", f"./bin/{set_hosts_file}", f"{remote_code_dir}/{set_hosts_file}")
             set_hosts_dict={
                     "hostname": node, 
                     "hosts": hosts_list
                     }
             set_hosts_command=f"{remote_python_exec} {remote_code_dir}/{set_hosts_file} '{json.dumps(set_hosts_dict)}'"
             self.log.logger.debug(f"{set_hosts_command=}")
-            status=ssh_client.exec(node, port, set_hosts_command)
+            status=ssh_client.exec(ip, port, set_hosts_command)
             for line in status[1]:
                 self.log.logger.info(line.strip())
             if status[1].channel.recv_exit_status() == 0:
@@ -612,11 +613,11 @@ class graphics_deploy(Deploy):
 
     def __init__(self, conf_file, init_file, arch_file, project_file):
         super(graphics_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
-        self.log=Logger(self.log_file, self.log_level, "file")
+        self.log=Logger({"graphical": log_graphics_level, "console": log_console_level})
 
         #self.g_log=Logger(log_file, log_level, "file")
         locale.setlocale(locale.LC_ALL, '')
-        self.d = Dialog(dialog="dialog", autowidgetsize=1)
+        self.d = self.Dialog(dialog="dialog", autowidgetsize=1)
         self.d.set_background_title("集群部署")
 
     def trans_fields_to_dict(self, fields):
@@ -1270,18 +1271,16 @@ class graphics_deploy(Deploy):
     def show_menu(self):
         while True:
             menu={
-                    "1": "配置向导", 
-                    "2": "集群初始化", 
-                    "3": "集群安装", 
-                    "4": "集群启动"
+                    "1": "集群初始化", 
+                    "2": "集群部署", 
+                    "3": "集群监控"
                     }
 
             code,tag=self.d.menu(f"若是首次进行部署, 请从\'{menu['1']}\'开始:", 
                     choices=[
                         ("1", menu["1"]), 
                         ("2", menu["2"]),
-                        ("3", menu["3"]),
-                        ("4", menu["4"])
+                        ("3", menu["3"])
                         ], 
                     title="菜单"
                     )
@@ -1289,19 +1288,28 @@ class graphics_deploy(Deploy):
                 self.log.logger.debug(f"{code=}, {tag=}")
                 self.log.logger.info(f"选择{menu[tag]}")
                 if tag=="1":
-                    self.config()
-                if tag=="2":
                     self.init(menu[tag])
-                if tag=="3":
+                if tag=="2":
                     self.install(menu[tag])
-                if tag=="4":
+                if tag=="3":
                     self.start(menu[tag])
                 self.d.infobox(f"{menu[tag]}完成, 将返回主菜单...")
                 time.sleep(3)
             else:
                 self.cancel("安装")
 
+    def _install_dialog(self):
+        """
+        安装dialog
+        """
+
+        return True
+
     def show(self):
+        if not self._install_dialog():
+            print("Error: dialog安装失败, 请手动安装后再执行")
+            sys.exit(1)
+
         introduction=dedent("""
             本程序主要用来自动部署项目集群. 
             部署过程将使用方向按键进行选择, 【enter】键用来确认.
