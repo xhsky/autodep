@@ -91,11 +91,13 @@ def main():
                     #                  '"$http_user_agent" "$http_x_forwarded_for"';
 
                     #access_log  logs/access.log  main;
-                    server_names_hash_bucket_size 128;
-                    client_header_buffer_size 32k;
-                    large_client_header_buffers 4 64k;
 
-                    client_max_body_size 8m;
+                    server_tokens   off;
+                    server_names_hash_bucket_size 128;
+                    client_header_buffer_size 512k;
+                    large_client_header_buffers 4 512k;
+
+                    client_max_body_size 20m;
                     sendfile        on;
                     tcp_nopush     on;
                     tcp_nodelay on;
@@ -104,12 +106,30 @@ def main():
                     # gzip
                     gzip  on;
                     gzip_min_length 1k;
-                    gzip_buffers 4 16k;
+                    gzip_buffers 16 64k;
                     gzip_types text/plain application/x-javascript text/css application/xml;
                     gzip_vary on;
 
-                    # proxy header
+
+                    # 使客户端请求header中带有下划线的字段生效
                     underscores_in_headers on;
+                    
+                    # proxy
+                    proxy_intercept_errors on;			# 启用error_page
+                    proxy_set_header Host $http_host; 
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_buffer_size 512k;			# userLogin接口, 用户header信息的缓冲区大小
+                    proxy_buffers 32 128k;
+                    
+                    #proxy_connect_timeout 3000;
+                    #proxy_read_timeout 600000;
+                    #proxy_send_timeout 600000;
+                    #open_file_cache max=204800 inactive=30s;
+                    #open_file_cache_min_uses 1;
+                    #open_file_cache_valid 50s;
+                    #send_timeout  60;
+                    #proxy_request_buffering off;
 
                     include vhosts/*.conf;
                 }}
