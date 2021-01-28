@@ -134,7 +134,7 @@ server {
 """
 
 nginx_module_dict={
-        "数字党建(含组工)-大教务4.0": """
+        "智慧党校(含网络培训)-大教务4.0": """
             location /dsfa {
                 %s                                # 前端代码目录, 配置到dsfa上级目录 
                 if (!-e $request_filename) {
@@ -143,7 +143,7 @@ nginx_module_dict={
                 #try_files $uri $uri/ /index.html;
             }
         """, 
-        "数字党建(含组工)-大教务5.0": """
+        "智慧党校(含网络培训)-大教务5.0": """
             location /dsf5/ {
 	        %s                               # 配置到dsf5的上级目录, (pages, 改为dsf5)
                 if (!-e $request_filename) {
