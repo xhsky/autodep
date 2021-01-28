@@ -5,22 +5,30 @@
     "nginx_info":{                    
       "worker_processes": 2, 
       "vhost_info":{
-        "80":{
-          "config_name": ["教务", "考试"],            // 分类模块, 包含前后端代码
-          "proxy_name": "jw",                         // 名称唯一
-          "code_dir": "/path/dir", 
-          "proxy_hosts": ["web1:8080", "web2:8080"]   
-        }, 
-        "81":{            
-          "config_name": ["代理", "OA"],                  // 单纯转发代理, 不包含前后端代码
-          "proxy_name": "proxy", 
-          "proxy_hosts": ["web1:8081", "web2:8081"]   
-        }, 
-        "82":{
-          "config_name": ["aa", "bb"],                  // 未分类模块, 只包含后端代码
-          "proxy_name": "proxy", 
-          "proxy_hosts": ["web1:8081", "web2:8081"]   
-        }
+				"80":{																							// 端口
+					"智慧党校-大教务4.0": {														// 模块名称
+						"proxy_name": "jw4",														// 代理主机名称，全局唯一
+						"code_dir": "/path/dir",												// 前端代码路径
+						"proxy_hosts": ["web1:8080", "web2:8080"]				// 转发的后端主机
+					},
+					"智慧党校-大教务5.0": {
+						"proxy_name": "jw5",
+						"code_dir": "/path/dir",
+						"proxy_hosts": ["web1:8081", "web2:8081"]
+					}
+				},
+				"81": {
+					"代理": {																					// 单纯代理，无前后端代码
+						"proxy_name": "proxy",
+						"proxy_hosts": ["web1:8082", "web2:8082"]
+					}
+				},
+				"83": {
+					"第三方模块": {																		// 未分类模块，只包含后端代码
+						"proxy_name": "mod",
+						"proxy_hosts": ["web1:8083", "web2:8083"]
+					}
+				}
       }
     }
   }
