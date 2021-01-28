@@ -6,15 +6,19 @@
       "worker_processes": 2, 
       "vhost_info":{
         "80":{
-          "config_name": ["教务", "考试"], 
-          "proxy_name": "jw", 
+          "config_name": ["教务", "考试"],            // 分类模块, 包含前后端代码
+          "proxy_name": "jw",                         // 名称唯一
           "code_dir": "/path/dir", 
           "proxy_hosts": ["web1:8080", "web2:8080"]   
         }, 
-        "81":{
-          "config_name": ["代理", "OA"], 
+        "81":{            
+          "config_name": ["代理", "OA"],                  // 单纯转发代理, 不包含前后端代码
           "proxy_name": "proxy", 
-          "code_dir": "/path/dir", 
+          "proxy_hosts": ["web1:8081", "web2:8081"]   
+        }, 
+        "82":{
+          "config_name": ["aa", "bb"],                  // 未分类模块, 只包含后端代码
+          "proxy_name": "proxy", 
           "proxy_hosts": ["web1:8081", "web2:8081"]   
         }
       }
