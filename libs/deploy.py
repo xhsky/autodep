@@ -9,7 +9,8 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         remote_code_dir, remote_pkgs_dir, \
         interface, test_mode, \
         init_stats_file, install_stats_file, start_stats_file, update_stats_file, \
-        update_config_file_name
+        update_config_file_name, \
+        g_term_rows, g_term_cols, g_log_file
 
 if not os.path.exists(logs_dir):
     os.makedirs(logs_dir, exist_ok=1)
@@ -369,7 +370,7 @@ class Deploy(object):
             if status[1].channel.recv_exit_status() == 0:
                 self.log.logger.info(f"{node} hosts设置完成")
 
-                soft_control=soft(node, port, ssh_client)
+                soft_control=soft(ip, port, ssh_client)
                 for softname in arch_dict[node]["software"]:
                     self.log.logger.info(f"{softname}安装...")
                     stats_value=True
@@ -386,7 +387,7 @@ class Deploy(object):
                     if located_dir.endswith("/"):
                         arch_dict[node]["located"]=located_dir[0:-1]
 
-                    status=self.control(node, port, "install", trans_files_dict, arch_dict[node], ssh_client, soft_control)
+                    status=self.control(ip, port, "install", trans_files_dict, arch_dict[node], ssh_client, soft_control)
                     for line in status[1]:
                         self.log.logger.info(line.strip())
                     if status[1].channel.recv_exit_status() == 0:
@@ -613,12 +614,24 @@ class graphics_deploy(Deploy):
 
     def __init__(self, conf_file, init_file, arch_file, project_file):
         super(graphics_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
-        self.log=Logger({"graphical": log_graphics_level, "console": log_console_level})
+        self.log=Logger({"graphical": log_graphics_level, "file": log_file_level}, g_log_file=g_log_file, log_file=log_file)
 
         #self.g_log=Logger(log_file, log_level, "file")
         locale.setlocale(locale.LC_ALL, '')
         self.d = self.Dialog(dialog="dialog", autowidgetsize=1)
-        self.d.set_background_title("集群部署")
+        self.d.set_background_title("集群管理")
+        self.term_rows, self.term_cols=self.get_term_size()
+
+    def get_term_size(self):
+        """
+            获取终端尺寸
+        """
+        term_rows, term_cols=self.d.maxsize(use_persistent_args=False)
+        if term_rows < g_term_rows or term_cols < g_term_cols:
+            print(f"当前终端窗口({term_rows}, {term_cols})过小({g_term_rows}, {g_term_cols}), 请放大窗口后重试")
+            sys.exit(1)
+        else:
+            return term_rows, term_cols
 
     def trans_fields_to_dict(self, fields):
         info_dict={}
@@ -1228,7 +1241,115 @@ class graphics_deploy(Deploy):
 
         return soft_dict
 
+    def get_file_path(self, init_path, title):
+        """
+        获取选择文件路径
+        """
+        while True:
+            code, file_=self.d.fselect(init_path, height=10, width=60, title=title)
+            if code==self.d.OK:
+                code=self.d.yesno(f"确认选择文件: {file_} ?", height=6, width=45)
+                if code==self.d.OK:
+                    if os.path.exists(file_):
+                        if os.path.isfile(file_):
+                            return file_
+                        else:
+                            self.d.msgbox(f"该选择'{file_}'不是文件, 请重新选择", height=6, width=45)
+                    else:
+                        self.d.msgbox(f"该文件'{file_}'不存在, 请重新选择", height=6, width=45)
+            else:
+                return ""
+
+    def get_config(self, config_file):
+        """
+        从配置文件中获取配置
+        """
+
+        try:
+            with open(config_file, "r", encoding="utf8") as f:
+                config_dict=json.load(f)
+                return config_dict
+        except Exception as e:
+            self.log.logger.error(f"无法加载{config_file}: {e}")
+            return False
+
+    def progress_box(self, widget, func_name, text, **kwargs):
+        """
+        实时显示框
+        """
+        read_fd, write_fd = os.pipe()
+
+        child_pid = os.fork()
+        if child_pid == 0:
+            try:
+                os.close(read_fd)
+
+                with os.fdopen(write_fd, mode="w", buffering=1) as wfile:
+                    for line in text.split('\n'):
+                        wfile.write(line + '\n')
+                        time.sleep(0.02 if params["fast_mode"] else 1.2)
+                os._exit(0)
+            except:
+                os._exit(127)
+
+        os.close(write_fd)
+        self.d.programbox(fd=read_fd, title=title)
+
+        exit_info = os.waitpid(child_pid, 0)[1]
+        if os.WIFEXITED(exit_info):
+            exit_code = os.WEXITSTATUS(exit_info)
+        elif os.WIFSIGNALED(exit_info):
+            d.msgbox("%s(): first child process terminated by signal %d" %
+                     (func_name, os.WTERMSIG(exit_info)))
+        else:
+            assert False, "How the hell did we manage to get here?"
+
+        if exit_code != 0:
+            d.msgbox("%s(): first child process ended with exit status %d" % (func_name, exit_code))
+
     def init(self, title):
+        """
+        初始化过程
+        """
+
+        init_path=f"{os.path.abspath(os.path.curdir)}/"
+        while True:
+            init_file=self.get_file_path(init_path, "请<填写>从平台获取的配置文件路径")
+            if len(init_file) != 0:
+                init_dict=self.get_config(init_file)
+                if init_dict:
+                    break
+                else:
+                    self.d.msgbox(f"该文件'{init_file}'格式不对, 请重新选择", height=6, width=45)
+            else:
+                return 
+
+        self.d.programbox(g_log_file, text="hhhhhhhhh", height=10, width=60)
+
+
+        self.log.logger.info("监测主机配置, 请稍后...\n")
+        flag, connect_msg=self.connect_test(init_dict)
+        if flag==1:
+            self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
+            for node_msg in connect_msg:
+                self.log.logger.info(f"{node_msg[0]}:\t{node_msg[2]}")
+            sys.exit()
+
+        local_python3_file=self.conf_dict["location"].get("python3")
+        status=super(platform_deploy, self).init(init_dict, local_python3_file)
+        if status:
+            self.log.logger.info("初始化完成\n")
+            self.log.logger.info("获取主机信息...")
+            all_host_info=self.get_host_msg(init_dict)
+            self.init_stats_dict["host_info"]=self._to_init_dict(all_host_info)
+        else:
+            self.log.logger.error(f"初始化失败: {status}")
+        # 信息发送平台
+        self.generate_info("platform", self.init_stats_dict)
+
+
+
+
         with open(self.init_file, "r", encoding="utf8") as f:
             init_dict=json.load(f)
 
@@ -1241,6 +1362,7 @@ class graphics_deploy(Deploy):
             exit()
 
         local_python3_file=self.conf_dict["location"].get("python3")
+
         read_fd, write_fd = os.pipe()
         child_pid = os.fork()
         if child_pid == 0:
@@ -1273,14 +1395,16 @@ class graphics_deploy(Deploy):
             menu={
                     "1": "集群初始化", 
                     "2": "集群部署", 
-                    "3": "集群监控"
+                    "3": "集群监控", 
+                    "4": "项目更新"
                     }
 
             code,tag=self.d.menu(f"若是首次进行部署, 请从\'{menu['1']}\'开始:", 
                     choices=[
                         ("1", menu["1"]), 
                         ("2", menu["2"]),
-                        ("3", menu["3"])
+                        ("3", menu["3"]), 
+                        ("4", menu["4"])
                         ], 
                     title="菜单"
                     )
@@ -1293,6 +1417,8 @@ class graphics_deploy(Deploy):
                     self.install(menu[tag])
                 if tag=="3":
                     self.start(menu[tag])
+                if tag=="4":
+                    self.update(menu[tag])
                 self.d.infobox(f"{menu[tag]}完成, 将返回主菜单...")
                 time.sleep(3)
             else:
