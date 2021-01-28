@@ -286,7 +286,7 @@ def main():
 
                 start_command=f"systemctl start mysqld"
                 log.logger.debug(f"{start_command=}")
-                status, result=common.exec_command(start_command)
+                status, result=common.exec_command(start_command, timeout=600)
                 if status:
                     if result.returncode != 0:
                         log.logger.error(result.stderr)
