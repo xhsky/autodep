@@ -271,7 +271,7 @@ class Logger(object):
         if log_to_file:
             self.fh=handlers.TimedRotatingFileHandler(filename=kwargs["log_file"], when="D", backupCount=7, encoding='utf-8')
             fmt='%(asctime)s - %(levelname)s: %(message)s'
-            format_str=logging.Formatter(fmt)                           # 设置日志格式
+            format_str=logging.Formatter(fmt, datefmt='%Y-%m-%d %H:%M:%S')                           # 设置日志格式
             self.fh.setLevel(self.level_relations[mode_level_dict["file"]])
             self.fh.setFormatter(format_str)                            # 设置文件里写入的格式
             #self.fh.addFilter(MessageRewrite())
@@ -284,6 +284,14 @@ class Logger(object):
             self.rh.setFormatter(format_str)
             self.logger.addHandler(self.rh)                             # 把对象加到logger里
         if log_to_graphical:
+            self.gh=handlers.TimedRotatingFileHandler(filename=kwargs["g_log_file"], when="D", backupCount=7, encoding='utf-8')
+            fmt='%(levelname)s: %(message)s'
+            format_str=logging.Formatter(fmt)                           # 设置日志格式
+            self.gh.setLevel(self.level_relations[mode_level_dict["graphical"]])
+            self.gh.setFormatter(format_str)                            # 设置文件里写入的格式
+            #self.fh.addFilter(MessageRewrite())
+            self.logger.addHandler(self.gh)                             # 把对象加到logger里
+            """
             wfile=g_file
             self.gh=logging.StreamHandler(wfile)
             fmt="%(message)s"
@@ -291,6 +299,7 @@ class Logger(object):
             self.gh.setLevel(self.level_relations[mode_level_dict["graphical"]])
             self.gh.setFormatter(format_str)
             self.logger.addHandler(self.gh)                             # 把对象加到logger里
+            """
         if log_to_platform:
             """
             host=f"{kwargs['platform_host']}:{kwargs['platform_port']}"
@@ -303,9 +312,9 @@ class Logger(object):
 
             project_id=kwargs["project_id"]
 
-            fmt="%(levelname)s: %(message)s"
+            fmt='%(asctime)s - %(levelname)s: %(message)s'
             self.ph=platform_handler(host, url, "POST", project_id)
-            format_str=logging.Formatter(fmt)                           # 设置日志格式
+            format_str=logging.Formatter(fmt, datefmt='%Y-%m-%d %H:%M:%S')                           # 设置日志格式
             self.ph.setFormatter(format_str)
             self.ph.setLevel(self.level_relations[mode_level_dict["platform"]])
             self.logger.addHandler(self.ph)
