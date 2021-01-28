@@ -23,6 +23,13 @@ update_stats_file=f"{logs_dir}/update.json"
 
 update_config_file_name="update.json"
 
+# 文本图形化安装时的最小窗口尺寸
+g_term_rows=24
+g_term_cols=80
+
+# 用于显示在对话框中的graphics日志文件
+g_log_file=f"{logs_dir}/graphical.log"
+
 test_mode=True
 fixed_dir="/opt"
 
@@ -101,3 +108,54 @@ redis_src="redis-"
 redis_dst="redis"
 redis_pkg_dir=None
 redis_version="5.0.7"
+
+
+## nginx配置/代码模块转发配置
+nginx_server_config="""
+server {
+        listen       %s;
+        server_name  localhost;
+
+        #charset koi8-r;
+
+        #access_log  logs/host.access.log  main;
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+
+        location = /favicon.ico {
+            return 200;     		# 忽略浏览器的title前面的图标
+        }
+        
+        %s
+}
+"""
+
+nginx_module_dict={
+        "智慧党校-大教务4.0": """
+            location /dsfa {
+                %s                                # 前端代码目录, 配置到dsfa上级目录 
+                if (!-e $request_filename) {
+                    proxy_pass http://%s;
+                    }
+                #try_files $uri $uri/ /index.html;
+            }
+        """, 
+        "智慧党校-大教务5.0": """
+            location /dsf5/ {
+	        %s                               # 配置到dsf5的上级目录, (pages, 改为dsf5)
+                if (!-e $request_filename) {
+                    rewrite ^/dsf5/(.*)$ /$1 break;   # 后端代码无前缀
+                    proxy_pass http://%s;
+                  }
+	      
+	        error_page 404 = @rewrite_dsfa;
+                }
+	    
+	    location @rewrite_dsfa {
+                rewrite ^(.*)dsf5(.*)$ $1dsfa$2 last;
+	    }
+        """
+        }

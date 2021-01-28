@@ -2,9 +2,10 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, json, shutil, os
+import sys, json, os
 from libs import common
-from libs.env import log_remote_level, nginx_src, nginx_dst, nginx_pkg_dir, nginx_version
+from libs.env import log_remote_level, nginx_src, nginx_dst, nginx_pkg_dir, nginx_version, \
+        nginx_server_config, nginx_module_dict
 
 def main():
     action, conf_json=sys.argv[1:]
@@ -40,28 +41,37 @@ def main():
         # 配置
         worker_processes=nginx_info_dict.get("worker_processes")
 
-        # proxy
-        vhosts_name="vhosts"
-        vhosts_dir=f"{nginx_dir}/conf/{vhosts_name}"
+        # vhost文件路径
+        vhosts_file=f"{nginx_dir}/conf/vhosts.conf"
         try:
-            log.logger.debug(f"创建vhosts目录: {vhosts_dir}")
-            os.makedirs(vhosts_dir, exist_ok=1)
+            #log.logger.debug(f"创建vhosts目录: {vhosts_dir}")
+            #os.makedirs(vhosts_dir, exist_ok=1)
 
-            with open(f"{vhosts_dir}/0_upstream.conf", "w", encoding="utf8") as f:
-                for port in vhosts_info_dict:
-                    config_file=vhosts_info_dict[port]["config_file"]
-                    log.logger.debug(f"添加vhost: {config_file} --> {vhosts_dir}/{port}.conf")
-                    shutil.copy(config_file, f"{vhosts_dir}/{port}.conf")
-
-                    proxy_name=vhosts_info_dict[port]["proxy_name"]
+            server_config_list=[]
+            for port in vhosts_info_dict:
+                config_mod=[]
+                upstream_servers_list=[]
+                for config_name in vhosts_info_dict[port]:
+                    proxy_name=vhosts_info_dict[port][config_name]["proxy_name"]
+                    # 配置upstream
                     upstream_servers=f"\nupstream {proxy_name} {{"
-                    for proxy_host in vhosts_info_dict[port].get("proxy_hosts"):
+                    for proxy_host in vhosts_info_dict[port][config_name].get("proxy_hosts"):
                         upstream_servers=f"{upstream_servers}\n\tserver {proxy_host};" 
                     else:
                         upstream_servers=f"{upstream_servers}\n}}" 
-                    f.write(upstream_servers)
+                        upstream_servers_list.append(upstream_servers)
+                    # 配置root
+                    code_dir=vhosts_info_dict[port][config_name].get("code_dir")
+                    if code_dir is None:
+                        code_dir=""
+                    else:
+                        code_dir=f"root {code_dir};"
+
+                    config_mod.append(nginx_module_dict[config_name] % (code_dir, proxy_name))
+                upstream_servers="\n".join(upstream_servers_list)
+                server_config_list.append(f"{upstream_servers}\n{nginx_server_config}" % (port, "\n".join(config_mod)))
         except Exception as e:
-            log.logger.error(f"创建vhosts配置失败: {str(e)}")
+            log.logger.error(f"配置vhosts失败: {str(e)}")
             flag=1
             sys.exit(flag)
 
@@ -131,7 +141,7 @@ def main():
                     #send_timeout  60;
                     #proxy_request_buffering off;
 
-                    include vhosts/*.conf;
+                    include {vhosts_file};
                 }}
                 """
         nginx_conf_file=f"{nginx_dir}/conf/nginx.conf"
@@ -139,6 +149,11 @@ def main():
                 "nginx_conf":{
                     "config_file": nginx_conf_file, 
                     "config_context": nginx_conf_text, 
+                    "mode": "w"
+                    }, 
+                "vhosts_conf": {
+                    "config_file": vhosts_file, 
+                    "config_context": "\n".join(server_config_list), 
                     "mode": "w"
                     }
                 }
