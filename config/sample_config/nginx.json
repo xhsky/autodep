@@ -5,17 +5,19 @@
     "nginx_info":{                    
       "worker_processes": 2, 
       "vhost_info":{
-         "80":{
-           "config_file": "/path/file1", 
-           "proxy_name": "backend1", 
-           "proxy_hosts": ["web1:8080", "web2:8080"]   
-         }, 
-         "81":{
-           "config_file": "/path/file1", 
-           "proxy_name": "backend2", 
-           "proxy_hosts": ["web1:8080", "web2:8080"]   
-         } 
-       }
-     }
+        "80":{
+          "config_name": ["教务", "考试"], 
+          "proxy_name": "jw", 
+          "code_dir": "/path/dir", 
+          "proxy_hosts": ["web1:8080", "web2:8080"]   
+        }, 
+        "81":{
+          "config_name": ["代理", "OA"], 
+          "proxy_name": "proxy", 
+          "code_dir": "/path/dir", 
+          "proxy_hosts": ["web1:8081", "web2:8081"]   
+        }
+      }
+    }
   }
 }
