@@ -9,6 +9,9 @@ from libs import common
 from libs.env import log_remote_level, code_saved_remote_dir
 
 def main():
+    """
+    用于本地代码更新
+    """
     args_dict=json.loads(sys.argv[1])
     log=common.Logger({"remote": log_remote_level})
 
