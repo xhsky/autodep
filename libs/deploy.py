@@ -19,6 +19,44 @@ from textwrap import dedent
 from libs.common import Logger, post_info
 from libs.remote import ssh, soft
 from libs import update
+#from functools import wraps
+
+def progress_box(func_):
+    """
+    实时显示框
+    """
+    def wrapper(self, *args, **kwargs):
+        read_fd, write_fd = os.pipe()
+        child_pid = os.fork()
+        if child_pid == 0:
+            try:
+                os.close(read_fd)
+                with os.fdopen(write_fd, mode="w", buffering=1) as wfile:
+                    wfile.write(func(self, *args, **kwargs))
+                    #for _ in range(1, 10):
+                    #    wfile.write("aaaaaaaaaaaaa\n")
+                    #    time.sleep(0.2)
+                os._exit(0)
+            except:
+                os._exit(127)
+
+        os.close(write_fd)
+        self.d.programbox(fd=read_fd, width=40, height=10)
+
+        exit_info = os.waitpid(child_pid, 0)[1]
+        if os.WIFEXITED(exit_info):
+            exit_code = os.WEXITSTATUS(exit_info)
+        elif os.WIFSIGNALED(exit_info):
+            d_.msgbox("%s(): first child process terminated by signal %d" %
+                     (programbox, os.WTERMSIG(exit_info)))
+        else:
+            assert False, "How the hell did we manage to get here?"
+
+        if exit_code != 0:
+            d_.msgbox("%s(): first child process ended with exit status %d" % (programbox, exit_code))
+
+        #return f(*args, **kwargs)
+    return wrapper
 
 class Deploy(object):
     '''集群部署
@@ -611,10 +649,12 @@ class graphics_deploy(Deploy):
     '''文本图形化安装'''
 
     from dialog import Dialog
+    #locale.setlocale(locale.LC_ALL, '')
+    #d = Dialog(dialog="dialog", autowidgetsize=1)
 
     def __init__(self, conf_file, init_file, arch_file, project_file):
         super(graphics_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
-        self.log=Logger({"graphical": log_graphics_level, "file": log_file_level}, g_log_file=g_log_file, log_file=log_file)
+        self.log=Logger({"file": log_file_level}, log_file=log_file)
 
         #self.g_log=Logger(log_file, log_level, "file")
         locale.setlocale(locale.LC_ALL, '')
@@ -1273,103 +1313,58 @@ class graphics_deploy(Deploy):
             self.log.logger.error(f"无法加载{config_file}: {e}")
             return False
 
-    def progress_box(self, widget, func_name, text, **kwargs):
-        """
-        实时显示框
-        """
-        read_fd, write_fd = os.pipe()
-
-        child_pid = os.fork()
-        if child_pid == 0:
-            try:
-                os.close(read_fd)
-
-                with os.fdopen(write_fd, mode="w", buffering=1) as wfile:
-                    for line in text.split('\n'):
-                        wfile.write(line + '\n')
-                        time.sleep(0.02 if params["fast_mode"] else 1.2)
-                os._exit(0)
-            except:
-                os._exit(127)
-
-        os.close(write_fd)
-        self.d.programbox(fd=read_fd, title=title)
-
-        exit_info = os.waitpid(child_pid, 0)[1]
-        if os.WIFEXITED(exit_info):
-            exit_code = os.WEXITSTATUS(exit_info)
-        elif os.WIFSIGNALED(exit_info):
-            d.msgbox("%s(): first child process terminated by signal %d" %
-                     (func_name, os.WTERMSIG(exit_info)))
-        else:
-            assert False, "How the hell did we manage to get here?"
-
-        if exit_code != 0:
-            d.msgbox("%s(): first child process ended with exit status %d" % (func_name, exit_code))
-
-    def init(self, title):
+    def init(self):
         """
         初始化过程
         """
 
-        init_path=f"{os.path.abspath(os.path.curdir)}/"
-        while True:
-            init_file=self.get_file_path(init_path, "请<填写>从平台获取的配置文件路径")
-            if len(init_file) != 0:
-                init_dict=self.get_config(init_file)
-                if init_dict:
-                    break
-                else:
-                    self.d.msgbox(f"该文件'{init_file}'格式不对, 请重新选择", height=6, width=45)
-            else:
-                return 
-
-        self.d.programbox(g_log_file, text="hhhhhhhhh", height=10, width=60)
-
-
-        self.log.logger.info("监测主机配置, 请稍后...\n")
-        flag, connect_msg=self.connect_test(init_dict)
-        if flag==1:
-            self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
-            for node_msg in connect_msg:
-                self.log.logger.info(f"{node_msg[0]}:\t{node_msg[2]}")
-            sys.exit()
-
-        local_python3_file=self.conf_dict["location"].get("python3")
-        status=super(platform_deploy, self).init(init_dict, local_python3_file)
-        if status:
-            self.log.logger.info("初始化完成\n")
-            self.log.logger.info("获取主机信息...")
-            all_host_info=self.get_host_msg(init_dict)
-            self.init_stats_dict["host_info"]=self._to_init_dict(all_host_info)
-        else:
-            self.log.logger.error(f"初始化失败: {status}")
-        # 信息发送平台
-        self.generate_info("platform", self.init_stats_dict)
-
-
-
-
         with open(self.init_file, "r", encoding="utf8") as f:
             init_dict=json.load(f)
 
-        self.log.logger.info("监测主机配置, 请稍后...\n")
-        flag, connect_msg=self.connect_test(init_dict)
-        if flag==1:
-            self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
-            for node_msg in connect_msg:
-                self.log.logger.info(f"{node_msg[0]}:\t{node_msg[2]}")
-            exit()
-
-        local_python3_file=self.conf_dict["location"].get("python3")
-
         read_fd, write_fd = os.pipe()
         child_pid = os.fork()
-        if child_pid == 0:
+
+        if child_pid == 0:          # 进入子进程
             os.close(read_fd)
             with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
-                g_log=Logger(self.log_file, self.log_level, "graphical", g_file=wfile)
-                super(graphics_deploy, self).init(init_dict, local_python3_file, g_log)
+                self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)   #self.log_file, self.log_level, "graphical", g_file=wfile)
+                self.log.logger.info("监测主机配置, 请稍后...\n")
+                flag, connect_msg=self.connect_test(init_dict)
+                if flag==1:
+                    self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
+                    for ip in connect_msg:
+                        self.log.logger.info(f"{ip}:\t{connect_msg[ip]['msg']}")
+                    sys.exit()
+
+                local_python3_file=self.conf_dict["location"].get("python3")
+                status=super(graphics_deploy, self).init(init_dict, local_python3_file)
+                if status is True:
+                    self.log.logger.info("初始化完成\n")
+                    self.log.logger.info("获取主机信息...")
+                    all_host_info=self.get_host_msg(init_dict)
+                    self.init_stats_dict["host_info"]=self._to_init_dict(all_host_info)
+                    for node in all_host_info:
+                        if all_host_info[node][0] == 0:
+                            node_info=all_host_info[node][1]
+                            self.log.logger.debug(f"{node_info=}")
+                            node_info=node_info[node_info.index("{"):]
+                            #self.log.logger.debug(f"{node_info=}")
+                            node_info_dict=json.loads(node_info)
+                            node_info=dedent(f"""
+                            主机: {node}
+                            发行版本: \t{node_info_dict['os_name']}
+                            内核版本: \t{node_info_dict['kernel_version']}
+                            CPU:      \t{node_info_dict['CPU'][0]}({node_info_dict['CPU'][1]}%)
+                            内存:     \t{node_info_dict['Mem'][0]}({node_info_dict['Mem'][1]}%)""")
+                            for disk in node_info_dict["Disk"]:
+                                node_info=f"{node_info}\n磁盘({disk}): \t{node_info_dict['Disk'][disk][0]}({node_info_dict['Disk'][disk][1]}%)"
+                            for port in node_info_dict["Port"]:
+                                node_info=f"{node_info}\n端口({port}): \t{node_info_dict['Port'][port][1]}/{node_info_dict['Port'][port][0]}"
+                            self.log.logger.info(node_info)
+                        else:
+                            self.log.logger.error(all_host_info[node][1])
+                else:
+                    self.log.logger.error(f"初始化失败: {status}")
             os._exit(0)
         os.close(write_fd)
         self.d.programbox(fd=read_fd, title=title, height=30, width=180)
@@ -1380,10 +1375,84 @@ class graphics_deploy(Deploy):
             pass
 
     def install(self, title):
-        pass
+        with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
+            init_dict=json.load(init_f)
+            arch_dict=json.load(arch_f)
+        self.log.logger.info("集群安装...\n")
+        result=super(graphics_deploy, self).install(init_dict, arch_dict)
+        if result:
+            self.log.logger.info("集群安装完成")
+        else:
+            self.log.logger.error("集群安装失败")
+        self.generate_info("file", self.install_stats_dict, stats_file=install_stats_file)
+
+        return result
 
     def start(self, title):
+        with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
+            init_dict=json.load(init_f)
+            arch_dict=json.load(arch_f)
+        self.log.logger.info("集群启动...\n")
+        result=super(graphics_deploy, self).start(init_dict, arch_dict)
+        if result:
+            self.log.logger.info("集群启动完成")
+        else:
+            self.log.logger.error("集群启动失败")
+        self.generate_info("file", self.start_stats_dict, stats_file=start_stats_file)
+
+        return result
+
+    def update(self, title):
+        """
+        deploy中项目更新
+        """
+        self.log.logger.info("开始更新...")
+        result=super(graphics_deploy, self).update([])
+        if result:
+            self.log.logger.info("更新完成")
+        else:
+            self.log.logger.error("更新失败")
+        self.generate_info("file", self.update_stats_dict, stats_file=update_stats_file)
+        return result
+
+    def g_update(self, title):
+        """
+        图形化项目更新
+        """
         pass
+
+    def deploy(self, title):
+        """
+        install, start, update
+        """
+
+        stage_all=["install", "start", "update"]
+        stage_method={
+                "install": self.install, 
+                "start": self.start, 
+                "update": self.update
+                }
+        read_fd, write_fd = os.pipe()
+        child_pid = os.fork()
+
+        if child_pid == 0:          # 进入子进程
+            os.close(read_fd)
+            with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
+                self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)   
+                for stage in stage_all:
+                    if stage_method[stage](title):
+                        continue
+                    else:
+                        self.log.logger.error(f"'{stage}'阶段执行失败")
+                        sys.exit(1)
+            os._exit(0)
+        os.close(write_fd)
+        self.d.programbox(fd=read_fd, title=title, height=30, width=180)
+        exit_info = os.waitpid(child_pid, 0)[1]
+        if os.WIFEXITED(exit_info):
+            exit_code = os.WEXITSTATUS(exit_info)
+        elif os.WIFSIGNALED(exit_info):
+            pass
 
     def cancel(self, msg):
         self.d.msgbox(f"取消{msg}")
@@ -1414,11 +1483,11 @@ class graphics_deploy(Deploy):
                 if tag=="1":
                     self.init(menu[tag])
                 if tag=="2":
-                    self.install(menu[tag])
+                    self.deploy(menu[tag])
                 if tag=="3":
-                    self.start(menu[tag])
+                    self.monitor(menu[tag])
                 if tag=="4":
-                    self.update(menu[tag])
+                    self.g_update(menu[tag])
                 self.d.infobox(f"{menu[tag]}完成, 将返回主菜单...")
                 time.sleep(3)
             else:

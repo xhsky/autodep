@@ -284,22 +284,22 @@ class Logger(object):
             self.rh.setFormatter(format_str)
             self.logger.addHandler(self.rh)                             # 把对象加到logger里
         if log_to_graphical:
-            self.gh=handlers.TimedRotatingFileHandler(filename=kwargs["g_log_file"], when="D", backupCount=7, encoding='utf-8')
-            fmt='%(levelname)s: %(message)s'
-            format_str=logging.Formatter(fmt)                           # 设置日志格式
-            self.gh.setLevel(self.level_relations[mode_level_dict["graphical"]])
-            self.gh.setFormatter(format_str)                            # 设置文件里写入的格式
-            #self.fh.addFilter(MessageRewrite())
-            self.logger.addHandler(self.gh)                             # 把对象加到logger里
             """
-            wfile=g_file
-            self.gh=logging.StreamHandler(wfile)
+            self.ch=logging.StreamHandler()
             fmt="%(message)s"
+            format_str=logging.Formatter(fmt)                           # 设置日志格式
+            self.ch.setLevel(self.level_relations[mode_level_dict["graphical"]])
+            self.ch.setFormatter(format_str)
+            #self.ch.addFilter(MessageFilter())
+            self.logger.addHandler(self.ch)                             # 把对象加到logger里
+            """
+            wfile=kwargs["wfile"]
+            self.gh=logging.StreamHandler(wfile)
+            fmt="%(levelname)s: %(message)s"
             format_str=logging.Formatter(fmt)                           # 设置日志格式
             self.gh.setLevel(self.level_relations[mode_level_dict["graphical"]])
             self.gh.setFormatter(format_str)
             self.logger.addHandler(self.gh)                             # 把对象加到logger里
-            """
         if log_to_platform:
             """
             host=f"{kwargs['platform_host']}:{kwargs['platform_port']}"
