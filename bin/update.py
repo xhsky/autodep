@@ -36,8 +36,8 @@ def main():
             elif type_=="frontend":
                 log.logger.info("开始前端更新...")
                 for i in tar.getmembers():
-                    if i.isdir():
-                        code_dir_name=i.name
+                    if i.name != "update.json":
+                        code_dir_name=i.name.split("/")[1]
                         break
                 code_dir_abs=f"{dest}/{code_dir_name}"
                 if os.path.exists(code_dir_abs):
