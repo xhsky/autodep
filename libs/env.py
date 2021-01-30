@@ -3,6 +3,7 @@
 # 2020-11-20 16:33:57
 # sky
 
+# 日志目录及各类日志级别
 logs_dir="./logs"
 log_file=f"{logs_dir}/autodep.log"
 log_console_level="info"
@@ -16,6 +17,8 @@ log_update_level="debug"
 code_saved_remote_dir="/tmp"
 #update_version_file="code_version"
 
+# 部署各阶段状态文件
+host_info_file=f"{logs_dir}/host_info.json"
 init_stats_file=f"{logs_dir}/init.json"
 install_stats_file=f"{logs_dir}/install.json"
 start_stats_file=f"{logs_dir}/start.json"
@@ -26,9 +29,6 @@ update_config_file_name="update.json"
 # 文本图形化安装时的最小窗口尺寸
 g_term_rows=24
 g_term_cols=80
-
-# 用于显示在对话框中的graphics日志文件
-g_log_file=f"{logs_dir}/graphical.log"
 
 test_mode=True
 fixed_dir="/opt"
@@ -48,6 +48,75 @@ interface={
         "sms": ["smartone.10690007.com", 80, "/proxysms/mt"],               # 短信接口
         "platform_log": ["192.168.0.81", 8115, "/project/deploy/sendLog"],  # 公司平台日志接口
         "platform_info": ["192.168.0.81", 8115, "/project/deploy/sendDetection"],  # 公司平台信息接口
+        }
+
+# 各软件安装最小配置
+min_install_config={
+        "nginx":{
+            "mem": 1024,        # 内存单位均为M
+            "cpus": 1
+            }, 
+        "jdk": {
+            "mem": 0, 
+            "cpus": 0
+            }, 
+        "tomcat":{
+            "mem": 1024, 
+            "cpus": 1
+            }, 
+        "ffmpeg":{
+            "mem": 512, 
+            "cpus": 1
+            }, 
+        "elasticsearch":{
+            "mem": 1024, 
+            "cpus": 1
+            }, 
+        "glusterfs":{
+            "mem": 1024, 
+            "cpus":1
+            }, 
+        "mysql":{
+            "mem":2048, 
+            "cpus": 2
+            }, 
+        "rabbitmq":{
+            "mem": 1024, 
+            "cpus": 1
+            }, 
+        "redis": {
+            "mem": 1024, 
+            "cpus":1
+            }, 
+        "rocketmq":{
+            "mem": 1024, 
+            "cpus":1
+            }
+        }
+# 各软件权重比
+soft_weights_dict={
+        "elasticsearch": 1, 
+        "glusterfs": 1, 
+        "nginx": 1, 
+        "redis": 2, 
+        "ffmpeg": 1, 
+        "mysql": 3, 
+        "erlang": 0, 
+        "rabbitmq": 1, 
+        "rocketmq": 1, 
+        "jdk": 0
+        "tomcat": 2
+        "program": 2
+        }
+# 部署环境下的权重基数
+soft_weights_unit_dict={
+        "演示环境": 0.5, 
+        "测试环境": 1, 
+        "正式环境": 2
+        }
+host_weights_unit_dict={
+        "cpu": 1,               # 1 cpu core = 1
+        "mem": 512              # 512M = 1
         }
 
 # link

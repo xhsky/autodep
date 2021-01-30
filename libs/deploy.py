@@ -8,9 +8,10 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, \
         interface, test_mode, \
-        init_stats_file, install_stats_file, start_stats_file, update_stats_file, \
+        host_info_file, init_stats_file, install_stats_file, start_stats_file, update_stats_file, \
         update_config_file_name, \
-        g_term_rows, g_term_cols, g_log_file
+        g_term_rows, g_term_cols, \
+        soft_weights_dict, soft_weights_unit_dict, host_weights_unit_dict
 
 if not os.path.exists(logs_dir):
     os.makedirs(logs_dir, exist_ok=1)
@@ -19,44 +20,6 @@ from textwrap import dedent
 from libs.common import Logger, post_info
 from libs.remote import ssh, soft
 from libs import update
-#from functools import wraps
-
-def progress_box(func_):
-    """
-    实时显示框
-    """
-    def wrapper(self, *args, **kwargs):
-        read_fd, write_fd = os.pipe()
-        child_pid = os.fork()
-        if child_pid == 0:
-            try:
-                os.close(read_fd)
-                with os.fdopen(write_fd, mode="w", buffering=1) as wfile:
-                    wfile.write(func(self, *args, **kwargs))
-                    #for _ in range(1, 10):
-                    #    wfile.write("aaaaaaaaaaaaa\n")
-                    #    time.sleep(0.2)
-                os._exit(0)
-            except:
-                os._exit(127)
-
-        os.close(write_fd)
-        self.d.programbox(fd=read_fd, width=40, height=10)
-
-        exit_info = os.waitpid(child_pid, 0)[1]
-        if os.WIFEXITED(exit_info):
-            exit_code = os.WEXITSTATUS(exit_info)
-        elif os.WIFSIGNALED(exit_info):
-            d_.msgbox("%s(): first child process terminated by signal %d" %
-                     (programbox, os.WTERMSIG(exit_info)))
-        else:
-            assert False, "How the hell did we manage to get here?"
-
-        if exit_code != 0:
-            d_.msgbox("%s(): first child process ended with exit status %d" % (programbox, exit_code))
-
-        #return f(*args, **kwargs)
-    return wrapper
 
 class Deploy(object):
     '''集群部署
@@ -68,6 +31,7 @@ class Deploy(object):
             self.project_dict=json.load(project_f)
             self.project_id=self.project_dict['project_id']
             self.project_name=self.project_dict['project_name']
+            self.project_env=self.project_dict['project_env']
 
         self.init_file=init_file
         self.arch_file=arch_file
@@ -649,8 +613,6 @@ class graphics_deploy(Deploy):
     '''文本图形化安装'''
 
     from dialog import Dialog
-    #locale.setlocale(locale.LC_ALL, '')
-    #d = Dialog(dialog="dialog", autowidgetsize=1)
 
     def __init__(self, conf_file, init_file, arch_file, project_file):
         super(graphics_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
@@ -1313,7 +1275,135 @@ class graphics_deploy(Deploy):
             self.log.logger.error(f"无法加载{config_file}: {e}")
             return False
 
-    def init(self):
+    def exclude_resouce(self, host_info_dict, arch_dict):
+        """
+        排除已安装软件的资源
+        """
+        return host_info_dict
+
+    def _host_nums_verifi(self, init_dict, arch_dict):
+        """
+        集群主机与模板主机数相同
+        """
+        if len(init_dict) != len(arch_dict):
+            return False, "配置主机数量与模板主机数量不一致, 请重新配置")
+        else:
+            True, ""
+    def _localized_soft_resource_verifi(self):
+        """
+        从模板中查找是否有已安装软件(国产化软件)
+        """
+
+        return True
+
+    def _resource_used_verifi(self):
+        pass
+
+    def _generate_arch_config(self, host_info_dict, arch_config_dict):
+        """
+        资源信息与架构模板相校验, 并生成arch配置
+        """
+        ip_weights_dict={
+                }
+        node_weights_dict={
+                }
+        soft_weights_unit=soft_weights_unit_dict[self.project_env]
+        for node in arch_config_dict:
+            node_weights=0
+            for softname in arch_config_dict[node]:
+                node_weights=node_weights+soft_weights_dict[softname]
+            node_weights_dict[node]=node_weights
+
+        for ip in host_info_dict:
+            ip_weights=host_info_dict[ip]["CPU"][0]/host_weights_unit_dict["cpu"]+host_info_dict[ip]["Mem"][0]/host_weights_unit_dict["mem"]
+
+
+
+            
+
+
+    def resource_verifi(self):
+        """
+        资源校验
+        """
+        with open(self.init_file, "r", encoding="utf8") as init_f, open(self.arch_file, "r", encoding="utf8") as arch_f:
+            init_dict=json.load(init_f)
+            arch_dict=json.load(arch_f)
+
+        verifi_funs=[
+                self._host_nums_verifi, 
+                self._localized_soft_resource_verifi, 
+
+                ]
+
+        host_info_dict=self.exclude_resouce(self.init_stats_dict["host_info"], arch_dict)
+
+        self.log.logger.error("请重新配置")
+        return False
+
+    def show_init_info(self, title, json_file):
+        """
+            显示各主机信息
+        """
+        HIDDEN = 0x1
+        READ_ONLY = 0x2
+        tab=3           # 
+        xi_1=20
+        xi_2=30
+        xi_3=45
+        xi_4=60
+        xi_5=75
+        field_length=45
+        elements=[]
+
+        with open(json_file, "r", encoding="utf8") as f:
+            all_host_info_dict=json.load(f)
+        n=0
+        for ip in all_host_info_dict:
+            n=n+1
+            node_info_dict=all_host_info_dict[ip]
+            if node_info_dict.get("error_info") is None:
+                info=[
+                        (f"{ip}: ", n, 1, "", n, xi_1, field_length, 0, HIDDEN), 
+                        ("内核版本: ", n+1, tab, node_info_dict["kernel_version"], n+1, xi_2, field_length, 0, READ_ONLY), 
+                        ("发行版本: ", n+2, tab, node_info_dict["os_name"], n+2, xi_2, field_length, 0, READ_ONLY), 
+                        ("CPU个数: ", n+3, tab, f"{node_info_dict['CPU'][0]}", n+3, xi_1, field_length, 0, READ_ONLY), 
+                        ("CPU使用率: ", n+3, xi_2, f"{node_info_dict['CPU'][1]}%", n+3, xi_3, field_length, 0, READ_ONLY), 
+                        ("内存大小: ", n+4, tab, f"{node_info_dict['Mem'][0]}", n+4, xi_1, field_length, 0, READ_ONLY), 
+                        ("内存使用率: ", n+4, xi_2, f"{node_info_dict['Mem'][1]}%", n+4, xi_3, field_length, 0, READ_ONLY)
+                        ]
+                elements.extend(info)
+
+                n=n+5
+                elements.append(("磁盘: ", n, tab, "", n, xi_1, field_length, 0, HIDDEN))
+                for disk in node_info_dict["Disk"]:
+                    n=n+1
+                    disk_info=[
+                            ("挂载目录: ", n, tab*2, disk, n, xi_1, field_length, 0, READ_ONLY),
+                            ("磁盘大小: ", n, xi_2, node_info_dict['Disk'][disk][0], n, xi_3, field_length, 0, READ_ONLY), 
+                            ("磁盘使用率: ", n, xi_4, f"{node_info_dict['Disk'][disk][1]}%", n, xi_5, field_length, 0, READ_ONLY)
+                            ]
+                    elements.extend(disk_info)
+
+                n=n+1
+                elements.append(("端口: ", n, tab, "", n, xi_1, field_length, 0, HIDDEN))
+                for port in node_info_dict["Port"]:
+                    n=n+1
+                    port_info=[
+                            ("Port: ", n, tab*2, port, n, xi_1, field_length, 0, READ_ONLY),
+                            ("Pid: ", n, xi_2, f"{node_info_dict['Port'][port][0]}", n, xi_3, field_length, 0, READ_ONLY),
+                            ("进程名称: ", n, xi_4, node_info_dict['Port'][port][1], n, xi_5, field_length, 0, READ_ONLY)
+                            ] 
+                    elements.extend(port_info)
+            else:
+                error_msg=node_info_dict["error_info"]
+                elements.append((ip, n, 1, error_msg, n, xi_1, field_length, 0, READ_ONLY))
+        elements.append(("", n+1, 1, "", n+1, xi_1, field_length, 0, HIDDEN))
+        self.log.logger.debug(f"arch summary: {elements=}")
+        code, _=self.d.mixedform(f"请确认集群主机信息:", elements=elements, cancel_label="返回")
+        return code
+
+    def init(self, title):
         """
         初始化过程
         """
@@ -1334,37 +1424,22 @@ class graphics_deploy(Deploy):
                     self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
                     for ip in connect_msg:
                         self.log.logger.info(f"{ip}:\t{connect_msg[ip]['msg']}")
-                    sys.exit()
+                    os._exit(1)
 
                 local_python3_file=self.conf_dict["location"].get("python3")
                 status=super(graphics_deploy, self).init(init_dict, local_python3_file)
+                #status=True
                 if status is True:
                     self.log.logger.info("初始化完成\n")
                     self.log.logger.info("获取主机信息...")
                     all_host_info=self.get_host_msg(init_dict)
-                    self.init_stats_dict["host_info"]=self._to_init_dict(all_host_info)
-                    for node in all_host_info:
-                        if all_host_info[node][0] == 0:
-                            node_info=all_host_info[node][1]
-                            self.log.logger.debug(f"{node_info=}")
-                            node_info=node_info[node_info.index("{"):]
-                            #self.log.logger.debug(f"{node_info=}")
-                            node_info_dict=json.loads(node_info)
-                            node_info=dedent(f"""
-                            主机: {node}
-                            发行版本: \t{node_info_dict['os_name']}
-                            内核版本: \t{node_info_dict['kernel_version']}
-                            CPU:      \t{node_info_dict['CPU'][0]}({node_info_dict['CPU'][1]}%)
-                            内存:     \t{node_info_dict['Mem'][0]}({node_info_dict['Mem'][1]}%)""")
-                            for disk in node_info_dict["Disk"]:
-                                node_info=f"{node_info}\n磁盘({disk}): \t{node_info_dict['Disk'][disk][0]}({node_info_dict['Disk'][disk][1]}%)"
-                            for port in node_info_dict["Port"]:
-                                node_info=f"{node_info}\n端口({port}): \t{node_info_dict['Port'][port][1]}/{node_info_dict['Port'][port][0]}"
-                            self.log.logger.info(node_info)
-                        else:
-                            self.log.logger.error(all_host_info[node][1])
+                    with open(host_info_file, "w", encoding="utf8") as f:
+                        all_host_dict=self._to_init_dict(all_host_info)
+                        json.dump(all_host_dict, f)
+                    self.log.logger.info("主机信息已获取, 请查看")
                 else:
                     self.log.logger.error(f"初始化失败: {status}")
+                    os._exit(1)
             os._exit(0)
         os.close(write_fd)
         self.d.programbox(fd=read_fd, title=title, height=30, width=180)
@@ -1372,7 +1447,26 @@ class graphics_deploy(Deploy):
         if os.WIFEXITED(exit_info):
             exit_code = os.WEXITSTATUS(exit_info)
         elif os.WIFSIGNALED(exit_info):
-            pass
+            self.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单")
+            self.show_menu()
+        else:
+            self.msgbox("发生莫名错误, 请返回菜单重试")
+            self.show_menu()
+
+        if exit_code==0:
+            while True:
+                result_code=self.show_init_info(title, host_info_file)
+                if result_code==self.d.OK:
+                    result_code=self.d.yesno("确认按照检测信息开始集群部署?")
+                    if result_code==self.d.OK:
+                        if self.resource_verifi():
+                            self.deploy("集群部署")
+                        else:
+                            break
+                    else:
+                        continue
+                else:
+                    break
 
     def install(self, title):
         with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
@@ -1462,7 +1556,7 @@ class graphics_deploy(Deploy):
     def show_menu(self):
         while True:
             menu={
-                    "1": "集群初始化", 
+                    "1": "主机检测", 
                     "2": "集群部署", 
                     "3": "集群监控", 
                     "4": "项目更新"
@@ -1507,8 +1601,8 @@ class graphics_deploy(Deploy):
 
         introduction=dedent("""
             本程序主要用来自动部署项目集群. 
-            部署过程将使用方向按键进行选择, 【enter】键用来确认.
-            是否开始部署 ?
+            部署过程将使用方向按键/Tab键进行选择, 【enter】键用来确认.
+            是否开始 ?
         """)
 
         self.log.logger.info("开始文本图形化部署")
