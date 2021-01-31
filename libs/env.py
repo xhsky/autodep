@@ -104,8 +104,8 @@ soft_weights_dict={
         "erlang": 0, 
         "rabbitmq": 1, 
         "rocketmq": 1, 
-        "jdk": 0
-        "tomcat": 2
+        "jdk": 0, 
+        "tomcat": 2, 
         "program": 2
         }
 # 部署环境下的权重基数

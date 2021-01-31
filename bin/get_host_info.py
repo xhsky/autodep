@@ -9,7 +9,7 @@ import subprocess
 from libs.common import Logger
 from libs.env import log_remote_level
 
-def format_size(byte):
+def format_size_bak(byte):
     byte=float(byte)
     kb=byte/1024
 
@@ -22,6 +22,13 @@ def format_size(byte):
             return f"{mb:.2f}M"
     else:
         return f"{kb:.2f}k"
+
+def format_size(byte):
+    byte=float(byte)
+    kb=byte/1024
+
+    mb=kb/1024
+    return round(mb, 2)
 
 def main():
     try:

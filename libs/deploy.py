@@ -1275,71 +1275,92 @@ class graphics_deploy(Deploy):
             self.log.logger.error(f"无法加载{config_file}: {e}")
             return False
 
-    def exclude_resouce(self, host_info_dict, arch_dict):
+    def _exclude_resouce(self, host_info_dict, arch_dict):
         """
         排除已安装软件的资源
         """
         return host_info_dict
 
-    def _host_nums_verifi(self, init_dict, arch_dict):
+    def _host_nums_verifi(self):
         """
         集群主机与模板主机数相同
         """
-        if len(init_dict) != len(arch_dict):
-            return False, "配置主机数量与模板主机数量不一致, 请重新配置")
+        if len(self.init_config_dict) != len(self.arch_config_dict):
+            return False, "配置主机数量与模板主机数量不一致, 请重新配置"
         else:
-            True, ""
-    def _localized_soft_resource_verifi(self):
+            return True, ""
+
+    def _localized_soft_resource_verifi(self, host_info_dict, arch_config_dict):
         """
         从模板中查找是否有已安装软件(国产化软件)
         """
 
-        return True
+        return True, ""
 
-    def _resource_used_verifi(self):
-        pass
+    def _resource_used_verifi(self, init_dict):
+        """
+        针对各主机当前CPU使用率, 内存使用率, 磁盘(最大)使用率校验(20%)
+        """
 
-    def _generate_arch_config(self, host_info_dict, arch_config_dict):
+    def _generate_arch_config(self):
         """
         资源信息与架构模板相校验, 并生成arch配置
         """
-        ip_weights_dict={
-                }
-        node_weights_dict={
-                }
+        ip_weights_dict={}
+        node_weights_dict={}
+        
+        # 获取节点权重
         soft_weights_unit=soft_weights_unit_dict[self.project_env]
-        for node in arch_config_dict:
+        for node in self.arch_config_dict:
             node_weights=0
-            for softname in arch_config_dict[node]:
+            for softname in self.arch_config_dict[node]["software"]:
                 node_weights=node_weights+soft_weights_dict[softname]
             node_weights_dict[node]=node_weights
+        self.log.logger.debug(f"{node_weights_dict=}")
+        # 获取ip权重
+        for ip in self.host_info_dict:
+            ip_weights=self.host_info_dict[ip]["CPU"][0]/host_weights_unit_dict["cpu"]+round(self.host_info_dict[ip]["Mem"][0]/host_weights_unit_dict["mem"], 2)
+            ip_weights_dict[ip]=ip_weights
 
-        for ip in host_info_dict:
-            ip_weights=host_info_dict[ip]["CPU"][0]/host_weights_unit_dict["cpu"]+host_info_dict[ip]["Mem"][0]/host_weights_unit_dict["mem"]
+        # 节点与ip权重排序
+        ip_weights_sort=[ x for x, y in sorted(ip_weights_dict.items(), key=lambda item:item[1])]
+        node_weights_sort=[ x for x, y in sorted(node_weights_dict.items(), key=lambda item:item[1])]
 
-
-
-            
-
+        # 根据排序对应, 赋值
+        for node, ip in zip(node_weights_sort, ip_weights_sort):
+            self.arch_config_dict[node]["ip"]=ip
 
     def resource_verifi(self):
         """
         资源校验
         """
-        with open(self.init_file, "r", encoding="utf8") as init_f, open(self.arch_file, "r", encoding="utf8") as arch_f:
-            init_dict=json.load(init_f)
-            arch_dict=json.load(arch_f)
+        with open(self.init_file, "r", encoding="utf8") as init_f, open(self.arch_file, "r", encoding="utf8") as arch_f, open(host_info_file, "r", encoding="utf8") as host_f:
+            self.init_config_dict=json.load(init_f)
+            self.arch_config_dict=json.load(arch_f)
+            self.host_info_dict=json.load(host_f)
 
         verifi_funs=[
                 self._host_nums_verifi, 
-                self._localized_soft_resource_verifi, 
-
+                self._generate_arch_config
                 ]
 
-        host_info_dict=self.exclude_resouce(self.init_stats_dict["host_info"], arch_dict)
-
-        self.log.logger.error("请重新配置")
-        return False
+        interval=int(100/len(verifi_funs))
+        percent=0
+        self.d.gauge_start()
+        for verifi_fun in verifi_funs:
+            #self.log.logger.info(f"{verifi_fun=}")
+            result, msg=verifi_fun()
+            percent=percent+interval
+            if result:
+                self.d.gauge_update(percent)
+            else:
+                self.d.gauge_stop()
+                self.log.logger.error(msg)
+                self.d.msgbox(msg)
+                return False
+        else:
+            self.d.gauge_stop()
+            return True
 
     def show_init_info(self, title, json_file):
         """
@@ -1380,7 +1401,7 @@ class graphics_deploy(Deploy):
                     n=n+1
                     disk_info=[
                             ("挂载目录: ", n, tab*2, disk, n, xi_1, field_length, 0, READ_ONLY),
-                            ("磁盘大小: ", n, xi_2, node_info_dict['Disk'][disk][0], n, xi_3, field_length, 0, READ_ONLY), 
+                            ("磁盘大小: ", n, xi_2, f"{node_info_dict['Disk'][disk][0]}", n, xi_3, field_length, 0, READ_ONLY), 
                             ("磁盘使用率: ", n, xi_4, f"{node_info_dict['Disk'][disk][1]}%", n, xi_5, field_length, 0, READ_ONLY)
                             ]
                     elements.extend(disk_info)
