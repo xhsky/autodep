@@ -3,7 +3,7 @@
 # 2020-10-21 17:37:47
 # sky
 
-import locale, json, os, time, sys, requests, tarfile
+import locale, json, os, time, sys, requests, tarfile, math
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, log_graphics_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, \
@@ -11,7 +11,8 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         host_info_file, init_stats_file, install_stats_file, start_stats_file, update_stats_file, \
         update_config_file_name, \
         g_term_rows, g_term_cols, \
-        soft_weights_dict, soft_weights_unit_dict, host_weights_unit_dict
+        soft_weights_dict, soft_weights_unit_dict, host_weights_unit_dict, \
+        located_dir_name, placeholder_software_list
 
 if not os.path.exists(logs_dir):
     os.makedirs(logs_dir, exist_ok=1)
@@ -193,12 +194,22 @@ class Deploy(object):
             soft_install_dict[i]=round(soft_install_dict[i]/weight_sum, 2)
         return soft_install_dict
     '''
+    def _exclude_placeholder_software(self, soft_list):
+        """
+        从列表中删除占位软件
+        """
+        for placeholder_software in placeholder_software_list:
+            while True:
+                if placeholder_software in soft_list:
+                    soft_list.remove(placeholder_software)
+                else:
+                    break
+        return soft_list
+
     def init(self, init_dict, local_python3_file):
         """主机环境初始化
             * 生成秘钥
             * 免密码登录
-            * 设置hostname
-            * 配置hosts
             * 关闭firewalld
             * 关闭selinux
             * 配置Python3环境
@@ -219,7 +230,6 @@ class Deploy(object):
             stats_message=""
 
             try:
-                #ip=init_dict[node].get("ip")
                 port=init_dict[node].get("port")
                 password=init_dict[node].get("root_password")
 
@@ -351,9 +361,10 @@ class Deploy(object):
             hosts_list.append(f"{arch_dict[node].get('ip')} {node}")
 
         for node in arch_dict:
-            self.log.logger.info(f"***{node}安装***")
+            ip=arch_dict[node].get("ip")
+            self.log.logger.info(f"***{node}({ip})安装***")
+            self.log.logger.info(f"安装目录: {arch_dict[node]['located']}")
             self.install_stats_dict["stats"][node]={}
-            ip=arch_dict[node]["ip"]
             port=init_dict[arch_dict[node]["ip"]]["port"]
             ssh_client=ssh()
 
@@ -373,7 +384,7 @@ class Deploy(object):
                 self.log.logger.info(f"{node} hosts设置完成")
 
                 soft_control=soft(ip, port, ssh_client)
-                for softname in arch_dict[node]["software"]:
+                for softname in self._exclude_placeholder_software(arch_dict[node]["software"]):
                     self.log.logger.info(f"{softname}安装...")
                     stats_value=True
 
@@ -422,7 +433,7 @@ class Deploy(object):
             port=init_dict[arch_dict[node]["ip"]]["port"]
             ssh_client=ssh()
             soft_control=soft(node, port, ssh_client)
-            for softname in arch_dict[node]["software"]:
+            for softname in self._exclude_placeholder_software(arch_dict[node]["software"]):
                 self.log.logger.info(f"{softname}启动...")
                 stats_value=True
 
@@ -618,7 +629,13 @@ class graphics_deploy(Deploy):
         super(graphics_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
         self.log=Logger({"file": log_file_level}, log_file=log_file)
 
-        #self.g_log=Logger(log_file, log_level, "file")
+        with open(self.arch_file, "r", encoding="utf8") as arch_f, \
+                open(self.init_file, "r", encoding="utf8") as init_f:
+            self.init_dict=json.load(init_f)
+            self.arch_dict=json.load(arch_f)
+
+        self.soft_weights_unit=soft_weights_unit_dict[self.project_env]
+
         locale.setlocale(locale.LC_ALL, '')
         self.d = self.Dialog(dialog="dialog", autowidgetsize=1)
         self.d.set_background_title("集群管理")
@@ -1285,74 +1302,216 @@ class graphics_deploy(Deploy):
         """
         集群主机与模板主机数相同
         """
-        if len(self.init_config_dict) != len(self.arch_config_dict):
+        if len(self.init_dict) != len(self.arch_dict):
             return False, "配置主机数量与模板主机数量不一致, 请重新配置"
         else:
             return True, ""
 
-    def _localized_soft_resource_verifi(self, host_info_dict, arch_config_dict):
+    def _localized_soft_resource_verifi(self):
         """
         从模板中查找是否有已安装软件(国产化软件)
         """
 
         return True, ""
 
-    def _resource_used_verifi(self, init_dict):
+    def _get_max_disk_name(self):
+        """
+        获取每个ip剩余空间最大的磁盘目录名称
+
+        return { 
+            ip: max_disk_name, 
+            ip: max_disk_name, 
+        }
+        """
+        max_disk_dict={}
+        for ip in self.host_info_dict:
+            disk_sorted=sorted(self.host_info_dict[ip]["Disk"].items(), key=lambda item:item[1][0]*(100-item[1][1]))
+            max_disk_dict[ip]=disk_sorted[-1][0]
+        return max_disk_dict
+
+    def _resource_used_verifi(self):
         """
         针对各主机当前CPU使用率, 内存使用率, 磁盘(最大)使用率校验(20%)
         """
+        max_cpu_percent=30
+        max_mem_percent=20
+        max_disk_percent=20
+        for ip in self.host_info_dict:
+            cpu_used_percent=self.host_info_dict[ip]["CPU"][1]
+            if cpu_used_percent > max_cpu_percent:
+                return False, f"'{ip}'主机CPU使用率异常({cpu_used_percent}%), 请检查后再试"
 
-    def _generate_arch_config(self):
+            mem_used_percent=self.host_info_dict[ip]["Mem"][1]
+            if mem_used_percent > max_mem_percent:
+                return False, f"'{ip}'主机内存使用率异常({mem_used_percent}%), 请检查后再试"
+            max_disk_dict=self._get_max_disk_name()
+            self.log.logger.debug(f"{max_disk_dict}")
+            disk_used_percent=self.host_info_dict[ip]["Disk"][max_disk_dict[ip]][1]
+            if disk_used_percent > max_disk_percent:
+                return False, f"'{ip}'主机磁盘({max_disk_name})使用率异常({disk_used_percent}%), 请检查后再试"
+        else:
+            return True, ""
+
+    def _arch_match(self):
         """
-        资源信息与架构模板相校验, 并生成arch配置
+        根据模板中各节点安装软件的权重和 对应 集群中各节点权重(排序对应), 并将将ip赋值给node配置
         """
         ip_weights_dict={}
         node_weights_dict={}
         
-        # 获取节点权重
-        soft_weights_unit=soft_weights_unit_dict[self.project_env]
-        for node in self.arch_config_dict:
-            node_weights=0
-            for softname in self.arch_config_dict[node]["software"]:
-                node_weights=node_weights+soft_weights_dict[softname]
-            node_weights_dict[node]=node_weights
-        self.log.logger.debug(f"{node_weights_dict=}")
-        # 获取ip权重
-        for ip in self.host_info_dict:
-            ip_weights=self.host_info_dict[ip]["CPU"][0]/host_weights_unit_dict["cpu"]+round(self.host_info_dict[ip]["Mem"][0]/host_weights_unit_dict["mem"], 2)
-            ip_weights_dict[ip]=ip_weights
+        try:
+            # 获取节点权重
+            for node in self.arch_dict:
+                node_weights=0
+                for softname in self.arch_dict[node]["software"]:
+                    node_weights=node_weights+soft_weights_dict[softname]
+                node_weights_dict[node]=node_weights
+            self.log.logger.debug(f"{node_weights_dict=}")
 
-        # 节点与ip权重排序
-        ip_weights_sort=[ x for x, y in sorted(ip_weights_dict.items(), key=lambda item:item[1])]
-        node_weights_sort=[ x for x, y in sorted(node_weights_dict.items(), key=lambda item:item[1])]
+            # 获取ip权重
+            for ip in self.host_info_dict:
+                ip_weights=self.host_info_dict[ip]["CPU"][0]/host_weights_unit_dict["cpu"]+round(self.host_info_dict[ip]["Mem"][0]/host_weights_unit_dict["mem"], 2)
+                ip_weights_dict[ip]=ip_weights
+            self.log.logger.debug(f"{ip_weights_dict=}")
 
-        # 根据排序对应, 赋值
-        for node, ip in zip(node_weights_sort, ip_weights_sort):
-            self.arch_config_dict[node]["ip"]=ip
+            # 节点与ip权重排序
+            ip_weights_sort=[ x for x, y in sorted(ip_weights_dict.items(), key=lambda item:item[1])]
+            node_weights_sort=[ x for x, y in sorted(node_weights_dict.items(), key=lambda item:item[1])]
 
-    def resource_verifi(self):
+            # 根据排序对应, 赋值
+            for node, ip in zip(node_weights_sort, ip_weights_sort):
+                self.arch_dict[node]["ip"]=ip
+                self.log.logger.debug(f"{ip} set-host {node}")
+
+            # 选择最大磁盘赋值
+            max_disk_dict=self._get_max_disk_name()
+            for _ in self.arch_dict:
+                max_disk_dir=f"{max_disk_dict[self.arch_dict[_]['ip']]}"
+                if max_disk_dir.endswith("/"):
+                    located_dir=f"{max_disk_dir}{located_dir_name}"
+                else:
+                    located_dir=f"{max_disk_dir}/{located_dir_name}"
+                self.arch_dict[_]["located"]=located_dir
+
+            return True, ""
+        except Exception as e:
+            return False, str(e)
+
+    def _resource_verifi(self):
         """
-        资源校验
+        排序对应后, 比较模板中节点上软件最小配置总量与相应主机的资源总量
         """
-        with open(self.init_file, "r", encoding="utf8") as init_f, open(self.arch_file, "r", encoding="utf8") as arch_f, open(host_info_file, "r", encoding="utf8") as host_f:
-            self.init_config_dict=json.load(init_f)
-            self.arch_config_dict=json.load(arch_f)
+        for node in self.arch_dict:
+            ip=self.arch_dict[node]["ip"]
+            ip_mem=self.host_info_dict[self.arch_dict[ip]]["Mem"][0]
+            ip_cpu=self.host_info_dict[self.arch_dict[ip]]["CPU"][0]
+            self.log.logger.debug(f"{ip_mem=}, {ip_cpu=}")
+
+            node_mem=0
+            node_cpu=0
+            for softname in self.arch_dict[node]["software"]:
+                node_mem=node_mem+soft_weights_dict[softname] * 1024 * self.soft_weights_unit
+                node_cpu=node_cpu+soft_weights_dict[softname] * 1 * self.soft_weights_unit
+            else:
+                self.log.logger.debug(f"{node_mem=}, {ip_cpu=}")
+                if ip_mem * 0.1 >= 2048:                    # 系统系统最多2G
+                    if ip_mem - 2048 < node_mem:            
+                        return False, f"'ip'主机至少需要{node_mem}M内存"
+                else:
+                    if ip_mem * 0.1 < node_mem:             # 0.1为系统使用
+                        return False, f"'ip'主机至少需要{node_mem}M内存"
+                if ip_cpu < node_cpu:
+                    return False, f"'ip'主机至少需要{math.ceil(node_cpu)}核心CPU"
+        else:
+            return True, ""
+
+    def _software_resource_reallocation(self, node, resource_dict, weights_sum, softname, soft_weights):
+        """
+        单个软件重新分配资源
+        """
+        softname_mem=f"{int(resource_dict['mem'] * soft_weights/weights_sum)}M"
+
+        softname_cpu=int(resource_dict["cpu"] * soft_weights/weights_sum)
+        if softname_cpu == 0:
+            softname_cpu=1
+
+        if softname=="elasticsearch":
+            self.arch_dict[node]["elasticsearch_info"]["jvm_mem"]=softname_mem
+        elif softname=="mysql":
+            self.arch_dict[node]["mysql_info"]["db_info"]["innodb_mem"]=softname_mem
+        elif softname=="nginx":
+            self.arch_dict[node]["nginx_info"]["worker_processes"]=softname_cpu
+        elif softname=="rabbitmq":
+            self.arch_dict[node]["rabbitmq_info"]["erlang_mem"]=softname_mem
+        elif softname=="redis":
+            self.arch_dict[node]["redis_info"]["db_info"]["redis_mem"]=softname_mem
+        elif softname=="rocketmq":
+            self.arch_dict[node]["recketmq_info"]["namesrv_mem"]=f"{int(int(softname_mem[:-2])/3)}M"
+            self.arch_dict[node]["recketmq_info"]["broker_mem"]=f"{int(int(softname_mem[:-2])/3 * 2)}M"
+        elif softname=="tomcat":
+            self.arch_dict[node]["tomcat_info"]["jvm_mem"]=softname_mem
+        else:
+            pass
+
+    def _resource_reallocation(self):
+        """
+        根据现有配置重新分配各软件资源
+        """
+        for node in self.arch_dict:
+            mem_total=self.host_info_dict[self.arch_dict[node]["ip"]]["Mem"][0]
+            if mem_total * 0.1 > 2048:
+                mem_free=mem_total-2048
+            else:
+                mem_free=mem_total * 0.9
+
+            cpu_cores=self.host_info_dict[self.arch_dict[node]["ip"]]["CPU"][0]
+            resource_dict={
+                    "mem": mem_free, 
+                    "cpu": cpu_cores
+                    }
+
+            # 获取node软件的权重和
+            weights_sum=0
+            for softname in self.arch_dict[node]["software"]:
+                weights_sum=weights_sum+soft_weights_dict[softname]
+
+            # 重新分配各软件资源
+            for softname in self.arch_dict[node]["software"]:
+                self._software_resource_reallocation(node, resource_dict, weights_sum, softname, soft_weights_dict[softname])
+        else:
+            return True, ""
+
+    def _cluster_resource_reallocation(self):
+        """
+        分配资源后, 校验软件集群中各软件配置是否相同. 若不同, 则将集群中各软件重置为最小配置
+        """
+        return True, ""
+
+    def generate_arch(self):
+        """
+        生成arch.json
+        """
+        with open(host_info_file, "r", encoding="utf8") as host_f:
             self.host_info_dict=json.load(host_f)
 
         verifi_funs=[
                 self._host_nums_verifi, 
-                self._generate_arch_config
+                self._localized_soft_resource_verifi, 
+                self._resource_used_verifi, 
+                self._arch_match, 
+                self._resource_reallocation, 
+                self._cluster_resource_reallocation
                 ]
 
         interval=int(100/len(verifi_funs))
         percent=0
-        self.d.gauge_start()
+        self.d.gauge_start("主机资源校验中...")
         for verifi_fun in verifi_funs:
-            #self.log.logger.info(f"{verifi_fun=}")
+            time.sleep(1)
             result, msg=verifi_fun()
             percent=percent+interval
             if result:
-                self.d.gauge_update(percent)
+                self.d.gauge_update(percent, text="架构自动匹配中...", update_text=True)
             else:
                 self.d.gauge_stop()
                 self.log.logger.error(msg)
@@ -1360,6 +1519,9 @@ class graphics_deploy(Deploy):
                 return False
         else:
             self.d.gauge_stop()
+            self.log.logger.debug(f"回写入{self.arch_file}: {json.dumps(self.arch_dict)}")
+            with open(self.arch_file, "w", encoding="utf8") as f:
+                json.dump(self.arch_dict, f, ensure_ascii=False)
             return True
 
     def show_init_info(self, title, json_file):
@@ -1428,10 +1590,6 @@ class graphics_deploy(Deploy):
         """
         初始化过程
         """
-
-        with open(self.init_file, "r", encoding="utf8") as f:
-            init_dict=json.load(f)
-
         read_fd, write_fd = os.pipe()
         child_pid = os.fork()
 
@@ -1440,7 +1598,7 @@ class graphics_deploy(Deploy):
             with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
                 self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)   #self.log_file, self.log_level, "graphical", g_file=wfile)
                 self.log.logger.info("监测主机配置, 请稍后...\n")
-                flag, connect_msg=self.connect_test(init_dict)
+                flag, connect_msg=self.connect_test(self.init_dict)
                 if flag==1:
                     self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
                     for ip in connect_msg:
@@ -1448,12 +1606,11 @@ class graphics_deploy(Deploy):
                     os._exit(1)
 
                 local_python3_file=self.conf_dict["location"].get("python3")
-                status=super(graphics_deploy, self).init(init_dict, local_python3_file)
-                #status=True
+                status=super(graphics_deploy, self).init(self.init_dict, local_python3_file)
                 if status is True:
                     self.log.logger.info("初始化完成\n")
                     self.log.logger.info("获取主机信息...")
-                    all_host_info=self.get_host_msg(init_dict)
+                    all_host_info=self.get_host_msg(self.init_dict)
                     with open(host_info_file, "w", encoding="utf8") as f:
                         all_host_dict=self._to_init_dict(all_host_info)
                         json.dump(all_host_dict, f)
@@ -1468,10 +1625,10 @@ class graphics_deploy(Deploy):
         if os.WIFEXITED(exit_info):
             exit_code = os.WEXITSTATUS(exit_info)
         elif os.WIFSIGNALED(exit_info):
-            self.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单")
+            self.d.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单")
             self.show_menu()
         else:
-            self.msgbox("发生莫名错误, 请返回菜单重试")
+            self.d.msgbox("发生莫名错误, 请返回菜单重试")
             self.show_menu()
 
         if exit_code==0:
@@ -1480,7 +1637,7 @@ class graphics_deploy(Deploy):
                 if result_code==self.d.OK:
                     result_code=self.d.yesno("确认按照检测信息开始集群部署?")
                     if result_code==self.d.OK:
-                        if self.resource_verifi():
+                        if self.generate_arch():
                             self.deploy("集群部署")
                         else:
                             break
@@ -1490,11 +1647,8 @@ class graphics_deploy(Deploy):
                     break
 
     def install(self, title):
-        with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
-            init_dict=json.load(init_f)
-            arch_dict=json.load(arch_f)
         self.log.logger.info("集群安装...\n")
-        result=super(graphics_deploy, self).install(init_dict, arch_dict)
+        result=super(graphics_deploy, self).install(self.init_dict, self.arch_dict)
         if result:
             self.log.logger.info("集群安装完成")
         else:
@@ -1504,11 +1658,8 @@ class graphics_deploy(Deploy):
         return result
 
     def start(self, title):
-        with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
-            init_dict=json.load(init_f)
-            arch_dict=json.load(arch_f)
         self.log.logger.info("集群启动...\n")
-        result=super(graphics_deploy, self).start(init_dict, arch_dict)
+        result=super(graphics_deploy, self).start(self.init_dict, self.arch_dict)
         if result:
             self.log.logger.info("集群启动完成")
         else:
@@ -1559,7 +1710,7 @@ class graphics_deploy(Deploy):
                         continue
                     else:
                         self.log.logger.error(f"'{stage}'阶段执行失败")
-                        sys.exit(1)
+                        os._exit(1)
             os._exit(0)
         os.close(write_fd)
         self.d.programbox(fd=read_fd, title=title, height=30, width=180)
@@ -1567,7 +1718,18 @@ class graphics_deploy(Deploy):
         if os.WIFEXITED(exit_info):
             exit_code = os.WEXITSTATUS(exit_info)
         elif os.WIFSIGNALED(exit_info):
-            pass
+            self.d.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单")
+            self.show_menu()
+        else:
+            self.d.msgbox("发生莫名错误, 请返回菜单重试")
+            self.show_menu()
+
+        if exit_code==0:
+            self.d.msgbox("集群部署完成, 将返回菜单")
+            self.show_menu()
+        else:
+            self.d.msgbox("集群部署失败, 将返回菜单")
+            self.show_menu()
 
     def cancel(self, msg):
         self.d.msgbox(f"取消{msg}")
@@ -1622,13 +1784,13 @@ class graphics_deploy(Deploy):
 
         introduction=dedent("""
             本程序主要用来自动部署项目集群. 
-            部署过程将使用方向按键/Tab键进行选择, 【enter】键用来确认.
+            部署过程将使用方向键或Tab键进行选择, 【enter】键用来确认.
             是否开始 ?
         """)
 
         self.log.logger.info("开始文本图形化部署")
 
-        code=self.d.yesno(introduction, height=10, width=60, title="说明")
+        code=self.d.yesno(introduction, height=10, width=100, title="说明")
 
         if code==self.d.OK:
             self.show_menu()

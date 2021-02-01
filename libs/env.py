@@ -13,6 +13,12 @@ log_remote_level="debug"
 log_platform_level="debug"
 log_update_level="debug"
 
+# 安装目录名称
+located_dir_name="dream"
+
+# 占位软件列表
+placeholder_software_list=["program"]
+
 #log_update_file=f"{logs_dir}/update.log"
 code_saved_remote_dir="/tmp"
 #update_version_file="code_version"
