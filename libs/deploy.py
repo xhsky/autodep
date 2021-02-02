@@ -18,7 +18,7 @@ if not os.path.exists(logs_dir):
     os.makedirs(logs_dir, exist_ok=1)
 
 from textwrap import dedent
-from libs.common import Logger, post_info
+from libs.common import Logger, post_info, format_size
 from libs.remote import ssh, soft
 from libs import update
 
@@ -1302,6 +1302,7 @@ class graphics_deploy(Deploy):
         """
         集群主机与模板主机数相同
         """
+        self.log.logger.debug("验证架构主机数量...")
         if len(self.init_dict) != len(self.arch_dict):
             return False, "配置主机数量与模板主机数量不一致, 请重新配置"
         else:
@@ -1311,6 +1312,7 @@ class graphics_deploy(Deploy):
         """
         从模板中查找是否有已安装软件(国产化软件)
         """
+        self.log.logger.debug("适配国产化软件...")
 
         return True, ""
 
@@ -1333,20 +1335,24 @@ class graphics_deploy(Deploy):
         """
         针对各主机当前CPU使用率, 内存使用率, 磁盘(最大)使用率校验(20%)
         """
+        self.log.logger.debug("校验主机资源...")
         max_cpu_percent=30
         max_mem_percent=20
         max_disk_percent=20
+        max_disk_dict=self._get_max_disk_name()
         for ip in self.host_info_dict:
             cpu_used_percent=self.host_info_dict[ip]["CPU"][1]
+            self.log.logger.debug(f"{ip}: {cpu_used_percent=}")
             if cpu_used_percent > max_cpu_percent:
                 return False, f"'{ip}'主机CPU使用率异常({cpu_used_percent}%), 请检查后再试"
 
             mem_used_percent=self.host_info_dict[ip]["Mem"][1]
+            self.log.logger.debug(f"{ip}: {mem_used_percent=}")
             if mem_used_percent > max_mem_percent:
                 return False, f"'{ip}'主机内存使用率异常({mem_used_percent}%), 请检查后再试"
-            max_disk_dict=self._get_max_disk_name()
-            self.log.logger.debug(f"{max_disk_dict}")
+
             disk_used_percent=self.host_info_dict[ip]["Disk"][max_disk_dict[ip]][1]
+            self.log.logger.debug(f"{ip}: 最大磁盘目录: {max_disk_dict[ip]}, {disk_used_percent=}")
             if disk_used_percent > max_disk_percent:
                 return False, f"'{ip}'主机磁盘({max_disk_name})使用率异常({disk_used_percent}%), 请检查后再试"
         else:
@@ -1359,6 +1365,7 @@ class graphics_deploy(Deploy):
         ip_weights_dict={}
         node_weights_dict={}
         
+        self.log.logger.debug("主机匹配模板...")
         try:
             # 获取节点权重
             for node in self.arch_dict:
@@ -1381,7 +1388,7 @@ class graphics_deploy(Deploy):
             # 根据排序对应, 赋值
             for node, ip in zip(node_weights_sort, ip_weights_sort):
                 self.arch_dict[node]["ip"]=ip
-                self.log.logger.debug(f"{ip} set-host {node}")
+                self.log.logger.debug(f"{ip} <--> {node}")
 
             # 选择最大磁盘赋值
             max_disk_dict=self._get_max_disk_name()
@@ -1401,27 +1408,27 @@ class graphics_deploy(Deploy):
         """
         排序对应后, 比较模板中节点上软件最小配置总量与相应主机的资源总量
         """
+        self.log.logger.debug("验证集群资源与模板资源...")
         for node in self.arch_dict:
             ip=self.arch_dict[node]["ip"]
-            ip_mem=self.host_info_dict[self.arch_dict[ip]]["Mem"][0]
-            ip_cpu=self.host_info_dict[self.arch_dict[ip]]["CPU"][0]
-            self.log.logger.debug(f"{ip_mem=}, {ip_cpu=}")
+            ip_mem=self.host_info_dict[ip]["Mem"][0]
+            ip_cpu=self.host_info_dict[ip]["CPU"][0]
+            self.log.logger.debug(f"{node}: {ip_mem=}, {ip_cpu=}")
 
-            node_mem=0
+            node_mem_M=0
             node_cpu=0
             for softname in self.arch_dict[node]["software"]:
-                node_mem=node_mem+soft_weights_dict[softname] * 1024 * self.soft_weights_unit
+                node_mem_M=node_mem_M+soft_weights_dict[softname] * 1024 * self.soft_weights_unit
                 node_cpu=node_cpu+soft_weights_dict[softname] * 1 * self.soft_weights_unit
             else:
-                self.log.logger.debug(f"{node_mem=}, {ip_cpu=}")
-                if ip_mem * 0.1 >= 2048:                    # 系统系统最多2G
-                    if ip_mem - 2048 < node_mem:            
-                        return False, f"'ip'主机至少需要{node_mem}M内存"
-                else:
-                    if ip_mem * 0.1 < node_mem:             # 0.1为系统使用
-                        return False, f"'ip'主机至少需要{node_mem}M内存"
+                self.log.logger.debug(f"{node}: {node_mem_M=}, {node_cpu=}")
+                ip_free_mem_M=self._get_free_mem(ip_mem) * 1024 * 1024
+                self.log.logger.debug(f"{node}: ip free mem(M): {ip_free_mem_M}, node mem(M): {node_mem_M}")
+                if ip_free_mem_M < node_mem_M:            
+                    return False, f"'{ip}'主机至少需要{node_mem_M}M内存"
+                self.log.logger.debug(f"{node}: ip cpu: {ip_cpu}, node cpu: {node_cpu}")
                 if ip_cpu < node_cpu:
-                    return False, f"'ip'主机至少需要{math.ceil(node_cpu)}核心CPU"
+                    return False, f"'{ip}'主机至少需要{math.ceil(node_cpu)}核心CPU"
         else:
             return True, ""
 
@@ -1429,46 +1436,56 @@ class graphics_deploy(Deploy):
         """
         单个软件重新分配资源
         """
-        softname_mem=f"{int(resource_dict['mem'] * soft_weights/weights_sum)}M"
+        #softname_mem=f"{int(resource_dict['mem'] * soft_weights/weights_sum)}M"
+        softname_mem=int(resource_dict['mem'] * soft_weights/weights_sum)
 
         softname_cpu=int(resource_dict["cpu"] * soft_weights/weights_sum)
         if softname_cpu == 0:
             softname_cpu=1
 
         if softname=="elasticsearch":
-            self.arch_dict[node]["elasticsearch_info"]["jvm_mem"]=softname_mem
+            self.arch_dict[node]["elasticsearch_info"]["jvm_mem"]=format_size(softname_mem, integer=True)
         elif softname=="mysql":
-            self.arch_dict[node]["mysql_info"]["db_info"]["innodb_mem"]=softname_mem
+            self.arch_dict[node]["mysql_info"]["db_info"]["innodb_mem"]=format_size(softname_mem, integer=True)
         elif softname=="nginx":
             self.arch_dict[node]["nginx_info"]["worker_processes"]=softname_cpu
         elif softname=="rabbitmq":
-            self.arch_dict[node]["rabbitmq_info"]["erlang_mem"]=softname_mem
+            self.arch_dict[node]["rabbitmq_info"]["erlang_mem"]=format_size(softname_mem, integer=True)
         elif softname=="redis":
-            self.arch_dict[node]["redis_info"]["db_info"]["redis_mem"]=softname_mem
+            self.arch_dict[node]["redis_info"]["db_info"]["redis_mem"]=format_size(softname_mem, integer=True)
         elif softname=="rocketmq":
-            self.arch_dict[node]["recketmq_info"]["namesrv_mem"]=f"{int(int(softname_mem[:-2])/3)}M"
-            self.arch_dict[node]["recketmq_info"]["broker_mem"]=f"{int(int(softname_mem[:-2])/3 * 2)}M"
+            self.arch_dict[node]["recketmq_info"]["namesrv_mem"]=format_size(int(softname_mem/3), integer=True)
+            self.arch_dict[node]["recketmq_info"]["broker_mem"]=format_size(int(softname_mem/3 * 2), integer=True)
         elif softname=="tomcat":
-            self.arch_dict[node]["tomcat_info"]["jvm_mem"]=softname_mem
+            self.arch_dict[node]["tomcat_info"]["jvm_mem"]=format_size(softname_mem, integer=True)
         else:
             pass
+    
+    def _get_free_mem(self, mem_total):
+        """
+        获取主机可用内存大小
+        """
+        system_mem_M=mem_total * 0.1 / 1024 / 1024
+        if system_mem_M >= 2048:                    # 系统保留内存最多2G
+            mem_free=mem_total-2048 * 1024 * 1024
+        else:
+            mem_free=mem_total * 0.9
+        return mem_free
 
     def _resource_reallocation(self):
         """
         根据现有配置重新分配各软件资源
         """
+        self.log.logger.debug("各软件分配资源...")
         for node in self.arch_dict:
             mem_total=self.host_info_dict[self.arch_dict[node]["ip"]]["Mem"][0]
-            if mem_total * 0.1 > 2048:
-                mem_free=mem_total-2048
-            else:
-                mem_free=mem_total * 0.9
-
+            mem_free=self._get_free_mem(mem_total)
             cpu_cores=self.host_info_dict[self.arch_dict[node]["ip"]]["CPU"][0]
             resource_dict={
                     "mem": mem_free, 
                     "cpu": cpu_cores
                     }
+            self.log.logger.debug(f"{node}可分配资源: {resource_dict}")
 
             # 获取node软件的权重和
             weights_sum=0
@@ -1485,6 +1502,7 @@ class graphics_deploy(Deploy):
         """
         分配资源后, 校验软件集群中各软件配置是否相同. 若不同, 则将集群中各软件重置为最小配置
         """
+        self.log.logger.debug("集群资源验证...")
         return True, ""
 
     def generate_arch(self):
@@ -1499,6 +1517,7 @@ class graphics_deploy(Deploy):
                 self._localized_soft_resource_verifi, 
                 self._resource_used_verifi, 
                 self._arch_match, 
+                self._resource_verifi, 
                 self._resource_reallocation, 
                 self._cluster_resource_reallocation
                 ]
@@ -1519,7 +1538,7 @@ class graphics_deploy(Deploy):
                 return False
         else:
             self.d.gauge_stop()
-            self.log.logger.debug(f"回写入{self.arch_file}: {json.dumps(self.arch_dict)}")
+            self.log.logger.debug(f"回写入文件: {self.arch_file}: {json.dumps(self.arch_dict, ensure_ascii=False)}")
             with open(self.arch_file, "w", encoding="utf8") as f:
                 json.dump(self.arch_dict, f, ensure_ascii=False)
             return True
@@ -1552,7 +1571,7 @@ class graphics_deploy(Deploy):
                         ("发行版本: ", n+2, tab, node_info_dict["os_name"], n+2, xi_2, field_length, 0, READ_ONLY), 
                         ("CPU个数: ", n+3, tab, f"{node_info_dict['CPU'][0]}", n+3, xi_1, field_length, 0, READ_ONLY), 
                         ("CPU使用率: ", n+3, xi_2, f"{node_info_dict['CPU'][1]}%", n+3, xi_3, field_length, 0, READ_ONLY), 
-                        ("内存大小: ", n+4, tab, f"{node_info_dict['Mem'][0]}", n+4, xi_1, field_length, 0, READ_ONLY), 
+                        ("内存大小: ", n+4, tab, format_size(node_info_dict['Mem'][0]), n+4, xi_1, field_length, 0, READ_ONLY), 
                         ("内存使用率: ", n+4, xi_2, f"{node_info_dict['Mem'][1]}%", n+4, xi_3, field_length, 0, READ_ONLY)
                         ]
                 elements.extend(info)
@@ -1563,7 +1582,7 @@ class graphics_deploy(Deploy):
                     n=n+1
                     disk_info=[
                             ("挂载目录: ", n, tab*2, disk, n, xi_1, field_length, 0, READ_ONLY),
-                            ("磁盘大小: ", n, xi_2, f"{node_info_dict['Disk'][disk][0]}", n, xi_3, field_length, 0, READ_ONLY), 
+                            ("磁盘大小: ", n, xi_2, format_size(node_info_dict['Disk'][disk][0]), n, xi_3, field_length, 0, READ_ONLY), 
                             ("磁盘使用率: ", n, xi_4, f"{node_info_dict['Disk'][disk][1]}%", n, xi_5, field_length, 0, READ_ONLY)
                             ]
                     elements.extend(disk_info)
@@ -1582,7 +1601,7 @@ class graphics_deploy(Deploy):
                 error_msg=node_info_dict["error_info"]
                 elements.append((ip, n, 1, error_msg, n, xi_1, field_length, 0, READ_ONLY))
         elements.append(("", n+1, 1, "", n+1, xi_1, field_length, 0, HIDDEN))
-        self.log.logger.debug(f"arch summary: {elements=}")
+        self.log.logger.debug(f"host info summary: {elements=}")
         code, _=self.d.mixedform(f"请确认集群主机信息:", elements=elements, cancel_label="返回")
         return code
 
