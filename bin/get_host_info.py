@@ -9,27 +9,6 @@ import subprocess
 from libs.common import Logger
 from libs.env import log_remote_level
 
-def format_size_bak(byte):
-    byte=float(byte)
-    kb=byte/1024
-
-    if kb >= 1024:
-        mb=kb/1024
-        if mb>=1024:
-            gb=mb/1024 
-            return f"{gb:.2f}G"
-        else:
-            return f"{mb:.2f}M"
-    else:
-        return f"{kb:.2f}k"
-
-def format_size(byte):
-    byte=float(byte)
-    kb=byte/1024
-
-    mb=kb/1024
-    return round(mb, 2)
-
 def main():
     try:
         log=Logger({"remote": log_remote_level}, logger_name="host")
@@ -46,7 +25,6 @@ def main():
                 with open(redhat_file, "r") as f:
                     os_name=f.read().strip()
 
-        #host_info_dict["hostname"]=hostname
         host_info_dict["os_name"]=os_name
         host_info_dict["kernel_version"]=kernel_version
 
@@ -58,7 +36,7 @@ def main():
             size=psutil.disk_usage(mounted)
             total=size[0]
             used_percent=size[3]
-            host_info_dict["Disk"][mounted]=[format_size(total), used_percent]
+            host_info_dict["Disk"][mounted]=[total, used_percent]
 
         # cpu
         cpu_count=psutil.cpu_count()
@@ -68,7 +46,7 @@ def main():
         # mem
         mem=psutil.virtual_memory()
         mem_total, mem_used_percent=mem[0], mem[2]
-        host_info_dict["Mem"]=[format_size(mem_total), mem_used_percent]
+        host_info_dict["Mem"]=[mem_total, mem_used_percent]
 
         # port
         host_info_dict["Port"]={}

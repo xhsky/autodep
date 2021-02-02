@@ -19,6 +19,27 @@ def exec_command(command, timeout=45):
         result=str(e)
         return False, result
 
+def format_size(byte, integer=False):
+    #byte=float(byte)
+    kb=byte/1024
+
+    if kb >= 1024:
+        mb=kb/1024
+        if mb>=1024:
+            gb=mb/1024 
+            if integer:
+                if gb.is_integer():
+                    return f"{gb:.0f}G"
+                else:
+                    return f"{mb:.0f}M"
+            return f"{gb:.2f}G"
+        else:
+            if mb.is_integer():
+                return f"{mb:.0f}M"
+            return f"{mb:.2f}M"
+    else:
+        return f"{kb:.2f}k"
+
 def port_exist(port_list, seconds=120):
     result=[]
     for port in port_list:
