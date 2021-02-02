@@ -230,7 +230,7 @@ nginx_module_dict={
                 }
 	    
 	    location @rewrite_dsfa {
-                rewrite ^(.*)dsf5(.*)$ $1dsfa$2 last;
+                rewrite ^(.*)$ /dsfa$1 last;
 	    }
         """
         }
