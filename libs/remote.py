@@ -12,29 +12,43 @@ from libs.env import log_file, log_file_level, remote_python_exec
 log=Logger({"file": log_file_level}, logger_name="remote", log_file=log_file)
 
 class soft(object):
-    def  __init__(self, ip, port, ssh):
+    """
+    软件控制	
+    """
+    def  __init__(self, ip, port, ssh_client):
         self.ip=ip
         self.port=port
-        self.ssh=ssh
+        self.ssh_client=ssh_client
 
     def init(self, py_file, init_args):
         command=f"{remote_python_exec} {py_file} '{json.dumps(init_args)}'"
         log.logger.debug(f"init: {command}")
-        status=self.ssh.exec(self.ip, self.port, command)
+        status=self.ssh_client.exec(self.ip, self.port, command)
         return status
 
     def control(self, py_file, action, args_dict):
+        """
+        用于install, run, start, stop, 非init
+        """
         command=f"{remote_python_exec} {py_file} {action} '{json.dumps(args_dict)}'"
         log.logger.debug(f"{action=}: {command}")
-        status=self.ssh.exec(self.ip, self.port, command)
+        status=self.ssh_client.exec(self.ip, self.port, command)
         return status
-    
+
     def install(self, py_file, args_dict):
         status=self.control(py_file, "install", args_dict)
         return status
 
+    def run(self, py_file, args_dict):
+        status=self.control(py_file, "run", args_dict)
+        return status
+
     def start(self, py_file, args_dict):
         status=self.control(py_file, "start", args_dict)
+        return status
+
+    def stop(self, py_file, args_dict):
+        status=self.control(py_file, "stop", args_dict)
         return status
 
 class ssh(object):
@@ -89,8 +103,10 @@ class ssh(object):
         stdin, stdout, stderr=self.ssh.exec_command(commands)
         return stdin, stdout, stderr
         """
-        status=self.ssh.exec_command(commands, get_pty=get_pty)
-        #log.logger.debug(f"exec: {commands=}")
+        try:
+            status=self.ssh.exec_command(commands, get_pty=get_pty)
+        except Exception as e:
+            return str(e)
         return status
 
     def free_pass_set(self, ip, port, password, user='root'):

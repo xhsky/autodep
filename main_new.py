@@ -42,14 +42,15 @@ def main():
         print(print_usage_info())
         sys.exit(1)
 
-    conf_file="./config/conf.json"
-    init_file="./config/init.json"
-    arch_file="./config/arch.json"
-    project_file="./config/project"
+    #conf_file="./config/conf.json"
+    #init_file="./config/init.json"
+    #arch_file="./config/arch.json"
+    #project_file="./config/project"
 
     for opt, arg in options:
         if opt in ("-g", "--graphics"):
-            d=deploy.graphics_deploy(conf_file, init_file, arch_file, project_file)
+            #d=deploy.graphics_deploy(conf_file, init_file, arch_file, project_file)
+            d=deploy.graphics_deploy()
             d.show()
             break
         elif opt in ("-t", "--text"):

@@ -13,18 +13,23 @@ log_remote_level="debug"
 log_platform_level="debug"
 log_update_level="debug"
 
+# 配置文件
+host_info_file=f"./config/host_info.json"
+conf_file="./config/conf.json"
+init_file="./config/init.json"
+arch_file="./config/arch.json"
+project_file="./config/project.json"
+
 # 安装目录名称
 located_dir_name="dream"
 
 # 占位软件列表
 placeholder_software_list=["program"]
 
-#log_update_file=f"{logs_dir}/update.log"
+# 更新
 code_saved_remote_dir="/tmp"
-#update_version_file="code_version"
 
 # 部署各阶段状态文件
-host_info_file=f"{logs_dir}/host_info.json"
 init_stats_file=f"{logs_dir}/init.json"
 install_stats_file=f"{logs_dir}/install.json"
 start_stats_file=f"{logs_dir}/start.json"
@@ -33,12 +38,14 @@ update_stats_file=f"{logs_dir}/update.json"
 update_config_file_name="update.json"
 
 # 文本图形化安装时的最小窗口尺寸
-g_term_rows=24
+g_term_rows=20
 g_term_cols=80
 
+# 测试模式, 正式环境关闭
 test_mode=True
-fixed_dir="/opt"
 
+# 目录配置
+fixed_dir="/opt"
 remote_python_transfer_dir="/tmp"
 remote_python_install_dir=fixed_dir
 remote_python_dir=f"{remote_python_install_dir}/python3"
@@ -49,6 +56,8 @@ remote_pkgs_dir=f"{remote_python_dir}/pkgs"
 
 update_package_dir=remote_pkgs_dir
 
+program_unzip_dir="./project_pkg"
+
 interface={
         "mail": ["smtp.dreamdt.cn", 25, None],                              # 邮件接口
         "sms": ["smartone.10690007.com", 80, "/proxysms/mt"],               # 短信接口
@@ -56,49 +65,7 @@ interface={
         "platform_info": ["192.168.0.81", 8115, "/project/deploy/sendDetection"],  # 公司平台信息接口
         }
 
-# 各软件安装最小配置
-min_install_config={
-        "nginx":{
-            "mem": 1024,        # 内存单位均为M
-            "cpus": 1
-            }, 
-        "jdk": {
-            "mem": 0, 
-            "cpus": 0
-            }, 
-        "tomcat":{
-            "mem": 1024, 
-            "cpus": 1
-            }, 
-        "ffmpeg":{
-            "mem": 512, 
-            "cpus": 1
-            }, 
-        "elasticsearch":{
-            "mem": 1024, 
-            "cpus": 1
-            }, 
-        "glusterfs":{
-            "mem": 1024, 
-            "cpus":1
-            }, 
-        "mysql":{
-            "mem":2048, 
-            "cpus": 2
-            }, 
-        "rabbitmq":{
-            "mem": 1024, 
-            "cpus": 1
-            }, 
-        "redis": {
-            "mem": 1024, 
-            "cpus":1
-            }, 
-        "rocketmq":{
-            "mem": 1024, 
-            "cpus":1
-            }
-        }
+"""
 # 各软件权重比
 soft_weights_dict={
         "elasticsearch": 1, 
@@ -112,7 +79,7 @@ soft_weights_dict={
         "rocketmq": 1, 
         "jdk": 0, 
         "tomcat": 2, 
-        "program": 2
+        "program": 1
         }
 # 部署环境下的权重基数
 soft_weights_unit_dict={
@@ -122,8 +89,9 @@ soft_weights_unit_dict={
         }
 host_weights_unit_dict={
         "cpu": 1,               # 1 cpu core = 1
-        "mem": 512              # 512M = 1
+        "mem": 536870912        # 512M = 1
         }
+"""
 
 # link
 ffmpeg_src="ffmpeg"

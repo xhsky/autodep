@@ -3,7 +3,7 @@
 # 2020-10-21 17:37:47
 # sky
 
-import locale, json, os, time, sys, requests, tarfile, math
+import locale, json, os, time, sys, requests, tarfile, math, shutil
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, log_graphics_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, \
@@ -11,56 +11,123 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         host_info_file, init_stats_file, install_stats_file, start_stats_file, update_stats_file, \
         update_config_file_name, \
         g_term_rows, g_term_cols, \
-        soft_weights_dict, soft_weights_unit_dict, host_weights_unit_dict, \
-        located_dir_name, placeholder_software_list
+        located_dir_name, placeholder_software_list, \
+        conf_file, init_file, arch_file, project_file, \
+        program_unzip_dir
 
-if not os.path.exists(logs_dir):
-    os.makedirs(logs_dir, exist_ok=1)
+for dir_ in [logs_dir, program_unzip_dir]:
+    if not os.path.exists(logs_dir):
+        os.makedirs(logs_dir, exist_ok=1)
 
 from textwrap import dedent
 from libs.common import Logger, post_info, format_size
 from libs.remote import ssh, soft
 from libs import update
 
+if test_mode:                       # 是否启用测试模式: 代码文件在install, run, start, stop, update阶段重复传输
+    trans_files_dict={
+            "lib_file": ["./libs/common.py", f"{remote_code_dir}/libs/common.py"], 
+            "env_file": ["./libs/env.py", f"{remote_code_dir}/libs/env.py"]
+            }
+else:
+    trans_files_dict={}
+
 class Deploy(object):
     '''集群部署
     '''
-    def __init__(self, conf_file, init_file, arch_file, project_file):
-        with open(conf_file, "r", encoding="utf8") as conf_f, open(project_file, "r", encoding="utf8") as project_f:
-            self.conf_dict=json.load(conf_f)
-            self.soft=self.conf_dict["software"].keys()
-            self.project_dict=json.load(project_f)
-            self.project_id=self.project_dict['project_id']
-            self.project_name=self.project_dict['project_name']
-            self.project_env=self.project_dict['project_env']
+    def __init__(self):
+        #with open(conf_file, "r", encoding="utf8") as conf_f, open(project_file, "r", encoding="utf8") as project_f:
+        #with open(conf_file, "r", encoding="utf8") as conf_f:
+        #    self.conf_dict=json.load(conf_f)
+        #    self.soft=self.conf_dict["software"].keys()
+        #    self.project_dict=json.load(project_f)
+        #    self.project_id=self.project_dict['project_id']
+        #    self.project_name=self.project_dict['project_name']
 
-        self.init_file=init_file
-        self.arch_file=arch_file
+        self.ssh_client=ssh()
+        code, result=self.read_config(["conf"])
+        if code:
+            self.conf_dict=result[0]
+            self.soft=self.conf_dict["software"].keys()
+        else:
+            print(f"Error: 配置文件读取失败, {result}")
+            sys.exit(0)
+        #self.init_file=init_file
+        #self.arch_file=arch_file
 
         self.init_stats_dict={
-                "project_id": self.project_id, 
+                "project_id": None, 
                 "mode": "init", 
                 "result": True, 
                 "stats":{}
                 }
-        self.install_stats_dict={
-                "project_id": self.project_id, 
-                "mode": "install", 
+        self.run_stats_dict={
+                "project_id": None, 
+                "mode": "run", 
                 "result": True, 
                 "stats":{}
                 }
         self.start_stats_dict={
-                "project_id": self.project_id, 
+                "project_id": None, 
                 "mode": "start", 
                 "result": True, 
                 "stats":{}
                 }
+        self.stop_stats_dict={
+                "project_id": None, 
+                "mode": "stop", 
+                "result": True, 
+                "stats":{}
+                }
         self.update_stats_dict={
-                "project_id": self.project_id, 
+                "project_id": None, 
                 "mode": "update", 
                 "result": True, 
                 "stats":{}
                 }
+
+    def read_config(self, config_name_list):
+        """
+        从默认配置文件中读取配置信息 
+
+        config_name_list: ["project", "init", "arch"]
+
+        return:
+            False, str  //  True, [project_dict, init_dict, arch_dict]
+        """
+        config_dict_list=[]
+        for config in config_name_list:
+            # 判断配置名称
+            if config=="project":
+                config_file=project_file
+            elif config=="init":
+                config_file=init_file
+            elif config=="arch":
+                config_file=arch_file
+            elif config=="conf":
+                config_file=conf_file
+            elif config=="host":
+                config_file=host_info_file
+
+            try: 
+                with open(config_file, "r", encoding="utf8") as f:
+                    config_json=json.load(f)
+                    config_dict_list.append(config_json)
+            except Exception as e:
+                return False, str(e)
+        else:
+            return True, config_dict_list
+
+    def write_config(self, json_, file_):
+        """
+        将json写入文件
+        """
+        try: 
+            with open(file_, "w", encoding="utf8") as f:
+                json.dump(json_, f)
+            return True, ""
+        except Exception as e:
+            return False, str(e)
 
     def _to_init_dict(self, all_host_info):
         """
@@ -111,7 +178,6 @@ class Deploy(object):
                 "status": N, 
                 "msg": msg
                 }
-                
         """
         ssh_client=ssh()
         connect_msg={}
@@ -132,17 +198,16 @@ class Deploy(object):
     def get_host_msg(self, init_dict):
         """获取主机信息
         """
-        ssh_client=ssh()
         all_host_info={}
         get_msg_py="./bin/get_host_info.py"
         for node in init_dict:
             port=init_dict[node].get("port")
 
             remote_file=f"{remote_code_dir}/{get_msg_py.split('/')[-1]}"
-            ssh_client.scp(node, port, "root", get_msg_py, remote_file)
+            self.ssh_client.scp(node, port, "root", get_msg_py, remote_file)
             get_msg_command=f"{remote_python_exec} {remote_file}"
             self.log.logger.debug(f"获取{node}主机信息: {get_msg_command=}")
-            status=ssh_client.exec(node, port, get_msg_command, get_pty=0)
+            status=self.ssh_client.exec(node, port, get_msg_command, get_pty=0)
 
             stdout_msg=status[1].read().strip().decode("utf8")
             stderr_msg=status[2].read().strip().decode("utf8")
@@ -176,24 +241,129 @@ class Deploy(object):
         soft_list=conf_dict.get("software").keys()
         check(arch_dict, soft_list, init_host_list)
 
-    '''
-    def get_weight(self, soft_weight_dict, soft_install_list):
-        """ 返回各软件占服务器的权重
-
-            soft_install_dict={
-                "soft_name": weight, 
-                "soft_name": weight, 
-            }
+    def _format_size(self, size):
         """
-        soft_install_dict={}
-        for i in soft_install_list:
-            soft_install_dict[i]=soft_weight_dict[i]
-        weight_sum=sum(soft_install_dict.values())+1		# 1为系统权重
-        
-        for i in soft_install_dict:
-            soft_install_dict[i]=round(soft_install_dict[i]/weight_sum, 2)
-        return soft_install_dict
-    '''
+        将字符串大小转为数字
+        """
+        if size.isdigit():
+            return int(size)
+        elif size[-2:].isalpha():
+            if size[-2:].lower() == "gb":
+                return int(size[:-2]) * 1024 * 1024 * 1024
+            elif size[-2:].lower() == "mb":
+                return int(size[:-2]) * 1024 * 1024
+        elif size[-1].isalpha():
+            if size[-1].lower() == "g":
+                return int(size[:-1]) * 1024 * 1024 * 1024
+            elif size[-1].lower() == "m":
+                return int(size[:-1]) * 1024 * 1024
+            
+    def _get_soft_weights(self, arch_dict, node, softname):
+        """
+        获取单个软件权重(内存)
+        """
+        if softname=="elasticsearch":
+            mem=arch_dict[node]["elasticsearch_info"]["jvm_mem"]
+        elif softname=="mysql":
+            mem=arch_dict[node]["mysql_info"]["db_info"]["innodb_mem"]
+        elif softname=="nginx":
+            mem="0G"
+            #self.arch_dict[node]["nginx_info"]["worker_processes"]=softname_cpu
+        elif softname=="rabbitmq":
+            mem=arch_dict[node]["rabbitmq_info"]["erlang_mem"]
+        elif softname=="redis":
+            mem=arch_dict[node]["redis_info"]["db_info"]["redis_mem"]
+        elif softname=="rocketmq":
+            mem1=arch_dict[node]["recketmq_info"]["namesrv_mem"]
+            mem2=arch_dict[node]["recketmq_info"]["broker_mem"]
+            mem=self._format_size(mem1)+self._format_size(mem2)
+        elif softname=="tomcat":
+            mem=arch_dict[node]["tomcat_info"]["jvm_mem"]
+        elif softname.startswith("program"):
+            mem=arch_dict[node][f"{softname}_info"]["jvm_mem"]
+        else:
+            mem="0G"
+        cpu=1
+
+        return self._format_size(mem), cpu
+
+    def _get_max_disk_name(self, host_info_dict):
+        """
+        获取每个ip剩余空间最大的磁盘目录名称
+
+        return { 
+            ip: max_disk_name, 
+            ip: max_disk_name, 
+        }
+        """
+        max_disk_dict={}
+        for ip in host_info_dict:
+            disk_sorted=sorted(host_info_dict[ip]["Disk"].items(), key=lambda item:item[1][0]*(100-item[1][1]))
+            max_disk_dict[ip]=disk_sorted[-1][0]
+        return max_disk_dict
+
+    def resource_verifi(self, arch_dict, host_info_dict):
+        """
+        根据模板中各节点安装软件的权重和 对应 集群中各节点权重(排序对应), 并将将ip/located赋值给node配置
+        """
+        node_weights_dict={}
+        ip_weights_dict={}
+
+        # 获取节点权重
+        for node in arch_dict:
+            node_mem_weights=0
+            node_cpu_weights=0
+            for softname in arch_dict[node]["software"]:
+                mem, cpu=self._get_soft_weights(arch_dict, node, softname)
+                node_mem_weights=node_mem_weights+mem
+                node_cpu_weights=node_cpu_weights+cpu
+            node_weights_dict[node]=[node_mem_weights, node_cpu_weights]
+        self.log.logger.debug(f"{node_weights_dict=}")
+
+        # 获取ip权重
+        for ip in host_info_dict:
+            ip_weights_dict[ip]=[host_info_dict[ip]["Mem"][0], host_info_dict[ip]["CPU"][0]]
+        self.log.logger.debug(f"{ip_weights_dict=}")
+
+        # 节点与ip权重排序
+        ip_weights_sort=[ x for x, y in sorted(ip_weights_dict.items(), key=lambda item:item[1][0])]
+        node_weights_sort=[ x for x, y in sorted(node_weights_dict.items(), key=lambda item:item[1][0])]
+
+        # 根据排序对应, 赋值
+        for node, ip in zip(node_weights_sort, ip_weights_sort):
+            arch_dict[node]["ip"]=ip
+            self.log.logger.debug(f"{ip} <--> {node}")
+
+        # 选择最大磁盘赋值
+        max_disk_dict=self._get_max_disk_name(host_info_dict)
+        for _ in arch_dict:
+            max_disk_dir=f"{max_disk_dict[arch_dict[_]['ip']]}"
+            if max_disk_dir.endswith("/"):
+                located_dir=f"{max_disk_dir}{located_dir_name}"
+            else:
+                located_dir=f"{max_disk_dir}/{located_dir_name}"
+            arch_dict[_]["located"]=located_dir
+
+        # 资源大小验证
+        non_resouce_dict={}
+        non_resouce_flag=False
+        for node in arch_dict:
+            ip=arch_dict[node]["ip"]
+            non_resouce_dict[ip]={}
+            mem=ip_weights_dict[ip][0]-node_weights_dict[node][0]
+            cpu=ip_weights_dict[ip][1]-node_weights_dict[node][1]
+            if mem < 0:
+                non_resouce_flag=True
+                non_resouce_dict[ip]["Mem"]=node_weights_dict[node][0]
+            if cpu < 0:
+                non_resouce_flag=True
+                non_resouce_dict[ip]["CPU"]=node_weights_dict[node][1]
+
+        if not non_resouce_flag:
+            return True, arch_dict
+        else:
+            return False, non_resouce_dict
+
     def _exclude_placeholder_software(self, soft_list):
         """
         从列表中删除占位软件
@@ -216,8 +386,7 @@ class Deploy(object):
             * nproc nofile
             * 接口连通性测试
         """
-        ssh_client=ssh()
-        if ssh_client.gen_keys():
+        if self.ssh_client.gen_keys():
             self.log.logger.info("本机生成密钥对\n")
         else:
             self.log.logger.info("本机已存在密钥对\n")
@@ -233,17 +402,17 @@ class Deploy(object):
                 port=init_dict[node].get("port")
                 password=init_dict[node].get("root_password")
 
-                ssh_client.free_pass_set(node, port, password)
+                self.ssh_client.free_pass_set(node, port, password)
                 self.log.logger.info(f"免密码登录设置完成")
                 
                 # 传输Python
                 remote_python3_file=f"{remote_python_transfer_dir}/{local_python3_file.split('/')[-1]}"
                 self.log.logger.debug(f"传输Python安装包...")
-                ssh_client.scp(node, port, "root", local_python3_file, remote_python3_file)
+                self.ssh_client.scp(node, port, "root", local_python3_file, remote_python3_file)
 
                 command=f"tar -xf {remote_python3_file} -C {remote_python_install_dir}"
                 self.log.logger.debug(f"配置Python环境")
-                status=ssh_client.exec(node, port, command)
+                status=self.ssh_client.exec(node, port, command)
                 if status[1].channel.recv_exit_status() != 0:
                     error_info=f"Python3安装报错, 进程退出: {status[2].read().decode('utf8')}"
                     self.log.logger.error(error_info)
@@ -262,12 +431,9 @@ class Deploy(object):
                         "py_file": [init_py, f"{remote_code_dir}/{init_py.split('/')[-1]}"]
                         }
                 init_args={
-                        #"hostname": node, 
-                        #"hosts": hosts_list, 
                         "interface": interface, 
                         }
-                soft_control=soft(node, port, ssh_client)
-                status=self.control(node, port, "init", trans_files_dict, init_args, ssh_client, soft_control)
+                status=self.control(node, port, "init", trans_files_dict, init_args)
 
                 for line in status[1]:
                     self.log.logger.info(line.strip())
@@ -291,20 +457,28 @@ class Deploy(object):
                     }
         return init_result
 
-    def control(self, ip, port, action, trans_files_dict, args_dict, ssh_client, soft_control):
+    def control(self, ip, port, action, trans_files_dict, args_dict):
+        """
+        软件控制
+        """
         for trans_file in trans_files_dict:
             src, dst=trans_files_dict[trans_file]
             self.log.logger.debug(f"传输文件: {trans_file}, {src=}, {dst=}")
-            ssh_client.scp(ip, port, "root", src, dst)
+            self.ssh_client.scp(ip, port, "root", src, dst)
 
         remote_py_file=trans_files_dict["py_file"][1]
+        soft_control=soft(ip, port, self.ssh_client)
         if action=="init":
             status=soft_control.init(remote_py_file, args_dict)
         elif action=="install":
             args_dict["pkg_file"]=trans_files_dict["pkg_file"][1]
             status=soft_control.install(remote_py_file, args_dict)
+        elif action=="run":
+            status=soft_control.deploy(remote_py_file, args_dict)
         elif action=="start":
             status=soft_control.start(remote_py_file, args_dict)
+        elif action=="stop":
+            status=soft_control.stop(remote_py_file, args_dict)
         return status
 
     def control_bak(self, action, trans_files_dict):
@@ -345,14 +519,9 @@ class Deploy(object):
         return flag
 
     def install(self, init_dict, arch_dict):
-        if test_mode:
-            trans_files_dict={
-                    "lib_file": ["./libs/common.py", f"{remote_code_dir}/libs/common.py"], 
-                    "env_file": ["./libs/env.py", f"{remote_code_dir}/libs/env.py"]
-                    }
-        else:
-            trans_files_dict={}
-
+        """
+        软件安装
+        """
         flag=True
 
         # 获取所有hosts
@@ -366,24 +535,22 @@ class Deploy(object):
             self.log.logger.info(f"安装目录: {arch_dict[node]['located']}")
             self.install_stats_dict["stats"][node]={}
             port=init_dict[arch_dict[node]["ip"]]["port"]
-            ssh_client=ssh()
 
             self.log.logger.info("设置hosts")
             set_hosts_file="set_hosts.py"
-            ssh_client.scp(ip, port, "root", f"./bin/{set_hosts_file}", f"{remote_code_dir}/{set_hosts_file}")
+            self.ssh_client.scp(ip, port, "root", f"./bin/{set_hosts_file}", f"{remote_code_dir}/{set_hosts_file}")
             set_hosts_dict={
                     "hostname": node, 
                     "hosts": hosts_list
                     }
             set_hosts_command=f"{remote_python_exec} {remote_code_dir}/{set_hosts_file} '{json.dumps(set_hosts_dict)}'"
             self.log.logger.debug(f"{set_hosts_command=}")
-            status=ssh_client.exec(ip, port, set_hosts_command)
+            status=self.ssh_client.exec(ip, port, set_hosts_command)
             for line in status[1]:
                 self.log.logger.info(line.strip())
             if status[1].channel.recv_exit_status() == 0:
                 self.log.logger.info(f"{node} hosts设置完成")
 
-                soft_control=soft(ip, port, ssh_client)
                 for softname in self._exclude_placeholder_software(arch_dict[node]["software"]):
                     self.log.logger.info(f"{softname}安装...")
                     stats_value=True
@@ -395,12 +562,8 @@ class Deploy(object):
                                 "pkg_file": [pkg_file, f"{remote_pkgs_dir}/{pkg_file.split('/')[-1]}"]
                                 }
                             )
-                    # 去除located结尾的/
-                    located_dir=arch_dict[node]["located"]
-                    if located_dir.endswith("/"):
-                        arch_dict[node]["located"]=located_dir[0:-1]
 
-                    status=self.control(ip, port, "install", trans_files_dict, arch_dict[node], ssh_client, soft_control)
+                    status=self.control(ip, port, "install", trans_files_dict, arch_dict[node])
                     for line in status[1]:
                         self.log.logger.info(line.strip())
                     if status[1].channel.recv_exit_status() == 0:
@@ -417,22 +580,15 @@ class Deploy(object):
         self.install_stats_dict["result"]=flag
         return flag
 
-    def start(self, init_dict, arch_dict):
-        if test_mode:
-            trans_files_dict={
-                    "lib_file": ["./libs/common.py", f"{remote_code_dir}/libs/common.py"], 
-                    "env_file": ["./libs/env.py", f"{remote_code_dir}/libs/env.py"]
-                    }
-        else:
-            trans_files_dict={}
-
+    def run(self, init_dict, arch_dict):
+        """
+        启动软件并初始化
+        """
         flag=True
         for node in arch_dict:
             self.log.logger.info(f"***{node}启动***")
-            self.start_stats_dict["stats"][node]={}
+            self.run_stats_dict["stats"][node]={}
             port=init_dict[arch_dict[node]["ip"]]["port"]
-            ssh_client=ssh()
-            soft_control=soft(node, port, ssh_client)
             for softname in self._exclude_placeholder_software(arch_dict[node]["software"]):
                 self.log.logger.info(f"{softname}启动...")
                 stats_value=True
@@ -442,12 +598,8 @@ class Deploy(object):
                             "py_file": [f"./bin/{softname}.py", f"{remote_code_dir}/{softname}.py"]
                             }
                         )
-                # 去除located结尾的/
-                located_dir=arch_dict[node]["located"]
-                if located_dir.endswith("/"):
-                    arch_dict[node]["located"]=located_dir[0:-1]
 
-                status=self.control(node, port, "start", trans_files_dict, arch_dict[node], ssh_client, soft_control)
+                status=self.control(node, port, "run", trans_files_dict, arch_dict[node])
                 for line in status[1]:
                     self.log.logger.info(line.strip())
                 if status[1].channel.recv_exit_status() == 0:
@@ -456,13 +608,67 @@ class Deploy(object):
                     self.log.logger.error(f"{softname}启动失败")
                     stats_value=False
                     flag=False
-                self.start_stats_dict["stats"][node][softname]=stats_value
+                self.run_stats_dict["stats"][node][softname]=stats_value
 
-        self.start_stats_dict["result"]=flag
+        self.run_stats_dict["result"]=flag
         return flag
+
+    def start(self, arg_dict, init_dict, arch_dict):
+        """
+        软件启动
+
+        arg_dict={
+            "node1":["soft1", "soft2"], 
+            "node2":["soft1", "soft2"]
+        }
+        """
+        return True
+
+    def stop(self, arg_dict, init_dict, arch_dict):
+        """
+        软件启动
+
+        arg_dict={
+            "node1":["soft1", "soft2"], 
+            "node2":["soft1", "soft2"]
+        }
+        """
+        return True
+
+    def extract(self, tarfile_, dir_):
+        """
+        tar包解压
+        """
+        try:
+            with tarfile.open(tarfile_, "r", encoding="utf8") as tar:
+                tar.extractall(dir_)
+            return True
+        except Exception as e:
+            return str(e)
+
+    def update_extract(self, tarfile_, dir_):
+        """
+        项目包/更新包解压
+        """
+        self.log.logger.info("项目包文件解压中, 请稍后...")
+        result=self.extract(tarfile_, dir_)
+        if result is True:
+            self.log.logger.info("更新配置文件...")
+            try:
+                for config_file in ["init.json", "arch.json", "project.json"]:
+                   shutil.copyfile(f"{dir_}/config/{config_file}", f"./config/{config_file}") 
+                else:
+                    return True
+            except Exception as e:
+                self.log.logger.error(f"配置文件更新失败: {e}")
+                return False
+        else:
+            self.log.logger.error(f"解压失败: {result}")
+            return False
 
     def update(self, package_list):
         """
+        项目更新
         """
         if len(package_list)==0:
             self.log.logger.info("使用项目包")
@@ -625,16 +831,14 @@ class graphics_deploy(Deploy):
 
     from dialog import Dialog
 
-    def __init__(self, conf_file, init_file, arch_file, project_file):
-        super(graphics_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
+    def __init__(self):
+        super(graphics_deploy, self).__init__()
         self.log=Logger({"file": log_file_level}, log_file=log_file)
 
-        with open(self.arch_file, "r", encoding="utf8") as arch_f, \
-                open(self.init_file, "r", encoding="utf8") as init_f:
-            self.init_dict=json.load(init_f)
-            self.arch_dict=json.load(arch_f)
-
-        self.soft_weights_unit=soft_weights_unit_dict[self.project_env]
+        # 安装dialog
+        if not self._install_dialog():
+            print("Error: dialog安装失败, 请手动安装后再执行")
+            sys.exit(1)
 
         locale.setlocale(locale.LC_ALL, '')
         self.d = self.Dialog(dialog="dialog", autowidgetsize=1)
@@ -643,14 +847,15 @@ class graphics_deploy(Deploy):
 
     def get_term_size(self):
         """
-            获取终端尺寸
+            获取合适的终端尺寸
         """
         term_rows, term_cols=self.d.maxsize(use_persistent_args=False)
         if term_rows < g_term_rows or term_cols < g_term_cols:
             print(f"当前终端窗口({term_rows}, {term_cols})过小({g_term_rows}, {g_term_cols}), 请放大窗口后重试")
             sys.exit(1)
         else:
-            return term_rows, term_cols
+            self.log.logger.debug(f"当前窗口大小为({term_rows}, {term_cols})")
+            return int(term_rows * 0.8), int(term_cols * 0.8)
 
     def trans_fields_to_dict(self, fields):
         info_dict={}
@@ -793,7 +998,7 @@ class graphics_deploy(Deploy):
             self.log.logger.debug(f"arch summary: {elements=}")
             code, fields=self.d.mixedform(f"集群配置信息:", elements=elements, title=title, no_cancel=1)
 
-    def read_config(self, file_name_list):
+    def read_config_bak(self, file_name_list):
         '''
             从配置文件中读取配置信息
         '''
@@ -1265,7 +1470,7 @@ class graphics_deploy(Deploy):
         获取选择文件路径
         """
         while True:
-            code, file_=self.d.fselect(init_path, height=10, width=60, title=title)
+            code, file_=self.d.fselect(init_path, height=8, width=65, title=title)
             if code==self.d.OK:
                 code=self.d.yesno(f"确认选择文件: {file_} ?", height=6, width=45)
                 if code==self.d.OK:
@@ -1316,21 +1521,6 @@ class graphics_deploy(Deploy):
 
         return True, ""
 
-    def _get_max_disk_name(self):
-        """
-        获取每个ip剩余空间最大的磁盘目录名称
-
-        return { 
-            ip: max_disk_name, 
-            ip: max_disk_name, 
-        }
-        """
-        max_disk_dict={}
-        for ip in self.host_info_dict:
-            disk_sorted=sorted(self.host_info_dict[ip]["Disk"].items(), key=lambda item:item[1][0]*(100-item[1][1]))
-            max_disk_dict[ip]=disk_sorted[-1][0]
-        return max_disk_dict
-
     def _resource_used_verifi(self):
         """
         针对各主机当前CPU使用率, 内存使用率, 磁盘(最大)使用率校验(20%)
@@ -1358,109 +1548,6 @@ class graphics_deploy(Deploy):
         else:
             return True, ""
 
-    def _arch_match(self):
-        """
-        根据模板中各节点安装软件的权重和 对应 集群中各节点权重(排序对应), 并将将ip赋值给node配置
-        """
-        ip_weights_dict={}
-        node_weights_dict={}
-        
-        self.log.logger.debug("主机匹配模板...")
-        try:
-            # 获取节点权重
-            for node in self.arch_dict:
-                node_weights=0
-                for softname in self.arch_dict[node]["software"]:
-                    node_weights=node_weights+soft_weights_dict[softname]
-                node_weights_dict[node]=node_weights
-            self.log.logger.debug(f"{node_weights_dict=}")
-
-            # 获取ip权重
-            for ip in self.host_info_dict:
-                ip_weights=self.host_info_dict[ip]["CPU"][0]/host_weights_unit_dict["cpu"]+round(self.host_info_dict[ip]["Mem"][0]/host_weights_unit_dict["mem"], 2)
-                ip_weights_dict[ip]=ip_weights
-            self.log.logger.debug(f"{ip_weights_dict=}")
-
-            # 节点与ip权重排序
-            ip_weights_sort=[ x for x, y in sorted(ip_weights_dict.items(), key=lambda item:item[1])]
-            node_weights_sort=[ x for x, y in sorted(node_weights_dict.items(), key=lambda item:item[1])]
-
-            # 根据排序对应, 赋值
-            for node, ip in zip(node_weights_sort, ip_weights_sort):
-                self.arch_dict[node]["ip"]=ip
-                self.log.logger.debug(f"{ip} <--> {node}")
-
-            # 选择最大磁盘赋值
-            max_disk_dict=self._get_max_disk_name()
-            for _ in self.arch_dict:
-                max_disk_dir=f"{max_disk_dict[self.arch_dict[_]['ip']]}"
-                if max_disk_dir.endswith("/"):
-                    located_dir=f"{max_disk_dir}{located_dir_name}"
-                else:
-                    located_dir=f"{max_disk_dir}/{located_dir_name}"
-                self.arch_dict[_]["located"]=located_dir
-
-            return True, ""
-        except Exception as e:
-            return False, str(e)
-
-    def _resource_verifi(self):
-        """
-        排序对应后, 比较模板中节点上软件最小配置总量与相应主机的资源总量
-        """
-        self.log.logger.debug("验证集群资源与模板资源...")
-        for node in self.arch_dict:
-            ip=self.arch_dict[node]["ip"]
-            ip_mem=self.host_info_dict[ip]["Mem"][0]
-            ip_cpu=self.host_info_dict[ip]["CPU"][0]
-            self.log.logger.debug(f"{node}: {ip_mem=}, {ip_cpu=}")
-
-            node_mem_M=0
-            node_cpu=0
-            for softname in self.arch_dict[node]["software"]:
-                node_mem_M=node_mem_M+soft_weights_dict[softname] * 1024 * self.soft_weights_unit
-                node_cpu=node_cpu+soft_weights_dict[softname] * 1 * self.soft_weights_unit
-            else:
-                self.log.logger.debug(f"{node}: {node_mem_M=}, {node_cpu=}")
-                ip_free_mem_M=self._get_free_mem(ip_mem) * 1024 * 1024
-                self.log.logger.debug(f"{node}: ip free mem(M): {ip_free_mem_M}, node mem(M): {node_mem_M}")
-                if ip_free_mem_M < node_mem_M:            
-                    return False, f"'{ip}'主机至少需要{node_mem_M}M内存"
-                self.log.logger.debug(f"{node}: ip cpu: {ip_cpu}, node cpu: {node_cpu}")
-                if ip_cpu < node_cpu:
-                    return False, f"'{ip}'主机至少需要{math.ceil(node_cpu)}核心CPU"
-        else:
-            return True, ""
-
-    def _software_resource_reallocation(self, node, resource_dict, weights_sum, softname, soft_weights):
-        """
-        单个软件重新分配资源
-        """
-        #softname_mem=f"{int(resource_dict['mem'] * soft_weights/weights_sum)}M"
-        softname_mem=int(resource_dict['mem'] * soft_weights/weights_sum)
-
-        softname_cpu=int(resource_dict["cpu"] * soft_weights/weights_sum)
-        if softname_cpu == 0:
-            softname_cpu=1
-
-        if softname=="elasticsearch":
-            self.arch_dict[node]["elasticsearch_info"]["jvm_mem"]=format_size(softname_mem, integer=True)
-        elif softname=="mysql":
-            self.arch_dict[node]["mysql_info"]["db_info"]["innodb_mem"]=format_size(softname_mem, integer=True)
-        elif softname=="nginx":
-            self.arch_dict[node]["nginx_info"]["worker_processes"]=softname_cpu
-        elif softname=="rabbitmq":
-            self.arch_dict[node]["rabbitmq_info"]["erlang_mem"]=format_size(softname_mem, integer=True)
-        elif softname=="redis":
-            self.arch_dict[node]["redis_info"]["db_info"]["redis_mem"]=format_size(softname_mem, integer=True)
-        elif softname=="rocketmq":
-            self.arch_dict[node]["recketmq_info"]["namesrv_mem"]=format_size(int(softname_mem/3), integer=True)
-            self.arch_dict[node]["recketmq_info"]["broker_mem"]=format_size(int(softname_mem/3 * 2), integer=True)
-        elif softname=="tomcat":
-            self.arch_dict[node]["tomcat_info"]["jvm_mem"]=format_size(softname_mem, integer=True)
-        else:
-            pass
-    
     def _get_free_mem(self, mem_total):
         """
         获取主机可用内存大小
@@ -1507,15 +1594,14 @@ class graphics_deploy(Deploy):
 
     def generate_arch(self):
         """
-        生成arch.json
+        补充arch.json
+            1. located
+            2. ip
         """
-        with open(host_info_file, "r", encoding="utf8") as host_f:
-            self.host_info_dict=json.load(host_f)
-
         verifi_funs=[
                 self._host_nums_verifi, 
-                self._localized_soft_resource_verifi, 
-                self._resource_used_verifi, 
+                #self._localized_soft_resource_verifi, 
+                #self._resource_used_verifi, 
                 self._arch_match, 
                 self._resource_verifi, 
                 self._resource_reallocation, 
@@ -1543,7 +1629,7 @@ class graphics_deploy(Deploy):
                 json.dump(self.arch_dict, f, ensure_ascii=False)
             return True
 
-    def show_init_info(self, title, json_file):
+    def show_init_info(self, all_host_info_dict):
         """
             显示各主机信息
         """
@@ -1558,8 +1644,6 @@ class graphics_deploy(Deploy):
         field_length=45
         elements=[]
 
-        with open(json_file, "r", encoding="utf8") as f:
-            all_host_info_dict=json.load(f)
         n=0
         for ip in all_host_info_dict:
             n=n+1
@@ -1607,17 +1691,34 @@ class graphics_deploy(Deploy):
 
     def init(self, title):
         """
-        初始化过程
+        主机初始化
         """
+
+        project_pkg=self.get_file_path(f"{os.path.dirname(os.getcwd())}/", "请填写项目包文件路径")
+        if project_pkg == "":
+            return
+
         read_fd, write_fd = os.pipe()
         child_pid = os.fork()
 
         if child_pid == 0:          # 进入子进程
             os.close(read_fd)
             with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
-                self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)   #self.log_file, self.log_level, "graphical", g_file=wfile)
+                self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)
+
+                result=self.update_extract(project_pkg, program_unzip_dir)
+                if not result:
+                    os._exit(1)
+
                 self.log.logger.info("监测主机配置, 请稍后...\n")
-                flag, connect_msg=self.connect_test(self.init_dict)
+                code, result=self.read_config(["init"])
+                if code:
+                    init_dict=result[0]
+                else:
+                    self.log.logger.error(f"配置文件读取失败: {result}")
+                    os._exit(1)
+
+                flag, connect_msg=self.connect_test(init_dict)
                 if flag==1:
                     self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
                     for ip in connect_msg:
@@ -1625,21 +1726,24 @@ class graphics_deploy(Deploy):
                     os._exit(1)
 
                 local_python3_file=self.conf_dict["location"].get("python3")
-                status=super(graphics_deploy, self).init(self.init_dict, local_python3_file)
+                status=super(graphics_deploy, self).init(init_dict, local_python3_file)
                 if status is True:
                     self.log.logger.info("初始化完成\n")
                     self.log.logger.info("获取主机信息...")
-                    all_host_info=self.get_host_msg(self.init_dict)
-                    with open(host_info_file, "w", encoding="utf8") as f:
-                        all_host_dict=self._to_init_dict(all_host_info)
-                        json.dump(all_host_dict, f)
-                    self.log.logger.info("主机信息已获取, 请查看")
+                    all_host_info=self.get_host_msg(init_dict)
+                    all_host_dict=self._to_init_dict(all_host_info)
+                    result, msg=self.write_config(all_host_dict, host_info_file)
+                    if not result:
+                        self.log.logger.error(msg)
+                        os._exit(1)
+                    else:
+                        self.log.logger.info("主机信息已获取, 请查看")
                 else:
                     self.log.logger.error(f"初始化失败: {status}")
                     os._exit(1)
             os._exit(0)
         os.close(write_fd)
-        self.d.programbox(fd=read_fd, title=title, height=30, width=180)
+        self.d.programbox(fd=read_fd, title=title, height=25, width=170, scrollbar=True)
         exit_info = os.waitpid(child_pid, 0)[1]
         if os.WIFEXITED(exit_info):
             exit_code = os.WEXITSTATUS(exit_info)
@@ -1651,19 +1755,32 @@ class graphics_deploy(Deploy):
             self.show_menu()
 
         if exit_code==0:
-            while True:
-                result_code=self.show_init_info(title, host_info_file)
-                if result_code==self.d.OK:
-                    result_code=self.d.yesno("确认按照检测信息开始集群部署?")
-                    if result_code==self.d.OK:
-                        if self.generate_arch():
-                            self.deploy("集群部署")
-                        else:
-                            break
-                    else:
-                        continue
+            _, result=self.read_config(["host", "arch"])
+            host_info_dict, arch_dict=result
+            result_code=self.show_init_info(host_info_dict)
+            if result_code==self.d.OK:
+                result, dict_=self.resource_verifi(arch_dict, host_info_dict)
+                if result:
+                    self.log.logger.debug(f"写入arch配置")
+                    self.write_config(dict_, arch_file)
                 else:
-                    break
+                    self._show_non_resource(dict_)
+
+    def _show_non_resource(self, non_resouce_dict):
+        """
+        显示资源不足的信息
+        """
+        msg=""
+        for ip in non_resouce_dict:
+            msg=f"{msg}\n* 主机({ip})至少需要"
+            mem=non_resouce_dict[ip].get("Mem")
+            cpu=non_resouce_dict[ip].get("CPU")
+            if mem:
+                msg=f"{msg} {format_size(mem)}内存"
+            if cpu:
+                msg=f"{msg} {cpu}核心CPU"
+
+        self.d.msgbox(msg, title="资源不足", width=70, height=10)
 
     def install(self, title):
         self.log.logger.info("集群安装...\n")
@@ -1708,13 +1825,13 @@ class graphics_deploy(Deploy):
 
     def deploy(self, title):
         """
-        install, start, update
+        install, run, update
         """
 
-        stage_all=["install", "start", "update"]
+        stage_all=["install", "run", "update"]
         stage_method={
                 "install": self.install, 
-                "start": self.start, 
+                "run": self.run, 
                 "update": self.update
                 }
         read_fd, write_fd = os.pipe()
@@ -1771,7 +1888,8 @@ class graphics_deploy(Deploy):
                         ("3", menu["3"]), 
                         ("4", menu["4"])
                         ], 
-                    title="菜单"
+                    title="菜单", 
+                    width=48
                     )
             if code==self.d.OK:
                 self.log.logger.debug(f"{code=}, {tag=}")
@@ -1784,7 +1902,7 @@ class graphics_deploy(Deploy):
                     self.monitor(menu[tag])
                 if tag=="4":
                     self.g_update(menu[tag])
-                self.d.infobox(f"{menu[tag]}完成, 将返回主菜单...")
+                self.d.infobox(f"{menu[tag]}结束, 将返回主菜单...", width=40, height=4)
                 time.sleep(3)
             else:
                 self.cancel("安装")
@@ -1793,23 +1911,21 @@ class graphics_deploy(Deploy):
         """
         安装dialog
         """
+        os.system("rpm -Uvh ../ext/dialog/dialog-1.2-5.20130523.el7.x86_64.rpm &> /dev/null")
 
         return True
 
     def show(self):
-        if not self._install_dialog():
-            print("Error: dialog安装失败, 请手动安装后再执行")
-            sys.exit(1)
-
         introduction=dedent("""
             本程序主要用来自动部署项目集群. 
             部署过程将使用方向键或Tab键进行选择, 【enter】键用来确认.
+
             是否开始 ?
         """)
 
         self.log.logger.info("开始文本图形化部署")
 
-        code=self.d.yesno(introduction, height=10, width=100, title="说明")
+        code=self.d.yesno(introduction, height=10, width=self.term_cols, title="说明")
 
         if code==self.d.OK:
             self.show_menu()
@@ -1909,6 +2025,3 @@ class platform_deploy(Deploy):
             else:
                 self.log.logger.error(f"'{stage}'阶段执行失败")
                 sys.exit(1)
-
-if __name__ == "__main__":
-    main()

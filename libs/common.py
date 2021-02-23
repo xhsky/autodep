@@ -40,28 +40,39 @@ def format_size(byte, integer=False):
     else:
         return f"{kb:.2f}k"
 
-def port_exist(port_list, seconds=120):
+def port_exist(port_list, seconds=120, exist_or_not=1):
+    """
+    判断端口是否存在
+    """
+
     result=[]
     for port in port_list:
         N=0
         while True:
             time.sleep(1)
             N=N+1
-            if N >= seconds:
+            if N >= seconds:                # 超时
                 result.append(False)
                 break
             for i in psutil.net_connections(kind="inet"):
                 if port==i[3][1] and i[6] is not None:
-                    result.append(True)
+                    if exist_or_not:
+                        result.append(True)
                     break
             else:
+                result.append(True)
+                break
+
+            if exist_or_not:
+                break
+            else:
                 continue
-            break
-                
+
     if False in result:
         return False
     else:
         return True
+
 
 def port_connect(host, port):
     s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
