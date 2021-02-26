@@ -260,7 +260,7 @@ def main():
 
         sys.exit(flag)
 
-    elif action=="start":
+    elif action=="run":
         #init_command=f"{mysql_dir}/bin/mysqld --initialize --user={mysql_user} --datadir={mysql_dir}/{my_data}"
         init_command=f"{mysql_dir}/bin/mysqld --initialize --user={mysql_user}"
         log.logger.debug(f"初始化中: {init_command=}")
@@ -306,6 +306,10 @@ def main():
 
         sys.exit(flag)
 
+    elif action=="start":
+        pass
+    elif action=="stop":
+        pass
 
 if __name__ == "__main__":
     """

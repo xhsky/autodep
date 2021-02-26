@@ -232,7 +232,7 @@ def main():
             log.logger.error(msg)
             flag=1
 
-    elif action=="start":
+    elif action=="run":
         # exec使用get_pty, redis配置为后台运行, 但未启动完全时, 断开依然会停止, 故使用sleep 2让其完全启动
         redis_start_command=f"cd {redis_dir} && bin/redis-server conf/redis.conf"
         log.logger.debug(f"redis启动: {redis_start_command=}")
@@ -267,6 +267,10 @@ def main():
                 flag=1
 
         sys.exit(0)
+    elif action=="start":
+        pass
+    elif action=="stop":
+        pass
 
 if __name__ == "__main__":
     main()

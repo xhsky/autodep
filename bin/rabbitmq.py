@@ -116,7 +116,7 @@ def main():
 
         sys.exit(flag)
 
-    elif action=="start":
+    elif action=="run":
         command=f"cd {rabbitmq_dir} && ./sbin/rabbitmq-server -detached" 
         log.logger.debug(f"{command=}")
         status, result=common.exec_command(command)
@@ -151,6 +151,10 @@ def main():
             flag=1
 
         sys.exit(flag)
+    elif action=="start":
+        pass
+    elif action=="stop":
+        pass
 
 if __name__ == "__main__":
     main()

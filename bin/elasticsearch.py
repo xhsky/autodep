@@ -128,7 +128,7 @@ def main():
 
         sys.exit(flag)
 
-    elif action=="start":
+    elif action == "run" or action=="start":
         command=f"su elastic -l -c 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'" 
         log.logger.debug(f"{command=}")
 
@@ -140,6 +140,25 @@ def main():
             else:
                 log.logger.debug(f"检测端口: {port_list=}")
                 if not common.port_exist(port_list):
+                    flag=2
+        else:
+            log.logger.error(result)
+            flag=1
+
+        sys.exit(flag)
+
+    elif action=="stop":
+        command=f"su elastic -l -c 'cd {es_dir} && kill `cat elasticsearch.pid`'" 
+        log.logger.debug(f"{command=}")
+
+        status, result=common.exec_command(command)
+        if status:
+            if result.returncode != 0:
+                log.logger.error(result.stderr)
+                flag=1
+            else:
+                log.logger.debug(f"检测端口: {port_list=}")
+                if common.port_exist(port_list, exist_or_not=0):
                     flag=2
         else:
             log.logger.error(result)

@@ -29,16 +29,15 @@ def main():
             exit(1)
 
     try:
-        with tarfile.open(tar_file, "r", encoding="utf8") as tar:
-            if type_=="backend":
-                log.logger.info("开始后端更新...")
-                tar.extractall(dest)
-            elif type_=="frontend":
+        if type_=="backend":
+            log.logger.info("开始后端更新...")
+            shutil.move(tar_file, f"{dest}/{tar_file.split('/')[-1]}")
+        elif type_=="frontend":
+            with tarfile.open(tar_file, "r", encoding="utf8") as tar:
                 log.logger.info("开始前端更新...")
                 for i in tar.getmembers():
-                    if i.name != "update.json":
-                        code_dir_name=i.name.split("/")[1]
-                        break
+                    code_dir_name=i.name
+                    break
                 code_dir_abs=f"{dest}/{code_dir_name}"
                 if os.path.exists(code_dir_abs):
                     time_format=time.strftime("%Y%m%d-%H:%M:%S", time.localtime())
@@ -47,10 +46,11 @@ def main():
                     shutil.move(code_dir_abs, save_dir)
                 log.logger.debug(f"解压'{tar_file}'至'{dest}'")
                 tar.extractall(dest)
-            else:
-                log.logger.error(f"{type_}不匹配")
-                sys.exit(2)
+        else:
+            log.logger.error(f"{type_}不匹配")
+            sys.exit(2)
 
+        if os.path.exists(tar_file):
             log.logger.info("清理更新包...")
             os.remove(tar_file)
     except Exception as e:

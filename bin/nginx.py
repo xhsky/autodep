@@ -176,7 +176,7 @@ def main():
 
         sys.exit(flag)
 
-    elif action=="start":
+    elif action=="run":
         start_command=f"cd {nginx_dir} ; ./sbin/nginx"
         log.logger.debug(f"{start_command=}")
         status, result=common.exec_command(start_command)
@@ -193,6 +193,10 @@ def main():
             flag=1
 
         sys.exit(flag)
+    elif action=="start":
+        pass
+    elif action=="stop":
+        pass
 
 if __name__ == "__main__":
     main()

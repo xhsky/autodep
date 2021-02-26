@@ -207,7 +207,7 @@ def main():
 
         sys.exit(flag)
 
-    elif action=="start":
+    elif action=="run":
         namesrv_command=f"cd {rocketmq_dir} && bash ./bin/start.sh namesrv" 
         broker_command=f"cd {rocketmq_dir} && bash ./bin/start.sh broker" 
 
@@ -240,6 +240,10 @@ def main():
             flag=1
 
         sys.exit(flag)
+    elif action=="start":
+        pass
+    elif action=="stop":
+        pass
 
 if __name__ == "__main__":
     main()

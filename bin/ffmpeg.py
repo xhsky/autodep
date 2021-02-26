@@ -26,7 +26,7 @@ def main():
             log.logger.error(msg)
         sys.exit(flag)
 
-    elif action=="start":
+    elif action=="run" or action=="start" or action=="stop":
         sys.exit(flag)
 
 if __name__ == "__main__":

@@ -91,7 +91,7 @@ def main():
         sys.exit(flag)
 
     # 配置
-    elif action=="start":
+    elif action=="run":
         if server_flag == 3 or server_flag == 2:
             volume_dir=server_info_dict.get("volume_dir")
             members=server_info_dict.get("members")
@@ -184,6 +184,11 @@ def main():
                 log.logger.error(result)
                 sys.exit(1)
         sys.exit(flag)
+
+    elif action=="start":
+        pass
+    elif action=="stop":
+        pass
 
 if __name__ == "__main__":
     main()
