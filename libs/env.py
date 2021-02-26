@@ -18,6 +18,7 @@ host_info_file=f"./config/host_info.json"
 conf_file="./config/conf.json"
 init_file="./config/init.json"
 arch_file="./config/arch.json"
+update_file="./config/update.json"
 project_file="./config/project.json"
 
 # 安装目录名称
@@ -33,6 +34,7 @@ code_saved_remote_dir="/tmp"
 init_stats_file=f"{logs_dir}/init.json"
 install_stats_file=f"{logs_dir}/install.json"
 start_stats_file=f"{logs_dir}/start.json"
+run_stats_file=f"{logs_dir}/run.json"
 update_stats_file=f"{logs_dir}/update.json"
 
 update_config_file_name="update.json"

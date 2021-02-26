@@ -12,18 +12,20 @@ from libs.env import update_package_dir, test_mode, \
 def db_update(package, update_dict, log):
     """
     数据库更新
+    return:
+
     """
     log.logger.info("开始数据库更新")
 
-    result=True
+    update_result=True
+    host_and_port=update_dict["update_info"]["host"].split(":")
+    host=host_and_port[0]
     try:
         type_=update_dict["update_info"]["type"]
         user=update_dict["update_info"]["user"]
         password=update_dict["update_info"]["password"]
         db_name=update_dict["update_info"]["db"]
         if type_.lower()=="mysql":
-            host_and_port=update_dict["update_info"]["host"].split(":")
-            host=host_and_port[0]
             try:
                 port=int(host_and_port[1])
             except IndexError:
@@ -63,16 +65,12 @@ def db_update(package, update_dict, log):
                     sql_list=[]
                 else:
                     db.commit()
-                    flag=True
                     log.logger.info(f"'{host}'更新完成\n")
-
     except Exception as e:
         log.logger.error(f"更新失败: {str(e)}")
-        result=False
-        flag=False
-    hosts_update_dict={host:flag}
+        update_result=False
 
-    return result, hosts_update_dict
+    return update_result, {host, update_result}
 
 def code_update(package, update_dict, log):
     """
@@ -86,10 +84,10 @@ def code_update(package, update_dict, log):
             }
     ssh_client=remote.ssh()
     hosts_update_dict={}
-    result=True
+    update_result=True
     try:
         for host_str in update_dict["update_info"]["hosts"]:
-            flag=True
+            state_value=True
             host_and_port=host_str.split(":")
             host=host_and_port[0]
             try:
@@ -120,15 +118,15 @@ def code_update(package, update_dict, log):
             if status[1].channel.recv_exit_status()==0:
                 log.logger.info(f"{host}更新完成\n")
             else:
-                result=False
-                flag=False
+                update_result=False
+                state_value=False
                 log.logger.error(f"{host}更新失败\n")
-            hosts_update_dict[host]=flag
+            hosts_update_dict[host]=state_value
     except Exception as e:
         log.logger.error(f"更新失败: {str(e)}")
-        result=False
+        update_result=False
     
-    return result, hosts_update_dict
+    return update_result, hosts_update_dict
 
 if __name__ == "__main__":
     main()

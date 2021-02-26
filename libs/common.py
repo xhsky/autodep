@@ -73,7 +73,6 @@ def port_exist(port_list, seconds=120, exist_or_not=1):
     else:
         return True
 
-
 def port_connect(host, port):
     s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     result=s.connect_ex((host, port))
