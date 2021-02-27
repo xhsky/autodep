@@ -162,5 +162,8 @@ class DB(object):
         self.conn.commit()
 
     def __del__(self):
-        self.cursor.close()
-        self.conn.close()
+        try:
+            self.cursor.close()
+            self.conn.close()
+        except Exception:
+            pass

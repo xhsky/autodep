@@ -75,8 +75,7 @@ def main():
             program_pkg=args.f
             result_dict=d.update(program_pkg)
         elif arg=="deploy":
-            program_pkg=args.f
-            result_dict=d.deploy(program_pkg)
+            result_dict=d.deploy()
         d.generate_info("platform", result_dict)
 
 

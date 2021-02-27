@@ -2260,12 +2260,20 @@ class platform_deploy(Deploy):
             self.log.logger.error(f"配置文件读取失败: {result}")
             update_result=False
         update_stats_dict["result"]=update_result
+        #self.log.logger.info(f"{update_stats_dict=}")
         return update_stats_dict
 
     def deploy(self):
         """
-        install, run, update
+        平台: install, run, update
         """
+        deploy_stats_dict={
+                "project_id": self.project_id,
+                "mode": "deploy",
+                "result": None,
+                "stats": {}
+                }
+        deploy_result=True
 
         stage_all=["install", "run", "update"]
         stage_method={
@@ -2274,8 +2282,14 @@ class platform_deploy(Deploy):
                 "update": self.update
                 }
         for stage in stage_all:
-            if stage_method[stage]():
+            result_dict=stage_method[stage]()
+            deploy_stats_dict["stats"][stage]=result_dict
+            if result_dict["result"]:
                 continue
             else:
                 self.log.logger.error(f"'{stage}'阶段执行失败")
-                sys.exit(1)
+                deploy_result=False
+                break
+        deploy_stats_dict["result"]=deploy_result
+        return deploy_stats_dict
+

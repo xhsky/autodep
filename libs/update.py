@@ -18,6 +18,7 @@ def db_update(package, update_dict, log):
     log.logger.info("开始数据库更新")
 
     update_result=True
+    hosts_update_dict={}
     host_and_port=update_dict["update_info"]["host"].split(":")
     host=host_and_port[0]
     try:
@@ -70,7 +71,8 @@ def db_update(package, update_dict, log):
         log.logger.error(f"更新失败: {str(e)}")
         update_result=False
 
-    return update_result, {host, update_result}
+    hosts_update_dict[host]=update_result
+    return update_result, hosts_update_dict
 
 def code_update(package, update_dict, log):
     """
