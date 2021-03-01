@@ -9,7 +9,7 @@ from libs.env import log_remote_level, glusterfs_src, glusterfs_dst, \
         glusterfs_volume_name, glusterfs_version
 
 def main():
-    action, conf_json=sys.argv[1:]
+    softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
     located=conf_dict.get("located")
     glusterfs_dir=f"{located}/{glusterfs_dst}"

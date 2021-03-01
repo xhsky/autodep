@@ -10,7 +10,7 @@ def main():
     """
         将libXau, libxcb, SDL2安装包放入编译好的ffmpeg下的deps目录
     """
-    action, conf_json=sys.argv[1:]
+    softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
 
     log=Logger({"remote": log_remote_level})

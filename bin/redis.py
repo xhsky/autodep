@@ -7,7 +7,7 @@ from libs import common
 from libs.env import log_remote_level, redis_src, redis_dst, redis_pkg_dir, redis_version
 
 def main():
-    action, conf_json=sys.argv[1:]
+    softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
     located=conf_dict.get("located")
     log=common.Logger({"remote": log_remote_level}, loggger_name="redis")

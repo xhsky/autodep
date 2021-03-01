@@ -8,7 +8,7 @@ from libs import common
 from libs.env import log_remote_level, rabbitmq_src, rabbitmq_dst, rabbitmq_pkg_dir, rabbitmq_version
 
 def main():
-    action, conf_json=sys.argv[1:]
+    softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
     located=conf_dict.get("located")
     rabbitmq_dir=f"{located}/{rabbitmq_dst}"

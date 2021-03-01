@@ -8,7 +8,7 @@ from libs.env import log_remote_level, nginx_src, nginx_dst, nginx_pkg_dir, ngin
         nginx_server_config, nginx_module_dict
 
 def main():
-    action, conf_json=sys.argv[1:]
+    softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
     located=conf_dict.get("located")
 

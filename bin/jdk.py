@@ -7,7 +7,7 @@ from libs import common
 from libs.env import log_remote_level, jdk_src, jdk_dst, jdk_pkg_dir, jdk_version
 
 def main():
-    action, conf_json=sys.argv[1:]
+    softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
 
     log=common.Logger({"remote": log_remote_level})

@@ -8,7 +8,7 @@ from libs import common
 from libs.env import log_remote_level, tomcat_src, tomcat_dst, tomcat_pkg_dir, tomcat_version
 
 def main():
-    action, conf_json=sys.argv[1:]
+    softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
     located=conf_dict.get("located")
 

@@ -63,7 +63,7 @@ def init(db_info_dict, mysql_dir, init_password, cluster_info_dict, role, log):
         return 1
 
 def main():
-    action, conf_json=sys.argv[1:]
+    softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
     located=conf_dict.get("located")
     mysql_dir=f"{located}/{mysql_dst}"

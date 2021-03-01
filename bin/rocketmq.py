@@ -43,7 +43,7 @@ def config_jvm(file_, jvm_mem, log):
             f_w.writelines(text)
 
 def main():
-    action, conf_json=sys.argv[1:]
+    softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
     located=conf_dict.get("located")
     rocketmq_dir=f"{located}/{rocketmq_dst}"
