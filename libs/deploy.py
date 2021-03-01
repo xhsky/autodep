@@ -2166,7 +2166,7 @@ class platform_deploy(Deploy):
                 "stats": None, 
                 }
         install_result=True
-        result=self.update_extract(program_pkg, program_unzip_dir, ["update.json"])
+        result=self.update_extract(program_pkg, program_unzip_dir, ["arch.json", "update.json", "start.json"])
         if result:
             code, result=self.read_config(["init", "arch"])
             if code:
