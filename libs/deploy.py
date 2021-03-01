@@ -6,13 +6,13 @@
 import locale, json, os, time, sys, requests, tarfile, math, shutil
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, log_graphics_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
-        remote_code_dir, remote_pkgs_dir, \
+        remote_code_dir, remote_pkgs_dir, ext_dir, local_pkg_name_dict, \
         interface, test_mode, \
         host_info_file, init_stats_file, install_stats_file, start_stats_file, update_stats_file, run_stats_file, \
         update_config_file_name, \
         g_term_rows, g_term_cols, \
-        located_dir_name, placeholder_software_list, \
-        conf_file, init_file, arch_file, update_file, \
+        located_dir_name, \
+        init_file, arch_file, update_file, start_file, stop_file,  \
         program_unzip_dir
 
 for dir_ in [logs_dir, program_unzip_dir]:
@@ -37,57 +37,6 @@ class Deploy(object):
     '''
     def __init__(self):
         self.ssh_client=ssh()
-        code, result=self.read_config(["conf"])
-        if code:
-            self.conf_dict=result[0]
-            self.soft=self.conf_dict["software"].keys()
-        else:
-            print(f"Error: 配置文件读取失败, {result}")
-            sys.exit(0)
-
-        """
-        self.init_stats_dict={
-                "project_id": None, 
-                "mode": "init", 
-                "result": True, 
-                "stats":{}
-                }
-        self.install_stats_dict={
-                "project_id": None, 
-                "mode": "install", 
-                "result": True, 
-                "stats":{}
-                }
-        self.run_stats_dict={
-                "project_id": None, 
-                "mode": "run", 
-                "result": True, 
-                "stats":{}
-                }
-        self.start_stats_dict={
-                "project_id": None, 
-                "mode": "start", 
-                "result": True, 
-                "stats":{}
-                }
-        self.stop_stats_dict={
-                "project_id": None, 
-                "mode": "stop", 
-                "result": True, 
-                "stats":{}
-                }
-        self.update_stats_dict={
-                "project_id": None, 
-                "mode": "update", 
-                "result": True, 
-                "stats":{}
-                }
-        self.soft_stats_dict={
-                "project_id": None, 
-                "mode": "monitor", 
-                "stats": {}
-                }
-        """
 
     def read_config(self, config_name_list):
         """
@@ -101,14 +50,14 @@ class Deploy(object):
         config_dict_list=[]
         for config in config_name_list:
             # 判断配置名称
-            if config=="project":
-                config_file=project_file
-            elif config=="init":
+            if config=="init":
                 config_file=init_file
             elif config=="arch":
                 config_file=arch_file
-            elif config=="conf":
-                config_file=conf_file
+            elif config=="start":
+                config_file=start_file
+            elif config=="stop":
+                config_file=stop_file
             elif config=="host":
                 config_file=host_info_file
             elif config=="update":
@@ -272,7 +221,7 @@ class Deploy(object):
         elif softname=="mysql":
             mem=arch_dict[node]["mysql_info"]["db_info"]["innodb_mem"]
         elif softname=="nginx":
-            mem="0G"
+            mem="1G"
             #self.arch_dict[node]["nginx_info"]["worker_processes"]=softname_cpu
         elif softname=="rabbitmq":
             mem=arch_dict[node]["rabbitmq_info"]["erlang_mem"]
@@ -306,6 +255,38 @@ class Deploy(object):
             disk_sorted=sorted(host_info_dict[ip]["Disk"].items(), key=lambda item:item[1][0]*(100-item[1][1]))
             max_disk_dict[ip]=disk_sorted[-1][0]
         return max_disk_dict
+
+    def _get_soft_py(self, softname):
+        """
+        根据软件名称获取对应的py文件名称
+        """
+        if softname.lower().startswith("program"):
+            soft_py="program.py"
+        elif softname.lower()=="init":
+            soft_py="init.py"
+        elif softname.lower()=="elasticsearch":
+            soft_py="elasticsearch.py"
+        elif softname.lower()=="erlang":
+            soft_py="erlang.py"
+        elif softname.lower()=="ffmpeg":
+            soft_py="ffmpeg.py"
+        elif softname.lower()=="glusterfs":
+            soft_py="glusterfs.py"
+        elif softname.lower()=="jdk":
+            soft_py="jdk.py"
+        elif softname.lower()=="mysql":
+            soft_py="mysql.py"
+        elif softname.lower()=="nginx":
+            soft_py="nginx.py"
+        elif softname.lower()=="rabbitmq":
+            soft_py="rabbitmq.py"
+        elif softname.lower()=="redis":
+            soft_py="redis.py"
+        elif softname.lower()=="rocketmq":
+            soft_py="rocketmq.py"
+        elif softname.lower()=="tomcat":
+            soft_py="tomcat.py"
+        return soft_py
 
     def resource_verifi(self, arch_dict, host_info_dict):
         """
@@ -369,16 +350,6 @@ class Deploy(object):
         else:
             return False, non_resouce_dict
 
-    def _exclude_placeholder_software(self, soft_list):
-        """
-        从列表中删除占位软件
-        """
-        for softname in soft_list[:]:
-            for placeholder_software in placeholder_software_list:
-                if softname.startswith(placeholder_software):
-                    soft_list.remove(softname)
-        return soft_list
-
     def init(self, init_dict, local_python3_file):
         """主机环境初始化
             * 生成秘钥
@@ -420,7 +391,7 @@ class Deploy(object):
                 if status[1].channel.recv_exit_status() != 0:
                     error_info=f"Python3安装报错, 进程退出: {status[2].read().decode('utf8')}"
                     self.log.logger.error(error_info)
-                    init_result=error_info
+                    init_result=False
                     stats_value=False
                     stats_message=error_info
                     break
@@ -428,30 +399,30 @@ class Deploy(object):
                     self.log.logger.info(f"配置Python3环境完成")
 
                 # 执行init.py
-                init_py="./bin/init.py"
+                init_py=self._get_soft_py("init")
                 trans_files_dict={
                         "lib_file": ["./libs/common.py", f"{remote_code_dir}/libs/common.py"],
                         "env_file": ["./libs/env.py", f"{remote_code_dir}/libs/env.py"],
-                        "py_file": [init_py, f"{remote_code_dir}/{init_py.split('/')[-1]}"]
+                        "py_file": [f"./bin/{init_py}", f"{remote_code_dir}/{init_py}"]
                         }
                 init_args={
                         "interface": interface, 
                         }
-                status=self.control(node, port, "init", trans_files_dict, init_args)
+                status=self.control(node, port, "init", "init", trans_files_dict, init_args)
 
                 for line in status[1]:
                     self.log.logger.info(line.strip())
                 if status[1].channel.recv_exit_status() != 0:
                     error_info=f"{node}远程初始化失败"
                     self.log.logger.error(error_info)
-                    init_result=error_info
+                    init_result=False
                     stats_value=False
                     stats_message=error_info
                     break
                 else:
                     self.log.logger.info(f"{node}远程初始化完成")
             except Exception as e:
-                init_result=str(e)
+                init_result=False
                 stats_value=False
                 stats_message=str(e)
 
@@ -461,7 +432,7 @@ class Deploy(object):
                     }
         return init_result, init_stats_dict
 
-    def control(self, ip, port, action, trans_files_dict, args_dict):
+    def control(self, ip, port, softname, action, trans_files_dict, args_dict):
         """
         软件控制
         """
@@ -475,14 +446,15 @@ class Deploy(object):
         if action=="init":
             status=soft_control.init(remote_py_file, args_dict)
         elif action=="install":
-            args_dict["pkg_file"]=trans_files_dict["pkg_file"][1]
-            status=soft_control.install(remote_py_file, args_dict)
+            if trans_files_dict.get("pkg_file"):
+                args_dict["pkg_file"]=trans_files_dict["pkg_file"][1]
+            status=soft_control.install(remote_py_file, softname, args_dict)
         elif action=="run":
-            status=soft_control.run(remote_py_file, args_dict)
+            status=soft_control.run(remote_py_file, softname, args_dict)
         elif action=="start":
-            status=soft_control.start(remote_py_file, args_dict)
+            status=soft_control.start(remote_py_file, softname, args_dict)
         elif action=="stop":
-            status=soft_control.stop(remote_py_file, args_dict)
+            status=soft_control.stop(remote_py_file, softname, args_dict)
         return status
 
     def install(self, init_dict, arch_dict):
@@ -524,20 +496,26 @@ class Deploy(object):
                 self.log.logger.info(line.strip())
             if status[1].channel.recv_exit_status() == 0:
                 self.log.logger.info(f"{node} hosts设置完成")
-                for softname in self._exclude_placeholder_software(arch_dict[node]["software"]):
+                for softname in arch_dict[node]["software"]:
                     self.log.logger.info(f"{softname}安装...")
                     stats_value=True
 
-                    pkg_file=self.conf_dict["location"].get(softname)
+                    pkg_file=local_pkg_name_dict.get(softname)
+                    soft_py_name=self._get_soft_py(softname)
                     install_trans_files_dict=trans_files_dict.copy()
                     install_trans_files_dict.update(
                             {
-                                "py_file": [f"./bin/{softname}.py", f"{remote_code_dir}/{softname}.py"], 
-                                "pkg_file": [pkg_file, f"{remote_pkgs_dir}/{pkg_file.split('/')[-1]}"]
+                                "py_file": [f"./bin/{soft_py_name}", f"{remote_code_dir}/{soft_py_name}"]
                                 }
                             )
+                    if pkg_file:
+                        install_trans_files_dict.update(
+                                {
+                                    "pkg_file": [f"{ext_dir}/{pkg_file}", f"{remote_pkgs_dir}/{pkg_file}"]
+                                    }
+                                )
 
-                    status=self.control(ip, port, "install", install_trans_files_dict, arch_dict[node])
+                    status=self.control(ip, port, softname, "install", install_trans_files_dict, arch_dict[node])
                     for line in status[1]:
                         self.log.logger.info(line.strip())
                     if status[1].channel.recv_exit_status() == 0:
@@ -550,7 +528,6 @@ class Deploy(object):
             else:
                 self.log.logger.error(f"{node} hosts设置失败")
                 install_result=False
-
         return install_result, install_stats_dict
 
     def run(self, init_dict, arch_dict):
@@ -569,18 +546,19 @@ class Deploy(object):
             self.log.logger.info(f"***{node}启动***")
             run_stats_dict[node]={}
             port=init_dict[arch_dict[node]["ip"]]["port"]
-            for softname in self._exclude_placeholder_software(arch_dict[node]["software"]):
+            for softname in arch_dict[node]["software"]:
                 self.log.logger.info(f"{softname}启动...")
                 stats_value=True
 
+                soft_py_name=self._get_soft_py(softname)
                 run_trans_files_dict=trans_files_dict.copy()
                 run_trans_files_dict.update(
                         {
-                            "py_file": [f"./bin/{softname}.py", f"{remote_code_dir}/{softname}.py"]
+                            "py_file": [f"./bin/{soft_py_name}", f"{remote_code_dir}/{soft_py_name}"]
                             }
                         )
 
-                status=self.control(node, port, "run", run_trans_files_dict, arch_dict[node])
+                status=self.control(node, port, softname, "run", run_trans_files_dict, arch_dict[node])
                 for line in status[1]:
                     self.log.logger.info(line.strip())
                 if status[1].channel.recv_exit_status() == 0:
@@ -592,16 +570,44 @@ class Deploy(object):
                 run_stats_dict[node][softname]=stats_value
         return run_result, run_stats_dict
 
-    def start(self, arg_dict, init_dict, arch_dict):
+    def start(self, init_dict, arch_dict, soft_start_dict):
         """
         软件启动
 
-        arg_dict={
+        soft_start_dict={
             "node1":["soft1", "soft2"], 
             "node2":["soft1", "soft2"]
         }
         """
-        return True
+        start_result=True
+        start_stats_dict={}
+        for node in soft_start_dict:
+            self.log.logger.info(f"***{node}节点启动***")
+            start_stats_dict[node]={}
+            port=init_dict[arch_dict[node]["ip"]]["port"]
+            for softname in soft_start_dict[node]:
+                self.log.logger.info(f"{softname}启动...")
+                stats_value=True
+
+                start_trans_files_dict=trans_files_dict.copy()
+                soft_py_name=self._get_soft_py(softname)
+                start_trans_files_dict.update(
+                        {
+                            "py_file": [f"./bin/{soft_py_name}", f"{remote_code_dir}/{soft_py_name}"]
+                            }
+                        )
+
+                status=self.control(node, port, softname, "start", start_trans_files_dict, arch_dict[node])
+                for line in status[1]:
+                    self.log.logger.info(line.strip())
+                if status[1].channel.recv_exit_status() == 0:
+                    self.log.logger.info(f"{softname}启动完成")
+                else:
+                    self.log.logger.error(f"{softname}启动失败")
+                    stats_value=False
+                    start_result=False
+                start_stats_dict[node][softname]=stats_value
+        return start_result, start_stats_dict
 
     def stop(self, arg_dict, init_dict, arch_dict):
         """
@@ -2108,7 +2114,7 @@ class platform_deploy(Deploy):
         '''
         pass
 
-    def init(self, program_pkg):
+    def init(self):
         """
         平台: 初始化
         """
@@ -2120,40 +2126,36 @@ class platform_deploy(Deploy):
                 "host_info": None
                 }
         init_result=True
-        result=self.update_extract(program_pkg, program_unzip_dir, ["init.json", "arch.json", "update.json"])
-        if result:
-            self.log.logger.info("监测主机配置, 请稍后...\n")
-            code, result=self.read_config(["init"])
-            if code:
-                init_dict=result[0]
-                flag, connect_msg=self.connect_test(init_dict)
-                if flag==1:
-                    self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
-                    for node_msg in connect_msg:
-                        self.log.logger.info(f"{node_msg[0]}:\t{node_msg[2]}")
-                    init_result=False
-                else:
-                    local_python3_file=self.conf_dict["location"].get("python3")
-                    status, dict_=super(platform_deploy, self).init(init_dict, local_python3_file)
-                    if status:
-                        self.log.logger.info("初始化完成\n")
-                        self.log.logger.info("获取主机信息...")
-                        all_host_info=self.get_host_msg(init_dict)
-                        init_stats_dict["host_info"]=self._to_init_dict(all_host_info)
-                    else:
-                        init_result=False
-                        self.log.logger.error(f"初始化失败: {status}")
-                    init_stats_dict["stats"]=dict_
-            else:
-                self.log.logger.error(f"配置文件读取失败: {result}")
+        self.log.logger.info("监测主机配置, 请稍后...\n")
+        code, result=self.read_config(["init"])
+        if code:
+            init_dict=result[0]
+            flag, connect_msg=self.connect_test(init_dict)
+            if flag==1:
+                self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
+                for node_msg in connect_msg:
+                    self.log.logger.info(f"{node_msg[0]}:\t{node_msg[2]}")
                 init_result=False
+            else:
+                local_python3_file=local_pkg_name_dict.get("python3")
+                status, dict_=super(platform_deploy, self).init(init_dict, f"{ext_dir}/{local_python3_file}")
+                if status:
+                    self.log.logger.info("初始化完成\n")
+                    self.log.logger.info("获取主机信息...")
+                    all_host_info=self.get_host_msg(init_dict)
+                    init_stats_dict["host_info"]=self._to_init_dict(all_host_info)
+                else:
+                    init_result=False
+                    self.log.logger.error(f"初始化失败: {status}")
+                init_stats_dict["stats"]=dict_
         else:
+            self.log.logger.error(f"配置文件读取失败: {result}")
             init_result=False
             
         init_stats_dict["result"]=init_result
         return init_stats_dict
 
-    def install(self):
+    def install(self, program_pkg):
         """
         平台: 安装
         """
@@ -2164,19 +2166,23 @@ class platform_deploy(Deploy):
                 "stats": None, 
                 }
         install_result=True
-        code, result=self.read_config(["init", "arch"])
-        if code:
-            init_dict, arch_dict=result
-            self.log.logger.info("集群安装...\n")
-            result, dict_=super(platform_deploy, self).install(init_dict, arch_dict)
-            if result:
-                self.log.logger.info("集群安装完成")
+        result=self.update_extract(program_pkg, program_unzip_dir, ["update.json"])
+        if result:
+            code, result=self.read_config(["init", "arch"])
+            if code:
+                init_dict, arch_dict=result
+                self.log.logger.info("集群安装...\n")
+                result, dict_=super(platform_deploy, self).install(init_dict, arch_dict)
+                if result:
+                    self.log.logger.info("集群安装完成")
+                else:
+                    self.log.logger.error("集群安装失败")
+                    install_result=False
+                install_stats_dict["stats"]=dict_
             else:
-                self.log.logger.error("集群安装失败")
+                self.log.logger.error(f"配置文件读取失败: {result}")
                 install_result=False
-            install_stats_dict["stats"]=dict_
         else:
-            self.log.logger.error(f"配置文件读取失败: {result}")
             install_result=False
         install_stats_dict["result"]=install_result
         return install_stats_dict
@@ -2210,17 +2216,30 @@ class platform_deploy(Deploy):
         return run_stats_dict
 
     def start(self):
-        with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
-            init_dict=json.load(init_f)
-            arch_dict=json.load(arch_f)
-        self.log.logger.info("集群启动...\n")
-        result=super(platform_deploy, self).start(init_dict, arch_dict)
-        if result:
-            self.log.logger.info("集群启动完成")
+        """
+        平台: 启动
+        """
+        start_stats_dict={
+                "project_id": self.project_id, 
+                "mode": "start", 
+                "result": None, 
+                "stats": None, 
+                }
+        start_result=True
+        code, result=self.read_config(["init", "arch", "start"])
+        if code:
+            init_dict, arch_dict, start_dict=result
+            result, dict_=super(platform_deploy, self).start(init_dict, arch_dict, start_dict)
+            if result:
+                self.log.logger.info("启动完成")
+            else:
+                self.log.logger.error("启动失败")
+            start_stats_dict["stats"]=dict_
         else:
-            self.log.logger.error("集群启动失败")
-        self.generate_info("platform", self.start_stats_dict)
-        return result
+            self.log.logger.error(f"配置文件读取失败: {result}")
+            start_result=False
+        start_stats_dict["result"]=run_result
+        return start_stats_dict
 
     def update(self, update_pkg=None):
         """
@@ -2263,9 +2282,9 @@ class platform_deploy(Deploy):
         #self.log.logger.info(f"{update_stats_dict=}")
         return update_stats_dict
 
-    def deploy(self):
+    def deploy(self, program_pkg):
         """
-        平台: install, run, update
+        平台: install, run, update, start
         """
         deploy_stats_dict={
                 "project_id": self.project_id,
@@ -2275,21 +2294,23 @@ class platform_deploy(Deploy):
                 }
         deploy_result=True
 
-        stage_all=["install", "run", "update"]
-        stage_method={
-                "install": self.install, 
-                "run": self.run, 
-                "update": self.update
-                }
-        for stage in stage_all:
-            result_dict=stage_method[stage]()
-            deploy_stats_dict["stats"][stage]=result_dict
-            if result_dict["result"]:
-                continue
-            else:
-                self.log.logger.error(f"'{stage}'阶段执行失败")
-                deploy_result=False
-                break
+        install_dict=self.install(program_pkg)
+        deploy_stats_dict["stats"]["install"]=result_dict
+        if install_dict["result"]:
+            stage_all=["run", "update", "start"]
+            for stage in stage_all:
+                result_dict=stage_method[stage]()
+                deploy_stats_dict["stats"][stage]=result_dict
+                if result_dict["result"]:
+                    continue
+                else:
+                    self.log.logger.error(f"'{stage}'阶段执行失败")
+                    deploy_result=False
+                    break
+        else:
+            self.log.logger.error(f"'{stage}'阶段执行失败")
+            deploy_result=False
+
         deploy_stats_dict["result"]=deploy_result
         return deploy_stats_dict
 

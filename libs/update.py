@@ -7,7 +7,7 @@ import sys, os
 import json, tarfile
 from libs import remote
 from libs.env import update_package_dir, test_mode, \
-        remote_python_exec, remote_code_dir
+        remote_python_exec, remote_code_dir, program_unzip_dir
 
 def db_update(package, update_dict, log):
     """
@@ -100,11 +100,19 @@ def code_update(package, update_dict, log):
             log.logger.info(f"'{host}'更新")
             log.logger.info("传输更新包...")
             update_package_abs=f"{update_package_dir}/{package.split('/')[-1]}"
+
             update_py_file="update.py"
             trans_files=[
                     (package, update_package_abs), 
                     (f"./bin/{update_py_file}", f"{remote_code_dir}/{update_py_file}"), 
                     ]
+            propertiesPath=update_dict["update_info"].get("propertiesPath")
+            if propertiesPath:
+                trans_files.append(
+                        (f"{program_unzip_dir}/{propertiesPath}", f"{update_package_dir}/{propertiesPath}")
+                        )
+                args_dict["propertiesPath"]=f"{update_package_dir}/{propertiesPath}"
+
             if test_mode:
                 trans_files.append(("./libs/common.py", f"{remote_code_dir}/common.py"))
                 trans_files.append(("./libs/env.py", f"{remote_code_dir}/env.py"))

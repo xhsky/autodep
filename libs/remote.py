@@ -26,29 +26,29 @@ class soft(object):
         status=self.ssh_client.exec(self.ip, self.port, command)
         return status
 
-    def control(self, py_file, action, args_dict):
+    def control(self, py_file, softname, action, args_dict):
         """
         用于install, run, start, stop, 非init
         """
-        command=f"{remote_python_exec} {py_file} {action} '{json.dumps(args_dict)}'"
+        command=f"{remote_python_exec} {py_file} {softname} {action} '{json.dumps(args_dict)}'"
         log.logger.debug(f"{action=}: {command}")
         status=self.ssh_client.exec(self.ip, self.port, command)
         return status
 
-    def install(self, py_file, args_dict):
-        status=self.control(py_file, "install", args_dict)
+    def install(self, py_file, softname, args_dict):
+        status=self.control(py_file, softname, "install", args_dict)
         return status
 
-    def run(self, py_file, args_dict):
-        status=self.control(py_file, "run", args_dict)
+    def run(self, py_file, softname, args_dict):
+        status=self.control(py_file, softname, "run", args_dict)
         return status
 
-    def start(self, py_file, args_dict):
-        status=self.control(py_file, "start", args_dict)
+    def start(self, py_file, softname, args_dict):
+        status=self.control(py_file, softname, "start", args_dict)
         return status
 
-    def stop(self, py_file, args_dict):
-        status=self.control(py_file, "stop", args_dict)
+    def stop(self, py_file, softname, args_dict):
+        status=self.control(py_file, softname, "stop", args_dict)
         return status
 
 class ssh(object):

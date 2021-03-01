@@ -63,10 +63,10 @@ def main():
         d=deploy.platform_deploy(program_id)
         arg=args.p
         if arg=="init":
-            program_pkg=args.f
-            result_dict=d.init(program_pkg)
+            result_dict=d.init()
         elif arg=="install":
-            result_dict=d.install()
+            program_pkg=args.f
+            result_dict=d.install(program_pkg)
         elif arg=="run":
             result_dict=d.run()
         elif arg=="start":
@@ -75,7 +75,8 @@ def main():
             program_pkg=args.f
             result_dict=d.update(program_pkg)
         elif arg=="deploy":
-            result_dict=d.deploy()
+            program_pkg=args.f
+            result_dict=d.deploy(program_pkg)
         d.generate_info("platform", result_dict)
 
 

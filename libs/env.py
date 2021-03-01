@@ -15,18 +15,20 @@ log_update_level="debug"
 
 # 配置文件
 host_info_file=f"./config/host_info.json"
-conf_file="./config/conf.json"
+#conf_file="./config/conf.json"
 init_file="./config/init.json"
 arch_file="./config/arch.json"
 update_file="./config/update.json"
-project_file="./config/project.json"
+#project_file="./config/project.json"
+start_file="./config/start.json"
+stop_file="./config/stop.json"
+
+# ext路径
+ext_dir="../ext"
 
 # 安装目录名称
 located_dir_name="dream"
 located_dir_link="/dream"
-
-# 占位软件列表
-placeholder_software_list=["program"]
 
 # 更新
 code_saved_remote_dir="/tmp"
@@ -37,7 +39,6 @@ install_stats_file=f"{logs_dir}/install.json"
 start_stats_file=f"{logs_dir}/start.json"
 run_stats_file=f"{logs_dir}/run.json"
 update_stats_file=f"{logs_dir}/update.json"
-
 update_config_file_name="update.json"
 
 # 文本图形化安装时的最小窗口尺寸
@@ -59,7 +60,7 @@ remote_pkgs_dir=f"{remote_python_dir}/pkgs"
 
 update_package_dir=remote_pkgs_dir
 
-program_unzip_dir="./project_pkg"
+program_unzip_dir="./program_pkg"
 
 interface={
         "mail": ["smtp.dreamdt.cn", 25, None],                              # 邮件接口
@@ -67,6 +68,20 @@ interface={
         "platform_log": ["192.168.0.81", 8115, "/project/deploy/sendLog"],  # 公司平台日志接口
         "platform_info": ["192.168.0.81", 8115, "/project/deploy/sendDetection"],  # 公司平台信息接口
         }
+local_pkg_name_dict={
+        "python3": "python3.tar.gz",
+        "nginx": "nginx-1.17.9-bin.tar.gz", 
+        "jdk": "jdk-8u251-linux-x64.tar.gz", 
+        "tomcat": "apache-tomcat-8.5.51.tar.gz", 
+        "ffmpeg": "ffmpeg-4.2.2-bin.tar.gz", 
+        "redis": "redis-5.0.7-bin.tar.gz", 
+        "mysql": "mysql-8.0.19.tar.gz", 
+        "glusterfs": "glusterfs-7.5-rpm.tar.gz", 
+        "elasticsearch": "elasticsearch-7.8.1-linux-x86_64.tar.gz", 
+        "erlang": "erlang_23_2.tar.gz", 
+        "rabbitmq": "rabbitmq-server-generic-unix-3.8.9.tar.xz", 
+        "rocketmq": "rocketmq-all-4.8.0-bin-release.tar.gz"
+        } 
 
 """
 # 各软件权重比
