@@ -2295,9 +2295,14 @@ class platform_deploy(Deploy):
         deploy_result=True
 
         install_dict=self.install(program_pkg)
-        deploy_stats_dict["stats"]["install"]=result_dict
+        deploy_stats_dict["stats"]["install"]=install_dict
         if install_dict["result"]:
             stage_all=["run", "update", "start"]
+            stage_method={
+                    "run": self.run, 
+                    "update": self.update, 
+                    "start": self.start
+                    }
             for stage in stage_all:
                 result_dict=stage_method[stage]()
                 deploy_stats_dict["stats"][stage]=result_dict
@@ -2308,7 +2313,7 @@ class platform_deploy(Deploy):
                     deploy_result=False
                     break
         else:
-            self.log.logger.error(f"'{stage}'阶段执行失败")
+            self.log.logger.error(f"install'阶段执行失败")
             deploy_result=False
 
         deploy_stats_dict["result"]=deploy_result
