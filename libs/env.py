@@ -23,6 +23,7 @@ project_file="./config/project.json"
 
 # 安装目录名称
 located_dir_name="dream"
+located_dir_link="/dream"
 
 # 占位软件列表
 placeholder_software_list=["program"]

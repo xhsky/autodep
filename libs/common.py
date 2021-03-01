@@ -9,7 +9,7 @@ import textwrap
 from logging import handlers
 import logging
 import requests, json
-from libs.env import interface
+from libs.env import interface, located_dir_link
 
 def exec_command(command, timeout=45):
     try:
@@ -84,6 +84,11 @@ def port_connect(host, port):
 def install(soft_file, link_src, link_dst, pkg_dir, located):
     log=Logger({"remote": "debug"}, logger_name="remote install")
     os.makedirs(located, exist_ok=1)
+    if located == located_dir_link or os.path.islink(located_dir_link):
+        pass
+    else:
+        os.symlink(located, located_dir_link)
+
     try:
         # 解压
         log.logger.debug(f"{soft_file=}解压")
