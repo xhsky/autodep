@@ -1,5 +1,0 @@
-{
-    "project_id": "1111aaa",
-    "project_name": "test", 
-    "project_data": ["/path/db.tar.gz", "/path/code.tar.gz"]
-}
