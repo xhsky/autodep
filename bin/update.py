@@ -27,13 +27,12 @@ def main():
         except Exception as e:
             log.logger.error(f"无法建立目录: {str(e)}")
             exit(1)
-
     try:
         if type_=="backend":
             log.logger.info("开始后端更新...")
             propertiesPath=args_dict["propertiesPath"]
             shutil.move(tar_file, f"{dest}/{tar_file.split('/')[-1]}")
-            shutil.move(propertiesPath, f"{dest}/jar.conf")
+            shutil.move(propertiesPath, f"{dest}/application-prod.{propertiesPath.split('.')[-1]}")
         elif type_=="frontend":
             with tarfile.open(tar_file, "r", encoding="utf8") as tar:
                 log.logger.info("开始前端更新...")

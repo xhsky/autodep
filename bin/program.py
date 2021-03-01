@@ -29,7 +29,7 @@ def main():
             if jar_name.endswith(".jar"):
                 jar=jar_name
                 break
-        start_command=f"cd {program_dir} ; nohup java -Xms{jvm_mem} -Xmx{jvm_mem} -jar {jar} -server.port={port_list[0]} --spring.profiles.active=jar.conf &> jar.log &"
+        start_command=f"cd {program_dir} ; nohup java -Xms{jvm_mem} -Xmx{jvm_mem} -jar {jar} -server.port={port_list[0]} --spring.profiles.active=prod &> jar.log &"
         log.logger.debug(f"{start_command=}")
         status, result=common.exec_command(start_command)
         if status:
