@@ -144,7 +144,7 @@ def main():
             lower_case_table_names=1
             default_authentication_plugin=mysql_native_password
             default-time-zone='+08:00'
-            wait_timeout=30
+            wait_timeout=288000
 
             # Log 
             ## Error Log
