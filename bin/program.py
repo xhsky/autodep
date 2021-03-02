@@ -31,10 +31,10 @@ def main():
                 break
         config=["application-prod.yml", "application-prod.properties"]
         for config_file in os.listdir(program_dir):
-            if config_name in config:
-                config=config_name
+            if config_file in config:
+                config_name=config_file
                 break
-        start_command=f"cd {program_dir} ; nohup java -Xms{jvm_mem} -Xmx{jvm_mem} -jar {jar} --server.port={port_list[0]} --spring.profiles.active=prod --spring.config.location=./{config} &> jar.log &"
+        start_command=f"cd {program_dir} ; nohup java -Xms{jvm_mem} -Xmx{jvm_mem} -jar {jar} --server.port={port_list[0]} --spring.profiles.active=prod --spring.config.location=./{config_name} &> jar.log &"
         log.logger.debug(f"{start_command=}")
         status, result=common.exec_command(start_command)
         if status:
