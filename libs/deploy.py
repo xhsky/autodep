@@ -880,6 +880,7 @@ class graphics_deploy(Deploy):
     '''文本图形化安装'''
 
     from dialog import Dialog
+    os.environ["DIALOGRC"]="./libs/dialogrc"       # 指定dialog的颜色配置文件
 
     def __init__(self):
         super(graphics_deploy, self).__init__()
@@ -1741,12 +1742,14 @@ class graphics_deploy(Deploy):
 
     def init(self, title):
         """
-        主机初始化
+        图形: 初始化
         """
 
         project_pkg=self.get_file_path(f"{os.path.dirname(os.getcwd())}/", "请填写项目包文件路径")
         if project_pkg == "":
             return
+
+        init_result=True
 
         read_fd, write_fd = os.pipe()
         child_pid = os.fork()
@@ -1756,7 +1759,7 @@ class graphics_deploy(Deploy):
             with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
                 self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)
 
-                result=self.update_extract(project_pkg, program_unzip_dir, ["init.json", "arch.json", "update.json"])
+                result=self.update_extract(project_pkg, program_unzip_dir, ["init.json", "arch.json", "update.json", "start.json"])
                 if not result:
                     os._exit(1)
 
@@ -1775,8 +1778,8 @@ class graphics_deploy(Deploy):
                         self.log.logger.info(f"{ip}:\t{connect_msg[ip]['msg']}")
                     os._exit(1)
 
-                local_python3_file=self.conf_dict["location"].get("python3")
-                status=super(graphics_deploy, self).init(init_dict, local_python3_file)
+                local_python3_file=local_pkg_name_dict["python3"]
+                status, dict_=super(graphics_deploy, self).init(init_dict, f"{ext_dir}/{local_python3_file}")
                 if status is True:
                     self.log.logger.info("初始化完成\n")
                     self.log.logger.info("获取主机信息...")
