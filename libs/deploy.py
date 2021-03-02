@@ -2238,7 +2238,7 @@ class platform_deploy(Deploy):
         else:
             self.log.logger.error(f"配置文件读取失败: {result}")
             start_result=False
-        start_stats_dict["result"]=run_result
+        start_stats_dict["result"]=start_result
         return start_stats_dict
 
     def update(self, update_pkg=None):
