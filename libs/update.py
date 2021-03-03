@@ -46,7 +46,7 @@ def db_update(package, update_dict, log):
             sql_list=[]
             log.logger.debug(f"读取数据文件{sql_file_abs}")
             with open(sql_file_abs, "rb") as f:
-                log.logger.info("数据更新中...")
+                log.logger.info("数据更新中, 时间可能较长, 请稍后...")
                 for line in f:
                     line=line.decode("utf8", "ignore").strip()
                     if line=="" or line.startswith("--"):
