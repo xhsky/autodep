@@ -11,6 +11,18 @@ import logging
 import requests, json
 from libs.env import interface, located_dir_link
 
+def find_pid(port):
+    """根据端口获取相应的pid
+    pid为0则为未找到
+    """
+    for i in psutil.net_connections():
+        if port==i[3][1] and i[6] is not None:
+            pid=i[6]
+            break
+    else:
+        pid=0
+    return pid
+
 def exec_command(command, timeout=45):
     try:
         result=run(command, capture_output=True, encoding="utf8", shell=True, timeout=timeout)
