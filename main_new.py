@@ -56,7 +56,8 @@ def main():
         elif arg=="deploy":
             d.deploy(args[0])
     if args.g is not None:
-        d=deploy.graphics_deploy()
+        program_id=args.g
+        d=deploy.graphics_deploy(program_id)
         d.show()
     if args.p is not None:
         program_id=args.i
