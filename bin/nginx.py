@@ -202,7 +202,7 @@ def main():
                 flag=1
             else:
                 log.logger.debug(f"检测端口: {port_list=}")
-                if not common.port_exist(port_list, exist_or_not=True):
+                if not common.port_exist(port_list, exist_or_not=False):
                     flag=2
         else:
             log.logger.error(result)
