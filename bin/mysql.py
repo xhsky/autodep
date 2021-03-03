@@ -307,9 +307,38 @@ def main():
         sys.exit(flag)
 
     elif action=="start":
-        pass
+        start_command=f"systemctl start mysqld"
+        log.logger.debug(f"{start_command=}")
+        status, result=common.exec_command(start_command, timeout=600)
+        if status:
+            if result.returncode != 0:
+                log.logger.error(result.stderr)
+                flag=1
+            else:
+                log.logger.debug(f"检测端口: {port_list=}")
+                if not common.port_exist(port_list):
+                    flag=2
+        else:
+            log.logger.error(result)
+            flag=1
+        sys.exit(flag)
+
     elif action=="stop":
-        pass
+        stop_command=f"systemctl stop mysqld"
+        log.logger.debug(f"{stop_command=}")
+        status, result=common.exec_command(stop_command, timeout=600)
+        if status:
+            if result.returncode != 0:
+                log.logger.error(result.stderr)
+                flag=1
+            else:
+                log.logger.debug(f"检测端口: {port_list=}")
+                if not common.port_exist(port_list, exist_or_not=False):
+                    flag=2
+        else:
+            log.logger.error(result)
+            flag=1
+        sys.exit(flag)
 
 if __name__ == "__main__":
     """
