@@ -330,20 +330,20 @@ class Deploy(object):
             arch_dict[_]["located"]=located_dir
 
         ## 资源大小验证
-        #non_resouce_dict={}
-        #non_resouce_flag=False
-        #for node in arch_dict:
-        #    ip=arch_dict[node]["ip"]
-        #    non_resouce_dict[ip]={}
-        #    mem=ip_weights_dict[ip][0]-node_weights_dict[node][0]
-        #    cpu=ip_weights_dict[ip][1]-node_weights_dict[node][1]
-        #    if mem < 0:
-        #        non_resouce_flag=True
-        #        non_resouce_dict[ip]["Mem"]=node_weights_dict[node][0]
-        #    if cpu < 0:
-        #        non_resouce_flag=True
-        #        non_resouce_dict[ip]["CPU"]=node_weights_dict[node][1]
+        non_resouce_dict={}
         non_resouce_flag=False
+        for node in arch_dict:
+            ip=arch_dict[node]["ip"]
+            non_resouce_dict[ip]={}
+            mem=ip_weights_dict[ip][0]-node_weights_dict[node][0]
+            cpu=ip_weights_dict[ip][1]-node_weights_dict[node][1]
+            if mem < 0:
+                non_resouce_flag=True
+                non_resouce_dict[ip]["Mem"]=node_weights_dict[node][0]
+            if cpu < 0:
+                non_resouce_flag=True
+                non_resouce_dict[ip]["CPU"]=node_weights_dict[node][1]
+        #non_resouce_flag=False
 
         if not non_resouce_flag:
             return True, arch_dict
@@ -2462,6 +2462,32 @@ class platform_deploy(Deploy):
         start_stats_dict["result"]=start_result
         return start_stats_dict
 
+    def stop(self):
+        """
+        平台: 启动
+        """
+        stop_stats_dict={
+                "project_id": self.project_id, 
+                "mode": "stop", 
+                "result": None, 
+                "stats": None, 
+                }
+        stop_result=True
+        code, result=self.read_config(["init", "arch", "stop"])
+        if code:
+            init_dict, arch_dict, stop_dict=result
+            result, dict_=super(platform_deploy, self).control_running_status("stop", init_dict, arch_dict, stop_dict)
+            if result:
+                self.log.logger.info("停止完成")
+            else:
+                self.log.logger.error("停止失败")
+            stop_stats_dict["stats"]=dict_
+        else:
+            self.log.logger.error(f"配置文件读取失败: {result}")
+            stop_result=False
+        stop_stats_dict["result"]=stop_result
+        return stop_stats_dict
+
     def update(self, update_pkg=None):
         """
         平台: 更新
@@ -2539,4 +2565,31 @@ class platform_deploy(Deploy):
 
         deploy_stats_dict["result"]=deploy_result
         return deploy_stats_dict
+
+    def monitor(self):
+        """
+        平台: 软件状态
+        """
+        monitor_stats_dict={
+                "project_id": self.project_id, 
+                "mode": "monitor", 
+                "result": None, 
+                "stats": None, 
+                }
+        monitor_result=True
+
+        result, config_list=self.read_config(["arch"])
+        if result:
+            arch_dict=config_list[0]
+        else:
+            error_msg=f"配置文件读取失败: {result}"
+            monitor_result=False
+            self.log.logger.error(error_msg)
+
+        soft_status_dict=self.get_soft_status(arch_dict)
+        monitor_stats_dict["stats"]=soft_status_dict
+        self.log.logger.debug(f"软件状态值: {soft_status_dict}")
+
+        monitor_stats_dict["result"]=monitor_result
+        return monitor_stats_dict
 

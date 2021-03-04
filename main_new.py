@@ -31,7 +31,7 @@ def print_usage_info():
     return usage_info
 
 def main():
-    choices=["init", "install", "run", "start", "stop", "update", "deploy"]
+    choices=["init", "install", "run", "start", "stop", "update", "deploy", "monitor"]
     parser=argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("-t", type=str, choices=choices, help="阶段")
@@ -72,12 +72,16 @@ def main():
             result_dict=d.run()
         elif arg=="start":
             result_dict=d.start()
+        elif arg=="stop":
+            result_dict=d.stop()
         elif arg=="update":
             program_pkg=args.f
             result_dict=d.update(program_pkg)
         elif arg=="deploy":
             program_pkg=args.f
             result_dict=d.deploy(program_pkg)
+        elif arg=="monitor":
+            result_dict=d.monitor()
         d.generate_info("platform", result_dict)
 
 
