@@ -4,31 +4,9 @@
 # sky
 
 import sys
-#import getopt
 import argparse
 from textwrap import dedent
 from libs import deploy
-
-
-def print_usage_info():
-    usage_info=dedent(f"""
-        Usage: {sys.argv[0]} OPTIONS [COMMAND]
-
-        Options:
-            -t, --text command          以文本方式安装
-            -g, --graphics              以图形方式安装
-            -p, --paltform command      以平台方式安装
-
-        Commands:
-            init                       集群初始化
-            install                    集群安装
-            start                      集群启动
-            update [package]           项目数据部署/更新
-            deploy                     集群部署(install, start, update)
-
-
-    """)
-    return usage_info
 
 def main():
     choices=["init", "install", "run", "start", "stop", "update", "deploy", "monitor"]
@@ -36,7 +14,7 @@ def main():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("-t", type=str, choices=choices, help="阶段")
     group.add_argument("-p", type=str, choices=choices, help="阶段")
-    group.add_argument("-g", type=str, help="project_id")
+    group.add_argument("-g", help="图形方式启动", action="store_true")
 
     parser.add_argument("-f", type=str, help="指定项目包文件路径")
     parser.add_argument("-i", type=str, help="指定项目id")
@@ -56,8 +34,7 @@ def main():
         elif arg=="deploy":
             d.deploy(args[0])
     if args.g is not None:
-        program_id=args.g
-        d=deploy.graphics_deploy(program_id)
+        d=deploy.graphics_deploy(args.f)
         d.show()
     if args.p is not None:
         program_id=args.i
@@ -83,66 +60,6 @@ def main():
         elif arg=="monitor":
             result_dict=d.monitor()
         d.generate_info("platform", result_dict)
-
-
-    """
-    try:
-        options, args=getopt.getopt(sys.argv[1:], "t:p:gh", ["text=", "platform=", "graphics", "help"])
-    except getopt.GetoptError:
-        print(print_usage_info())
-        sys.exit(1)
-
-    print(f"{options=}, {args=}")
-
-    if len(options)==0:
-        print(print_usage_info())
-        sys.exit(1)
-
-    #conf_file="./config/conf.json"
-    #init_file="./config/init.json"
-    #arch_file="./config/arch.json"
-    #project_file="./config/project"
-
-    for opt, arg in options:
-        if opt in ("-g", "--graphics"):
-            d=deploy.graphics_deploy()
-            d.show()
-            break
-        elif opt in ("-t", "--text"):
-            d=deploy.text_deploy()
-            if arg=="init":
-                d.init(args[0])
-            elif arg=="install":
-                d.install()
-            elif arg=="start":
-                d.start()
-            elif arg=="update":
-                d.update(args)
-            elif arg=="deploy":
-                d.deploy(args[0])
-            else:
-                print(print_usage_info())
-            break
-        elif opt in ("-p", "--platform"):
-            d=deploy.platform_deploy(args[0])
-            if arg=="init":
-                d.init()
-            elif arg=="install":
-                d.install()
-            elif arg=="start":
-                d.start()
-            elif arg=="update":
-                d.update(args)
-            elif arg=="deploy":
-                d.deploy()
-            else:
-                print(print_usage_info())
-            break
-        elif opt in ("-h", "--help"):
-            print(print_usage_info())
-        else:
-            print(print_usage_info())
-    """
 
 if __name__ == "__main__":
     main()
