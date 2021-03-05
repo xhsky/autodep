@@ -72,13 +72,13 @@ class Deploy(object):
         else:
             return True, config_dict_list
 
-    def write_config(self, json_, file_):
+    def write_config(self, dict_, file_):
         """
-        将json写入文件
+        将dict以json格式写入文件
         """
         try: 
             with open(file_, "w", encoding="utf8") as f:
-                json.dump(json_, f)
+                json.dump(dict_, f)
             return True, ""
         except Exception as e:
             return False, str(e)
@@ -228,9 +228,9 @@ class Deploy(object):
         elif softname=="redis":
             mem=arch_dict[node]["redis_info"]["db_info"]["redis_mem"]
         elif softname=="rocketmq":
-            mem1=arch_dict[node]["recketmq_info"]["namesrv_mem"]
-            mem2=arch_dict[node]["recketmq_info"]["broker_mem"]
-            mem=self._format_size(mem1)+self._format_size(mem2)
+            mem1=arch_dict[node]["rocketmq_info"]["namesrv_mem"]
+            mem2=arch_dict[node]["rocketmq_info"]["broker_mem"]
+            mem=str(self._format_size(mem1)+self._format_size(mem2))
         elif softname=="tomcat":
             mem=arch_dict[node]["tomcat_info"]["jvm_mem"]
         elif softname.startswith("program"):
@@ -331,24 +331,32 @@ class Deploy(object):
 
         ## 资源大小验证
         non_resouce_dict={}
-        non_resouce_flag=False
-        for node in arch_dict:
-            ip=arch_dict[node]["ip"]
-            non_resouce_dict[ip]={}
-            mem=ip_weights_dict[ip][0]-node_weights_dict[node][0]
-            cpu=ip_weights_dict[ip][1]-node_weights_dict[node][1]
-            if mem < 0:
-                non_resouce_flag=True
-                non_resouce_dict[ip]["Mem"]=node_weights_dict[node][0]
-            if cpu < 0:
-                non_resouce_flag=True
-                non_resouce_dict[ip]["CPU"]=node_weights_dict[node][1]
         #non_resouce_flag=False
+        #for node in arch_dict:
+        #    ip=arch_dict[node]["ip"]
+        #    non_resouce_dict[ip]={}
+        #    mem=ip_weights_dict[ip][0]-node_weights_dict[node][0]
+        #    cpu=ip_weights_dict[ip][1]-node_weights_dict[node][1]
+        #    if mem < 0:
+        #        non_resouce_flag=True
+        #        non_resouce_dict[ip]["Mem"]=node_weights_dict[node][0]
+        #    if cpu < 0:
+        #        non_resouce_flag=True
+        #        non_resouce_dict[ip]["CPU"]=node_weights_dict[node][1]
+        non_resouce_flag=False
 
         if not non_resouce_flag:
             return True, arch_dict
         else:
             return False, non_resouce_dict
+
+    def account_verifi(self, init_dict):
+        """
+        init_dict格式校验
+        """
+        for ip in init_dict:
+            pass
+        return True, ""
 
     def init(self, init_dict, local_python3_file):
         """主机环境初始化
@@ -913,10 +921,18 @@ class graphics_deploy(Deploy):
     from dialog import Dialog
     os.environ["DIALOGRC"]="./libs/dialogrc"       # 指定dialog的颜色配置文件
 
-    def __init__(self, project_id):
+    def __init__(self, project_pkg):
         super(graphics_deploy, self).__init__()
-        self.project_id=project_id
         self.log=Logger({"file": log_file_level}, log_file=log_file)
+
+        if project_pkg is not None:
+            if not os.path.exists(project_pkg):
+                print(f"Error: {project_pkg}文件不存在, 请确认")
+                sys.exit(1)
+            self.init_flag=True
+            self.project_pkg=project_pkg
+        else:
+            self.init_flag=False
 
         # 安装dialog
         if not self._install_dialog():
@@ -925,7 +941,7 @@ class graphics_deploy(Deploy):
 
         locale.setlocale(locale.LC_ALL, '')
         self.d = self.Dialog(dialog="dialog", autowidgetsize=1)
-        self.d.set_background_title("集群管理")
+        self.d.set_background_title("部署")
         self.term_rows, self.term_cols=self.get_term_size()
 
     def get_term_size(self):
@@ -939,42 +955,6 @@ class graphics_deploy(Deploy):
         else:
             self.log.logger.debug(f"当前窗口大小为({term_rows}, {term_cols})")
             return int(term_rows * 0.8), int(term_cols * 0.8)
-
-    def trans_fields_to_dict(self, fields):
-        info_dict={}
-        for index, item in enumerate(fields):
-            if index % 4 == 0:
-                info_dict[item]={
-                        "ip": fields[index+1], 
-                        "root_password": fields[index+2], 
-                        "port": fields[index+3]
-                        }
-        return info_dict
-
-    def show_host_msg(self, title, host_info_dict):
-        if host_info_dict=={}:
-            elements=[
-                    ("IP:", 1, 1, "192.168.0.1", 1, 15, 16, 16), 
-                    ("root用户密码:", 2, 1, "password", 2, 15, 16, 16), 
-                    ("ssh端口:", 3, 1, "22", 3, 15, 16, 16), 
-                    ("设置主机名:", 4, 1, "node", 4, 15, 16, 16), 
-                    ]
-            code, fields=self.d.form(f"请填写集群中主机信息\n第1台主机:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="添加完毕", cancel_label="上一步")
-            # 交换IP和主机名顺序
-            nodename=fields[-1] ; del fields[-1]
-            fields.insert(0, nodename)
-        else:
-            elements=[]
-            n=0
-            for i in host_info_dict:
-                n=n+1
-                elements.append((f"{n:2}. 主机名: ", n, 1, i, n, 13, 10, 10))
-                elements.append(("IP: ", n, 25, host_info_dict[i]["ip"], n, 29, 16, 16))
-                elements.append(("root用户密码: ", n, 47, host_info_dict[i]["root_password"], n, 61, 15, 15))
-                elements.append(("ssh端口: ", n, 78, str(host_info_dict[i]["port"]), n, 87, 5, 6))
-            code, fields=self.d.form(f"填写主机信息:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="添加完毕", cancel_label="上一步")
-        self.log.logger.debug(f"主机信息: {code=}, {fields=}")
-        return code, fields
 
     def add_soft_elements(self, softname, elements, tab, xi, field_length, READ_ONLY, n, soft_dict):
         item=""
@@ -1055,102 +1035,112 @@ class graphics_deploy(Deploy):
         n=n+length+1
         return n, elements
 
-    def show_arch_msg(self, title, arch_dict):
-        if arch_dict != {}:
-            HIDDEN = 0x1
-            READ_ONLY = 0x2
-            tab=3           # 
-            xi=30
-            field_length=45
+    def show_arch_info(self, title, arch_dict):
+        HIDDEN = 0x1
+        READ_ONLY = 0x2
+        tab=3           # 
+        xi=15
+        field_length=45
+        n=0
+        for node in arch_dict:
+            n=n+1
+            info=[
+                    (f"{node}: ", n, 1, "", n, xi, field_length, 0, HIDDEN), 
+                    (f"IP: ", n+1, tab, arch_dict[node]["ip"], n+1, xi, field_length, 0, READ_ONLY), 
+                    ("安装目录: ", n+2, tab, arch_dict[node]["located"], n+2, xi, field_length, 0, READ_ONLY)
+                    ]
+            n=n+3
+            m=0
+            soft_nums=len(arch_dict[node]["software"])
+            soft_nums_rows=4
+            rows=math.ceil(soft_nums/soft_nums_rows)
+            for i in range(rows):
+                if i == 0:
+                    element_name="安装软件: "
+                else:
+                    element_name=""
+                info.append(
+                        (element_name, n+i, tab, ", ".join(arch_dict[node]["software"][m:m+soft_nums_rows]), n+i, xi, field_length, 0, READ_ONLY), 
+                        )
+                m=m+soft_nums_rows
+            n=n+i
+        info.append(("", n+1, 1, "", n, xi, field_length, 0, HIDDEN))
+        self.log.logger.debug(f"arch info: {info=}")
+        code, fields=self.d.mixedform(f"架构部署摘要:", elements=info, title=title, ok_label="部署", cancel_label="返回")
+        return code
+
+    def edit_host_account_info(self, title, init_dict):
+        """
+        编辑主机账号信息
+        """
+        first_node_xi_length=20
+        ip_field_length=15
+        password_field_length=15
+        port_field_length=5
+        if init_dict == {}:
+            elements=[
+                    ("IP:", 1, 1, "192.168.0.1", 1, first_node_xi_length, ip_field_length, 0), 
+                    ("root用户密码:", 2, 1, "PASSWORD", 2, first_node_xi_length, password_field_length, 0), 
+                    ("ssh端口:", 3, 1, "22", 3, first_node_xi_length, port_field_length, 0), 
+                    ]
+            code, fields=self.d.form(f"请根据示例填写集群中主机信息\n\n第1台主机:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="添加完毕", cancel_label="取消")
+        else:
             elements=[]
             n=0
-            for node in arch_dict:
-                self.log.logger.debug(f"for: {n=}")
+            for ip in init_dict:
                 n=n+1
-                info=[
-                        (f"{node}: ", n, 1, "", n, xi, field_length, 0, HIDDEN), 
-                        ("安装软件: ", n+1, tab, ",".join(arch_dict[node]["software"]), n+1, xi, field_length, 0, READ_ONLY), 
-                        ("安装目录: ", n+2, tab, arch_dict[node]["located"], n+2, xi, field_length, 0, READ_ONLY)
-                        ]
-                elements.extend(info)
-                n=n+3
-                for softname in arch_dict[node]["software"]:
-                    n, elements=self.add_soft_elements(softname, elements, tab, xi, field_length, READ_ONLY, n, arch_dict[node])
+                elements.append(("IP:", n, 1, ip, n, 5, ip_field_length, 0))
+                elements.append(("root用户密码:", n, 22, init_dict[ip]["root_password"], n, 36, password_field_length, 0))
+                elements.append(("ssh端口: ", n, 52, str(init_dict[ip]["port"]), n, 61, port_field_length, 0))
+            code, fields=self.d.form(f"填写主机信息:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="添加完毕", cancel_label="取消")
+        self.log.logger.debug(f"主机信息: {code=}, {fields=}")
+        return code, fields
 
-            elements.append(("", n, 1, "", n, xi, field_length, 0, HIDDEN))
-            self.log.logger.debug(f"arch summary: {elements=}")
-            code, fields=self.d.mixedform(f"集群配置信息:", elements=elements, title=title, no_cancel=1)
+    def show_host_account_info(self, title, init_dict):
+        """
+        显示并确认主机账号信息
+        """
+        HIDDEN = 0x1
+        READ_ONLY = 0x2
+        first_node_xi_length=20
+        ip_field_length=15
+        password_field_length=15
+        port_field_length=5
+        elements=[]
+        n=0
+        for ip in init_dict:
+            n=n+1
+            elements.append(("IP:", n, 1, ip, n, 5, ip_field_length, 0, READ_ONLY))
+            elements.append(("root用户密码:", n, 22, init_dict[ip]["root_password"], n, 36, password_field_length, 0, READ_ONLY))
+            elements.append(("ssh端口: ", n, 52, str(init_dict[ip]["port"]), n, 61, port_field_length, 0, READ_ONLY))
+        code, fields=self.d.mixedform(f"主机信息:", elements=elements, title=title, ok_label="初始化", cancel_label="修改")
+        return code
 
-    def read_config_bak(self, file_name_list):
-        '''
-            从配置文件中读取配置信息
-        '''
-        result=[]
-        for i in file_name_list:
-            if i=="project":
-                with open(self.project_file, "r", encoding="utf8") as f:
-                    project_name=f.read().strip()
-                    if project_name == "":
-                        project_name="XX项目"
-                    result.append(project_name)
-            if i=="init":
-                with open(self.init_file, "r", encoding="utf8") as init_f:
-                        init_json=init_f.read().strip()
-                if init_json != "":
-                    try:
-                        init_dict=json.loads(init_json)
-                    except json.decoder.JSONDecodeError:
-                        self.d.msgbox(f"配置文件({self.init_file})为非json格式, 请更改格式或清空(非删除)该文件重新配置.\n"
-                                "请在修改后重新启动本程序, 本次安装将退出...", title=title)
-                        exit()
-                else:
-                    init_dict={}
-                result.append(init_dict)
-            if i=="arch":
-                with open(self.arch_file, "r", encoding="utf8") as arch_f:
-                    arch_json=arch_f.read().strip()
-                if arch_json != "":
-                    try:
-                        arch_dict=json.loads(arch_json)
-                    except json.decoder.JSONDecodeError:
-                        self.d.msgbox(f"配置文件({self.arch_file})为非json格式, 请更改格式或清空(非删除)该文件重新配置.\n"
-                                "请在修改后重新启动本程序, 本次安装将退出...", title=title)
-                        exit()
-                else:
-                    arch_dict={}
-                result.append(arch_dict)
-        return result
-
-    def config_project(self, project_name, title):
-        '''
-            配置项目名称
-        '''
-        code, input_text=self.d.inputbox("请输入本项目名称", init=project_name, title=title)
-        if code==self.d.OK:
-            with open(self.project_file, "w", encoding="utf8") as f:
-                f.write(input_text)
-            self.log.logger.debug(f"项目名'{input_text}'写入文件'{self.project_file}'")
-
-    def config_init(self, init_dict, title):
+    def config_init(self, title, init_dict):
         '''
             配置init.json
         '''
         while True:                     # 添加node信息
-            code, fields=self.show_host_msg(title, init_dict)
-            init_dict=self.trans_fields_to_dict(fields)
-            if code==self.d.OK:
-                with open(self.init_file, "w", encoding="utf8") as f:
-                    json.dump(init_dict, f)
-                self.log.logger.info(f"写入{self.init_file}配置文件")
-                break
-            elif code=="extra":
+            code, fields=self.edit_host_account_info(title, init_dict)
+            self.log.logger.debug(f"init field: {fields}")
+
+            # 将list转为init的dict
+            init_dict={}
+            for index, item in enumerate(fields):
+                if index % 3 == 0:
+                    init_dict[fields[index]]={
+                            "root_password": fields[index+1], 
+                            "port": fields[index+2]
+                            }
+            if code=="extra":
                 init_dict[""]={            # 添加一个空的主机信息
-                        "ip": "", 
                         "root_password":"", 
-                        "port":""
+                        "port":"22"
                         }         
             else:
-                break
+                if "" in init_dict:
+                    init_dict.pop("")
+                return code, init_dict
 
     def config_arch(self, init_dict, arch_dict, title):
         '''
@@ -1776,10 +1766,37 @@ class graphics_deploy(Deploy):
         """
         图形: 初始化
         """
-        project_pkg=self.get_file_path(f"{os.path.dirname(os.getcwd())}/", "请填写项目包文件路径")
-        if project_pkg == "":
-            return
+        result, config_list=self.read_config(["init"])
+        if result:
+            init_dict=config_list[0]
+        else:
+            init_dict={}
 
+        # 填写init.json并校验
+        while True:
+            code, init_dict=self.config_init(title, init_dict)
+            if code==self.d.OK:
+                result, dict_=self.account_verifi(init_dict)                # 校验init.dict
+                if not result:
+                    continue
+                else:
+                    code=self.show_host_account_info(title, init_dict)      # 显示init_dict
+                    if code==self.d.OK:
+                        for _ in init_dict:                                 # 更改port类型为int
+                            init_dict[_]["port"]=int(init_dict[_]["port"])
+                        result, msg=self.write_config(init_dict, init_file)
+                        if result:
+                            break
+                        else:
+                            self.log.logger.error(msg)
+                            self.d.msgbox(msg)
+                            return
+                    else:
+                        continue
+            else:
+                return 
+
+        # 开始初始化
         read_fd, write_fd = os.pipe()
         child_pid = os.fork()
 
@@ -1788,18 +1805,12 @@ class graphics_deploy(Deploy):
             with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
                 self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)
 
-                result=self.update_extract(project_pkg, program_unzip_dir, ["init.json", "arch.json", "update.json", "start.json"])
-                if not result:
-                    os._exit(1)
+                if self.init_flag:
+                    result=self.update_extract(self.project_pkg, program_unzip_dir, ["arch.json", "update.json", "start.json"])
+                    if not result:
+                        os._exit(1)
 
                 self.log.logger.info("监测主机配置, 请稍后...\n")
-                code, result=self.read_config(["init"])
-                if code:
-                    init_dict=result[0]
-                else:
-                    self.log.logger.error(f"配置文件读取失败: {result}")
-                    os._exit(1)
-
                 flag, connect_msg=self.connect_test(init_dict)
                 if flag==1:
                     self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
@@ -2004,7 +2015,7 @@ class graphics_deploy(Deploy):
 
                 soft_list=[]
                 for softname in arch_dict[tag]["software"]:
-                    soft_list.append((softname, "", 0))
+                    soft_list.append((softname, "", 1))
                 code, choices_soft_list=self.d.checklist(f"选择软件", choices=soft_list, title=title, ok_label="确认", cancel_label="放弃")
 
                 self.log.logger.debug(f"{code=}, {choices_soft_list=}")
@@ -2126,6 +2137,18 @@ class graphics_deploy(Deploy):
         """
         图形: install, run, update, start
         """
+
+        result, config_list=self.read_config(["arch"])
+        if not result:
+            self.d.msgbox(config_list)
+            return
+        else:
+            arch_dict=config_list[0]
+
+        code=self.show_arch_info(title, arch_dict)
+        if code!=self.d.OK:
+            return
+
         stage_all=["install", "run", "update", "start"]
         stage_method={
                 "install": self.install, 
@@ -2162,10 +2185,10 @@ class graphics_deploy(Deploy):
             self.show_menu()
 
         if exit_code==0:
-            self.d.msgbox("集群部署完成, 将返回菜单")
+            self.d.msgbox("集群部署完成, 将返回菜单", width=20)
             self.show_menu()
         else:
-            self.d.msgbox("集群部署失败, 将返回菜单")
+            self.d.msgbox("集群部署失败, 将返回菜单", width=20)
             self.show_menu()
 
     def cancel(self, msg):
@@ -2185,7 +2208,7 @@ class graphics_deploy(Deploy):
                     "4": "项目更新"
                     }
 
-            code,tag=self.d.menu(f"若是首次进行部署, 请从\'{menu['1']}\'开始:", 
+            code,tag=self.d.menu(f"若是首次进行部署, 请从\'{menu['1']}\'依次开始:", 
                     choices=[
                         ("1", menu["1"]), 
                         ("2", menu["2"]),
@@ -2206,7 +2229,7 @@ class graphics_deploy(Deploy):
                     self.management(menu[tag])
                 if tag=="4":
                     self.g_update(menu[tag])
-                self.d.infobox(f"{menu[tag]}结束, 将返回主菜单...", width=40, height=4)
+                self.d.infobox(f"{menu[tag]}结束, 将返回主菜单...", title="提示", width=40, height=4)
                 time.sleep(3)
             else:
                 self.cancel("安装")
@@ -2304,12 +2327,14 @@ class graphics_deploy(Deploy):
             本程序主要用来自动部署项目集群. 
             部署过程将使用方向键或Tab键进行选择, 【enter】键用来确认.
 
+            在使用过程中严禁放大或缩小当前窗口 ! ! !
+
             是否开始 ?
         """)
 
         self.log.logger.info("开始文本图形化部署")
 
-        code=self.d.yesno(introduction, height=10, width=self.term_cols, title="说明")
+        code=self.d.yesno(introduction, height=12, width=self.term_cols, title="说明")
 
         if code==self.d.OK:
             self.show_menu()
