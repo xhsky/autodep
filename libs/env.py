@@ -49,9 +49,9 @@ g_term_cols=80
 test_mode=True
 
 # 目录配置
-fixed_dir="/opt"
+#fixed_dir="/opt"
 remote_python_transfer_dir="/tmp"
-remote_python_install_dir=fixed_dir
+remote_python_install_dir="/opt"
 remote_python_dir=f"{remote_python_install_dir}/python3"
 remote_python_exec=f"{remote_python_dir}/bin/python3"
 
