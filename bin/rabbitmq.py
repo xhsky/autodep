@@ -115,7 +115,6 @@ def main():
             flag=1
 
         sys.exit(flag)
-
     elif action=="run":
         command=f"cd {rabbitmq_dir} && ./sbin/rabbitmq-server -detached" 
         log.logger.debug(f"{command=}")
@@ -149,10 +148,23 @@ def main():
         else:
             log.logger.error(result)
             flag=1
-
         sys.exit(flag)
     elif action=="start":
-        pass
+        command=f"cd {rabbitmq_dir} && ./sbin/rabbitmq-server -detached" 
+        log.logger.debug(f"{command=}")
+        status, result=common.exec_command(command)
+        if status:
+            if result.returncode != 0:
+                log.logger.error(result.stderr)
+                flag=1
+            else:
+                log.logger.debug(f"检测端口: {port_list=}")
+                if not common.port_exist(port_list, seconds=180):
+                    flag=2
+        else:
+            log.logger.error(result)
+            flag=1
+        sys.exit(flag)
     elif action=="stop":
         pass
 
