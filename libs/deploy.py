@@ -78,7 +78,7 @@ class Deploy(object):
         """
         try: 
             with open(file_, "w", encoding="utf8") as f:
-                json.dump(dict_, f)
+                json.dump(dict_, f, ensure_ascii=False)
             return True, ""
         except Exception as e:
             return False, str(e)
@@ -675,7 +675,8 @@ class Deploy(object):
                 port_list.append(int(port))
         elif softname=="rabbitmq":
             for port_name in arch_dict[node]["rabbitmq_info"]["port"]:
-                port_list.append(arch_dict[node]["rabbitmq_info"]["port"][port_name])
+                if port_name != "epmd_port":
+                    port_list.append(arch_dict[node]["rabbitmq_info"]["port"][port_name])
         elif softname=="redis":
             port_list.append(arch_dict[node]["redis_info"]["db_info"]["redis_port"])
             if arch_dict[node]["redis_info"].get("sentinel_info"):
@@ -1042,6 +1043,7 @@ class graphics_deploy(Deploy):
         xi=15
         field_length=45
         n=0
+        elements=[]
         for node in arch_dict:
             n=n+1
             info=[
@@ -1064,9 +1066,10 @@ class graphics_deploy(Deploy):
                         )
                 m=m+soft_nums_rows
             n=n+i
-        info.append(("", n+1, 1, "", n, xi, field_length, 0, HIDDEN))
-        self.log.logger.debug(f"arch info: {info=}")
-        code, fields=self.d.mixedform(f"架构部署摘要:", elements=info, title=title, ok_label="部署", cancel_label="返回")
+            elements.extend(info)
+        elements.append(("", n+1, 1, "", n+1, xi, field_length, 0, HIDDEN))
+        self.log.logger.debug(f"arch summary: {elements=}")
+        code, fields=self.d.mixedform(f"部署架构摘要:", elements=elements, title=title, ok_label="部署", cancel_label="返回")
         return code
 
     def edit_host_account_info(self, title, init_dict):
@@ -1805,11 +1808,6 @@ class graphics_deploy(Deploy):
             with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
                 self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)
 
-                if self.init_flag:
-                    result=self.update_extract(self.project_pkg, program_unzip_dir, ["arch.json", "update.json", "start.json"])
-                    if not result:
-                        os._exit(1)
-
                 self.log.logger.info("监测主机配置, 请稍后...\n")
                 flag, connect_msg=self.connect_test(init_dict)
                 if flag==1:
@@ -1817,6 +1815,11 @@ class graphics_deploy(Deploy):
                     for node_msg in connect_msg:
                         self.log.logger.info(f"{node_msg[0]}:\t{node_msg[2]}")
                     os._exit(1)
+
+                if self.init_flag:
+                    result=self.update_extract(self.project_pkg, program_unzip_dir, ["arch.json", "update.json", "start.json"])
+                    if not result:
+                        os._exit(1)
 
                 local_python3_file=local_pkg_name_dict["python3"]
                 status, dict_=super(graphics_deploy, self).init(init_dict, f"{ext_dir}/{local_python3_file}")
@@ -1962,6 +1965,7 @@ class graphics_deploy(Deploy):
         tab=3           # 
         xi=20
         field_length=10
+        elements=[]
 
         n=0
         for node in choices_soft_dict:
@@ -1976,10 +1980,11 @@ class graphics_deploy(Deploy):
                         ]
                         )
                 n=n+1
+            elements.extend(info)
 
-        info.append(("", n+1, 1, "", n+1, xi, field_length, 0, HIDDEN))
-        self.log.logger.debug(f"{info=}")
-        code, _=self.d.mixedform(msg, title=title, elements=info, width=40)
+        elements.append(("", n+1, 1, "", n+1, xi, field_length, 0, HIDDEN))
+        self.log.logger.debug(f"{elements=}")
+        code, _=self.d.mixedform(msg, title=title, elements=elements, width=40)
         return code
 
     def g_control(self, title, action):
@@ -1999,7 +2004,7 @@ class graphics_deploy(Deploy):
         node_list=[]
         for node in arch_dict:
             node_list.append((node, ""))
-    
+
         while True:
             code,tag=self.d.menu(f"选择节点", 
                     choices=node_list, 
@@ -2013,10 +2018,10 @@ class graphics_deploy(Deploy):
                 self.log.logger.debug(f"{code=}, {tag=}")
                 self.log.logger.info(f"选择{tag}")
 
-                soft_list=[]
+                node_soft_list=[]
                 for softname in arch_dict[tag]["software"]:
-                    soft_list.append((softname, "", 1))
-                code, choices_soft_list=self.d.checklist(f"选择软件", choices=soft_list, title=title, ok_label="确认", cancel_label="放弃")
+                    node_soft_list.append((softname, "", 1))
+                code, choices_soft_list=self.d.checklist(f"选择软件", choices=node_soft_list, title=title, ok_label="确认", cancel_label="放弃")
 
                 self.log.logger.debug(f"{code=}, {choices_soft_list=}")
                 if code==self.d.OK:
@@ -2025,13 +2030,14 @@ class graphics_deploy(Deploy):
                 elif code==self.d.CANCEL:
                     continue
             elif code==self.d.HELP:         # 查看选择
-                if len(control_dict)==0:
-                    self.d.msgbox("尚未选择软件")
-                else:
-                    code=self.show_choices_soft(title, action, control_dict)
-                    if code==self.d.OK:
-                        self.control_running_status(title, action, control_dict)
-                        return
+                if len(control_dict)==0:            # 默认全选
+                    for node in arch_dict:
+                        control_dict[node]=arch_dict[node]["software"]
+
+                code=self.show_choices_soft(title, action, control_dict)
+                if code==self.d.OK:
+                    self.control_running_status(title, action, control_dict)
+                    return
             else:
                 return
 
@@ -2185,10 +2191,10 @@ class graphics_deploy(Deploy):
             self.show_menu()
 
         if exit_code==0:
-            self.d.msgbox("集群部署完成, 将返回菜单", width=20)
+            self.d.msgbox("集群部署完成, 将返回菜单", width=20, height=4)
             self.show_menu()
         else:
-            self.d.msgbox("集群部署失败, 将返回菜单", width=20)
+            self.d.msgbox("集群部署失败, 将返回菜单", width=20, height=4)
             self.show_menu()
 
     def cancel(self, msg):
@@ -2288,6 +2294,7 @@ class graphics_deploy(Deploy):
         tab=3           # 
         xi=20
         field_length=10
+        elements=[]
 
         status_value_msg_dict={
                 0: "正常", 
@@ -2308,10 +2315,11 @@ class graphics_deploy(Deploy):
                         ]
                         )
                 n=n+1
+            elements.extend(info)
 
-        info.append(("", n+1, 1, "", n+1, xi, field_length, 0, HIDDEN))
-        self.log.logger.debug(f"软件状态显示: {info=}")
-        code, _=self.d.mixedform(f"服务状态:", elements=info, no_cancel=True, width=40)
+        elements.append(("", n+1, 1, "", n+1, xi, field_length, 0, HIDDEN))
+        self.log.logger.debug(f"软件状态显示: {elements=}")
+        code, _=self.d.mixedform(f"服务状态:", elements=elements, no_cancel=True, width=40)
         return code
 
     def _install_dialog(self):
