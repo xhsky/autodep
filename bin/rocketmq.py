@@ -239,7 +239,37 @@ def main():
             flag=1
         sys.exit(flag)
     elif action=="stop":
-        pass
+        namesrv_command=f"cd {rocketmq_dir} && bash bin/mqshutdown namesrv" 
+        broker_command=f"cd {rocketmq_dir} && bash bin/mqshutdown broker" 
+
+        log.logger.debug(f"{namesrv_command=}")
+        status, result=common.exec_command(namesrv_command)
+        if status:
+            if result.returncode != 0:
+                log.logger.error(result.stderr)
+                flag=1
+            else:
+                log.logger.debug(f"检测端口: {namesrv_port_list=}")
+                if not common.port_exist(namesrv_port_list, exist_or_not=False):
+                    flag=2
+                else:
+                    log.logger.debug(f"{broker_command=}")
+                    status, result=common.exec_command(broker_command)
+                    if status:
+                        if result.returncode != 0:
+                            log.logger.error(result.stderr)
+                            flag=1
+                        else:
+                            log.logger.debug(f"检测端口: {broker_port_list=}")
+                            if not common.port_exist(broker_port_list, exist_or_not=False):
+                                flag=2
+                    else:
+                        log.logger.error(result)
+                        flag=1
+        else:
+            log.logger.error(result)
+            flag=1
+        sys.exit(flag)
 
 if __name__ == "__main__":
     main()
