@@ -170,6 +170,10 @@ redis_dst="redis"
 redis_pkg_dir=None
 redis_version="5.0.7"
 
+autocheck_src="autocheck-"
+autocheck_dst="autocheck"
+autocheck_pkg_dir=None
+autocheck_version="1.3.2"
 
 ## nginx配置/代码模块转发配置
 nginx_server_config="""
