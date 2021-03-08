@@ -2026,7 +2026,7 @@ class graphics_deploy(Deploy):
                 self.log.logger.debug(f"{code=}, {choices_soft_list=}")
                 if code==self.d.OK:
                     if len(choices_soft_list) != 0:
-                        control_dict[node]=choices_soft_list
+                        control_dict[tag]=choices_soft_list
                 elif code==self.d.CANCEL:
                     continue
             elif code==self.d.HELP:         # 查看选择
