@@ -11,13 +11,13 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         host_info_file, init_stats_file, install_stats_file, start_stats_file, update_stats_file, run_stats_file, \
         update_config_file_name, \
         g_term_rows, g_term_cols, \
-        located_dir_name, \
-        init_file, arch_file, update_file, start_file, stop_file,  \
+        located_dir_name, located_dir_link, autocheck_dst, report_dir, report_file_list, \
+        init_file, arch_file, update_file, start_file, stop_file, check_file, \
         program_unzip_dir
 
-for dir_ in [logs_dir, program_unzip_dir]:
-    if not os.path.exists(logs_dir):
-        os.makedirs(logs_dir, exist_ok=1)
+for dir_ in [logs_dir, program_unzip_dir, report_dir]:
+    if not os.path.exists(dir_):
+        os.makedirs(dir_, exist_ok=1)
 
 from textwrap import dedent
 from libs.common import Logger, post_info, format_size, port_connect
@@ -62,6 +62,8 @@ class Deploy(object):
                 config_file=host_info_file
             elif config=="update":
                 config_file=update_file
+            elif config=="check":
+                config_file=check_file
 
             try: 
                 with open(config_file, "r", encoding="utf8") as f:
@@ -109,6 +111,10 @@ class Deploy(object):
         if mode=="platform":
             info="状态信息已发送至平台\n"
             error_info="状态信息发送失败\n"
+            file_=None
+        if mode=="platform_check":
+            info="巡检报告已发送至平台\n"
+            error_info="巡检报告发送失败\n"
             file_=None
         elif mode=="file":
             info="状态信息已写入文件\n"
@@ -285,6 +291,8 @@ class Deploy(object):
             soft_py="rocketmq.py"
         elif softname.lower()=="tomcat":
             soft_py="tomcat.py"
+        elif softname.lower()=="autocheck":
+            soft_py="autocheck.py"
         return soft_py
 
     def resource_verifi(self, arch_dict, host_info_dict):
@@ -449,20 +457,26 @@ class Deploy(object):
             self.log.logger.debug(f"传输文件: {trans_file}, {src=}, {dst=}")
             self.ssh_client.scp(ip, port, "root", src, dst)
 
-        remote_py_file=trans_files_dict["py_file"][1]
         soft_control=soft(ip, port, self.ssh_client)
         if action=="init":
+            remote_py_file=trans_files_dict["py_file"][1]
             status=soft_control.init(remote_py_file, args_dict)
         elif action=="install":
+            remote_py_file=trans_files_dict["py_file"][1]
             if trans_files_dict.get("pkg_file"):
                 args_dict["pkg_file"]=trans_files_dict["pkg_file"][1]
             status=soft_control.install(remote_py_file, softname, args_dict)
         elif action=="run":
+            remote_py_file=trans_files_dict["py_file"][1]
             status=soft_control.run(remote_py_file, softname, args_dict)
         elif action=="start":
+            remote_py_file=trans_files_dict["py_file"][1]
             status=soft_control.start(remote_py_file, softname, args_dict)
         elif action=="stop":
+            remote_py_file=trans_files_dict["py_file"][1]
             status=soft_control.stop(remote_py_file, softname, args_dict)
+        elif action=="sendmail":
+            status=soft_control.sendmail()
         return status
 
     def install(self, init_dict, arch_dict):
@@ -799,6 +813,78 @@ class Deploy(object):
             update_stats_dict[file_]=hosts_update_dict
 
         return update_result, update_stats_dict
+
+    def tar_report(self, init_dict, arch_dict, check_stats_dict):
+        """
+        获取巡检报告并打包发送
+        """
+        # 删除旧报告
+        try:
+            for file_ in os.listdir(report_dir):
+                os.remove(f"{report_dir}/{file_}")
+
+            self.log.logger.debug("获取巡检报告")
+            ssh_client=ssh()
+            for node in check_stats_dict:
+                port=init_dict[arch_dict[node]["ip"]]["port"]
+                if check_stats_dict[node]:
+                    for file_ in report_file_list:
+                        remote_file=f"{located_dir_link}/{autocheck_dst}/report/{file_}"
+                        local_file=f"{report_dir}/{node}_{file_}"
+                        try:
+                            ssh_client.get(node, port, "root", remote_file, local_file)
+                            self.log.logger.debug(f"geted: {node}:{remote_file} --> {local_file}")
+                        except FileNotFoundError:
+                            pass
+                    else:
+                        self.log.logger.info(f"已获取{node}节点巡检报告")
+            self.log.logger.info("合并巡检报告")
+            for file_ in report_file_list:
+                with open(f"{report_dir}/{file_}", "a", encoding="utf8") as write_f:
+                    for report_file in os.listdir(report_dir)[:]:
+                        if report_file.endswith(file_):
+                            with open(f"{report_dir}/{report_file}", "r", encoding="utf8") as read_f:
+                                write_f.write(read_f.read())
+                                write_f.write("\n\n")
+            else:
+                tarfile_=f"{report_dir}/report-{time.strftime('%Y%m%d%H%M', time.localtime())}.tar.gz"
+                with tarfile.open(tarfile_, "w") as tar:
+                    for file_ in report_file_list:
+                        tar.add(f"{report_dir}/{file_}")
+        except Exception as e:
+            self.log.logger.error(f"巡检报告: {str(e)}")
+            tarfile_=None
+        return tarfile_
+
+    def check(self, check_dict, init_dict, arch_dict):
+        """
+        巡检
+
+        check_dict={
+            "node": ["node1", "node2"]
+        }
+        """
+        check_result=True
+        check_stats_dict={}
+        for node in check_dict["node"]:
+            self.log.logger.info(f"***{node}节点巡检***")
+            port=init_dict[arch_dict[node]["ip"]]["port"]
+
+            stats_value=True
+            sendmail_trans_files_dict={}
+            status=self.control(node, port, "autocheck", "sendmail", sendmail_trans_files_dict, None)
+            for line in status[1]:
+                self.log.logger.info(line.strip())
+            if status[1].channel.recv_exit_status() == 0:
+                self.log.logger.info(f"{node}巡检完成")
+
+            else:
+                self.log.logger.error(f"{node}巡检失败")
+                stats_value=False
+                check_result=False
+            check_stats_dict[node]=stats_value
+        tarfile_=self.tar_report(init_dict, arch_dict, check_stats_dict)
+        return check_result, check_stats_dict, tarfile_
 
 class text_deploy(Deploy):
     '''文本安装'''
@@ -1844,10 +1930,10 @@ class graphics_deploy(Deploy):
         if os.WIFEXITED(exit_info):
             exit_code = os.WEXITSTATUS(exit_info)
         elif os.WIFSIGNALED(exit_info):
-            self.d.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单")
+            self.d.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单", width=40, height=5)
             self.show_menu()
         else:
-            self.d.msgbox("发生莫名错误, 请返回菜单重试")
+            self.d.msgbox("发生莫名错误, 请返回菜单重试", width=40, height=5)
             self.show_menu()
 
         if exit_code==0:
@@ -2068,10 +2154,10 @@ class graphics_deploy(Deploy):
         if os.WIFEXITED(exit_info):
             exit_code = os.WEXITSTATUS(exit_info)
         elif os.WIFSIGNALED(exit_info):
-            self.d.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单")
+            self.d.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单", width=40, height=5)
             self.show_menu()
         else:
-            self.d.msgbox("发生莫名错误, 请返回菜单重试")
+            self.d.msgbox("发生莫名错误, 请返回菜单重试", width=40, height=5)
             self.show_menu()
 
     def d_update(self):
@@ -2133,10 +2219,10 @@ class graphics_deploy(Deploy):
         if os.WIFEXITED(exit_info):
             exit_code = os.WEXITSTATUS(exit_info)
         elif os.WIFSIGNALED(exit_info):
-            self.d.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单")
+            self.d.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单", width=40, height=5)
             self.show_menu()
         else:
-            self.d.msgbox("发生莫名错误, 请返回菜单重试")
+            self.d.msgbox("发生莫名错误, 请返回菜单重试", width=40, height=5)
             self.show_menu()
 
     def deploy(self, title):
@@ -2184,17 +2270,17 @@ class graphics_deploy(Deploy):
         if os.WIFEXITED(exit_info):
             exit_code = os.WEXITSTATUS(exit_info)
         elif os.WIFSIGNALED(exit_info):
-            self.d.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单")
+            self.d.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单", width=40, height=5)
             self.show_menu()
         else:
-            self.d.msgbox("发生莫名错误, 请返回菜单重试")
+            self.d.msgbox("发生莫名错误, 请返回菜单重试", width=40, height=5)
             self.show_menu()
 
         if exit_code==0:
-            self.d.msgbox("集群部署完成, 将返回菜单", width=20, height=4)
+            self.d.msgbox("集群部署完成, 将返回菜单", width=35, height=5)
             self.show_menu()
         else:
-            self.d.msgbox("集群部署失败, 将返回菜单", width=20, height=4)
+            self.d.msgbox("集群部署失败, 将返回菜单", width=35, height=5)
             self.show_menu()
 
     def cancel(self, msg):
@@ -2361,12 +2447,6 @@ class platform_deploy(Deploy):
                 logger_name="platform", 
                 project_id=self.project_id
                 )
-
-    def check(self):
-        '''
-            校验配置文件
-        '''
-        pass
 
     def init(self):
         """
@@ -2626,3 +2706,36 @@ class platform_deploy(Deploy):
         monitor_stats_dict["result"]=monitor_result
         return monitor_stats_dict
 
+    def check(self):
+        """
+        平台: 巡检
+        """
+        check_stats_dict={
+                "project_id": self.project_id, 
+                "mode": "check", 
+                "result": None, 
+                "stats": None, 
+                }
+        check_result=True
+        code, config_list=self.read_config(["check", "init", "arch"])
+        if code:
+            check_dict, init_dict, arch_dict=config_list
+            self.log.logger.info("开始巡检...\n")
+            result, dict_, tarfile_=super(platform_deploy, self).check(check_dict, init_dict, arch_dict)
+            if result:
+                self.log.logger.info("巡检完成")
+                if tarfile_:
+                    data_dict={
+                            "project_id": self.project_id, 
+                            "file_": tarfile_
+                            }
+                    self.generate_info("platform_check", data_dict)
+            else:
+                self.log.logger.error("巡检失败")
+                check_result=False
+            check_stats_dict["stats"]=dict_
+        else:
+            self.log.logger.error(f"配置文件读取失败: {config_list}")
+            check_result=False
+        check_stats_dict["result"]=check_result
+        return check_stats_dict

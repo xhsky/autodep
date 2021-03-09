@@ -9,7 +9,7 @@ from textwrap import dedent
 from libs import deploy
 
 def main():
-    choices=["init", "install", "run", "start", "stop", "update", "deploy", "monitor"]
+    choices=["init", "install", "run", "start", "stop", "update", "deploy", "monitor", "check"]
     parser=argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("-t", type=str, choices=choices, help="阶段")
@@ -33,10 +33,7 @@ def main():
             d.update(args)
         elif arg=="deploy":
             d.deploy(args[0])
-    if args.g is not None:
-        d=deploy.graphics_deploy(args.f)
-        d.show()
-    if args.p is not None:
+    elif args.p is not None:
         program_id=args.i
         d=deploy.platform_deploy(program_id)
         arg=args.p
@@ -59,7 +56,12 @@ def main():
             result_dict=d.deploy(program_pkg)
         elif arg=="monitor":
             result_dict=d.monitor()
+        elif arg=="check":
+            result_dict=d.check()
         d.generate_info("platform", result_dict)
+    elif args.g is not None:
+        d=deploy.graphics_deploy(args.f)
+        d.show()
 
 if __name__ == "__main__":
     main()

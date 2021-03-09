@@ -367,9 +367,9 @@ class Logger(object):
             self.ph.setLevel(self.level_relations[mode_level_dict["platform"]])
             self.logger.addHandler(self.ph)
 
-def post_info(mode, info_dict, add=None):
-    data=json.dumps(info_dict)
+def post_info(mode, info_dict, addr=None):
     if mode=="platform":
+        data=json.dumps(info_dict)
         headers={
                 "Content-Type": "application/json"
                 }
@@ -382,9 +382,31 @@ def post_info(mode, info_dict, add=None):
                 return False, result.json().get('message')
         except requests.exceptions.ConnectionError:
             return False, f"平台接口({url})无法连接"
-    elif mode=="file":
+    elif mode=="platform_check":
+        dict_={
+                "project_id": info_dict["project_id"]
+                }
+        file_={
+                "file": open(info_dict["file_"], "rb")
+                }
+        
+        #headers={
+        #        "Content-Type": "application/json"
+        #        }
+        url=f"http://{interface['platform_check'][0]}:{interface['platform_check'][1]}{interface['platform_check'][2]}"
         try:
-            with open(add, "w", encoding="utf8") as f:
+            #result=requests.post(url, data=dict_, files=file_, headers=headers, timeout=10)
+            result=requests.post(url, data=dict_, files=file_,  timeout=10)
+            if result.status_code==200:
+                return True, ""
+            else:
+                return False, result.json().get('message')
+        except requests.exceptions.ConnectionError:
+            return False, f"平台接口({url})无法连接"
+    elif mode=="file":
+        data=json.dumps(info_dict)
+        try:
+            with open(addr, "w", encoding="utf8") as f:
                 f.write(data)
                 return True, ""
         except Exception as e:

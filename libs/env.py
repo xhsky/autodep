@@ -22,6 +22,7 @@ update_file="./config/update.json"
 #project_file="./config/project.json"
 start_file="./config/start.json"
 stop_file="./config/stop.json"
+check_file="./config/check.json"
 
 # ext路径
 ext_dir="../ext"
@@ -29,6 +30,10 @@ ext_dir="../ext"
 # 安装目录名称
 located_dir_name="dream"
 located_dir_link="/dream"
+
+report_dir="./report" # 巡检汇总目录
+report_file_list=["check.info", "slow_analysis.log"]
+
 
 # 更新
 code_saved_remote_dir="/tmp"
@@ -67,7 +72,9 @@ interface={
         "sms": ["smartone.10690007.com", 80, "/proxysms/mt"],               # 短信接口
         "platform_log": ["192.168.0.81", 8115, "/project/deploy/sendLog"],  # 公司平台日志接口
         "platform_info": ["192.168.0.81", 8115, "/project/deploy/sendDetection"],  # 公司平台信息接口
+        "platform_check": ["192.168.0.81", 8115, "/project/deploy/uploadXjText"],  # 公司平台巡检文件接口
         }
+
 local_pkg_name_dict={
         "python3": "python3.tar.gz",
         "nginx": "nginx-1.17.9-bin.tar.gz", 
@@ -80,7 +87,8 @@ local_pkg_name_dict={
         "elasticsearch": "elasticsearch-7.8.1-linux-x86_64.tar.gz", 
         "erlang": "erlang_23_2.tar.gz", 
         "rabbitmq": "rabbitmq-server-generic-unix-3.8.9.tar.xz", 
-        "rocketmq": "rocketmq-all-4.8.0-bin-release.tar.gz"
+        "rocketmq": "rocketmq-all-4.8.0-bin-release.tar.gz", 
+        "autocheck": "autocheck-1.3.3.tar.gz"
         } 
 
 """

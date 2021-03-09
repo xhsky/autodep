@@ -7,7 +7,8 @@ import paramiko
 import pymysql
 import os, json
 from libs.common import Logger
-from libs.env import log_file, log_file_level, remote_python_exec
+from libs.env import log_file, log_file_level, remote_python_exec, \
+        located_dir_link, autocheck_dst
 
 log=Logger({"file": log_file_level}, logger_name="remote", log_file=log_file)
 
@@ -23,6 +24,12 @@ class soft(object):
     def init(self, py_file, init_args):
         command=f"{remote_python_exec} {py_file} '{json.dumps(init_args)}'"
         log.logger.debug(f"init: {command}")
+        status=self.ssh_client.exec(self.ip, self.port, command)
+        return status
+
+    def sendmail(self):
+        command=f"cd {located_dir_link}/{autocheck_dst} ; {remote_python_exec} ./main.py sendmail"
+        log.logger.debug(f"sendmail: {command}")
         status=self.ssh_client.exec(self.ip, self.port, command)
         return status
 
