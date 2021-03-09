@@ -72,7 +72,7 @@
   - 使用`pip3`安装`paramiko`, `psutil`, `pythondialog`和`requests`
   - 将`python3`目录直接移入`ext`目录即可
 - python3包: 
-  - 在编译后目录下建立`code`和`pkgs`目录
+  - 在编译后目录下建立`code/libs`和`pkgs`目录
   - 使用`pip3`安装`psutil`和`requests`
   - 将其打包为`python3.tar.gz`
 
