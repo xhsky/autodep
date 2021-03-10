@@ -552,6 +552,26 @@ class Deploy(object):
                 install_result=False
         return install_result, install_stats_dict
 
+    def sorted_node(self, node_dict, arch_dict, reverse=False):
+        """
+        对主机排序(启动关闭), 有程序的主机最后一个
+        """
+
+        node_sorted=[]
+        for node in list(node_dict):
+            last=False
+            for softname in arch_dict[node]["software"]:
+                if softname.startswith("program"):
+                    last=True
+                    break
+            if last:
+                node_sorted.append(node)
+            else:
+                node_sorted.insert(0, node)
+        if reverse:
+            node_sorted.reverse()
+        return node_sorted
+
     def run(self, init_dict, arch_dict):
         """
         启动软件并初始化
@@ -564,7 +584,8 @@ class Deploy(object):
         """
         run_result=True
         run_stats_dict={}
-        for node in arch_dict:
+        #for node in arch_dict:
+        for node in sorted_node(list(arch_dict), arch_dict):
             self.log.logger.info(f"***{node}启动***")
             run_stats_dict[node]={}
             port=init_dict[arch_dict[node]["ip"]]["port"]
@@ -607,7 +628,8 @@ class Deploy(object):
             action_msg="停止"
         control_result=True
         control_stats_dict={}
-        for node in control_dict:
+        #for node in control_dict:
+        for node in self.sorted_node(list(control_dict, arch_dict)):
             self.log.logger.info(f"***{node}节点{action_msg}***")
             control_stats_dict[node]={}
             port=init_dict[arch_dict[node]["ip"]]["port"]
@@ -646,7 +668,8 @@ class Deploy(object):
         """
         start_result=True
         start_stats_dict={}
-        for node in soft_start_dict:
+        #for node in soft_start_dict:
+        for node in self.sorted_node(list(soft_start_dict), arch_dict):
             self.log.logger.info(f"***{node}节点启动***")
             start_stats_dict[node]={}
             port=init_dict[arch_dict[node]["ip"]]["port"]
@@ -1169,7 +1192,7 @@ class graphics_deploy(Deploy):
         if init_dict == {}:
             elements=[
                     ("IP:", 1, 1, "192.168.0.1", 1, first_node_xi_length, ip_field_length, 0), 
-                    ("root用户密码:", 2, 1, "PASSWORD", 2, first_node_xi_length, password_field_length, 0), 
+                    ("root用户密码:", 2, 1, "", 2, first_node_xi_length, password_field_length, 0), 
                     ("ssh端口:", 3, 1, "22", 3, first_node_xi_length, port_field_length, 0), 
                     ]
             code, fields=self.d.form(f"请根据示例填写集群中主机信息\n\n第1台主机:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="添加完毕", cancel_label="取消")
@@ -2328,19 +2351,21 @@ class graphics_deploy(Deploy):
 
     def management(self, title):
         """
-        集群管理: 监控, 启动, 停止
+        集群管理: 监控, 启动, 停止, 巡检
         """
         while True:
             menu={
                     "1": "集群监控", 
                     "2": "软件启动", 
-                    "3": "软件停止"
+                    "3": "软件停止", 
+                    "4": "集群巡检"
                     }
 
             code,tag=self.d.menu("", choices=[
                         ("1", menu["1"]), 
                         ("2", menu["2"]),
-                        ("3", menu["3"])
+                        ("3", menu["3"]), 
+                        ("4", menu["4"])
                         ], 
                     title=title, 
                     width=40, 
@@ -2355,8 +2380,68 @@ class graphics_deploy(Deploy):
                     self.g_control(menu[tag], "start")
                 if tag=="3":
                     self.g_control(menu[tag], "stop")
+                if tag=="4":
+                    self.check(menu[tag])
             else:
                 break
+
+    def check(self, title):
+        """
+        图形: 巡检
+        """
+        result, config_list=self.read_config(["init", "arch"])
+        if result:
+            init_dict, arch_dict=config_list
+        else:
+            self.log.logger.error(f"{result}")
+            self.d.msgbox(f"{result}")
+            return
+
+        node_list=[]
+        for node in arch_dict:
+            node_list.append((node, "", 1))
+
+        while True:
+            code, tag=self.d.checklist(f"选择节点", choices=node_list, title=title, ok_label="巡检", cancel_label="返回")
+            if code==self.d.OK:
+                self.log.logger.debug(f"{code=}, {tag=}")
+                self.log.logger.info(f"选择{tag}")
+                if len(tag)==0:
+                    self.d.msgbox("未选择节点")
+                    break
+                else:
+                    check_node_dict={
+                            "node": tag
+                            }
+            else:
+                return
+
+        read_fd, write_fd = os.pipe()
+        child_pid = os.fork()
+
+        if child_pid == 0:          # 进入子进程
+            os.close(read_fd)
+            with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
+                self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)   
+                self.log.logger.info("开始巡检...")
+                status, dict_=super(graphics_deploy, self).check(check_node_dict, init_dict, arch_dict)
+                if result:
+                    self.log.logger.info("巡检完成")
+                else:
+                    self.log.logger.error("巡检失败")
+                    os._exit(1)
+            os._exit(0)
+        os.close(write_fd)
+        self.d.programbox(fd=read_fd, title=title, height=30, width=180)
+        exit_info = os.waitpid(child_pid, 0)[1]
+        if os.WIFEXITED(exit_info):
+            exit_code = os.WEXITSTATUS(exit_info)
+        elif os.WIFSIGNALED(exit_info):
+            self.d.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单", width=40, height=5)
+            self.show_menu()
+        else:
+            self.d.msgbox("发生莫名错误, 请返回菜单重试", width=40, height=5)
+            self.show_menu()
 
     def monitor(self, title):
         """
@@ -2421,7 +2506,10 @@ class graphics_deploy(Deploy):
             本程序主要用来自动部署项目集群. 
             部署过程将使用方向键或Tab键进行选择, 【enter】键用来确认.
 
+
             在使用过程中严禁放大或缩小当前窗口 ! ! !
+            也不要使用数字小键盘
+
 
             是否开始 ?
         """)
