@@ -2405,14 +2405,14 @@ class graphics_deploy(Deploy):
             code, tag=self.d.checklist(f"选择节点", choices=node_list, title=title, ok_label="巡检", cancel_label="返回")
             if code==self.d.OK:
                 self.log.logger.debug(f"{code=}, {tag=}")
-                self.log.logger.info(f"选择{tag}")
                 if len(tag)==0:
                     self.d.msgbox("未选择节点")
-                    break
+                    continue
                 else:
                     check_node_dict={
                             "node": tag
                             }
+                    break
             else:
                 return
 
@@ -2424,9 +2424,11 @@ class graphics_deploy(Deploy):
             with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
                 self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)   
                 self.log.logger.info("开始巡检...")
-                status, dict_=super(graphics_deploy, self).check(check_node_dict, init_dict, arch_dict)
+                status, dict_, tarfile_=super(graphics_deploy, self).check(check_node_dict, init_dict, arch_dict)
                 if result:
                     self.log.logger.info("巡检完成")
+                    if tarfile_:
+                        self.log.logger.info(f"请获取巡检报告文件: {tarfile_}")
                 else:
                     self.log.logger.error("巡检失败")
                     os._exit(1)
