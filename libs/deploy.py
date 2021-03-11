@@ -1821,11 +1821,11 @@ class graphics_deploy(Deploy):
         HIDDEN = 0x1
         READ_ONLY = 0x2
         tab=3           # 
-        xi_1=20
-        xi_2=30
-        xi_3=45
-        xi_4=60
-        xi_5=75
+        xi_1=17
+        xi_2=25
+        xi_3=38
+        xi_4=50
+        xi_5=62
         field_length=45
         elements=[]
 
