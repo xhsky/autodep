@@ -34,7 +34,7 @@ def main():
             if config_file in config:
                 config_name=config_file
                 break
-        start_command=f"cd {program_dir} ; nohup java -Xms{jvm_mem} -Xmx{jvm_mem} -jar {jar} --server.port={port_list[0]} --spring.profiles.active=prod --spring.config.location=./{config_name} &> jar.log &"
+        start_command=f"cd {program_dir} ; nohup java -Xms{jvm_mem} -Xmx{jvm_mem} -jar {jar} --server.port={port_list[0]} --spring.profiles.active=prod &> jar.log &"
         log.logger.debug(f"{start_command=}")
         status, result=common.exec_command(start_command)
         if status:
@@ -43,7 +43,7 @@ def main():
                 flag=1
             else:
                 log.logger.debug(f"检测端口: {port_list=}")
-                if not common.port_exist(port_list, seconds=360):
+                if not common.port_exist(port_list, seconds=600):
                     flag=2
         else:
             log.logger.error(result)
