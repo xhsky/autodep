@@ -7,7 +7,7 @@ import locale, json, os, time, sys, requests, tarfile, math, shutil
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, log_graphics_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, ext_dir, local_pkg_name_dict, \
-        interface, test_mode, \
+        interface, test_mode, program_soft, \
         host_info_file, init_stats_file, install_stats_file, start_stats_file, update_stats_file, run_stats_file, \
         update_config_file_name, \
         g_term_rows, g_term_cols, \
@@ -552,26 +552,6 @@ class Deploy(object):
                 install_result=False
         return install_result, install_stats_dict
 
-    def sorted_node(self, node_dict, arch_dict, reverse=False):
-        """
-        对主机排序(启动关闭), 有程序的主机最后一个
-        """
-
-        node_sorted=[]
-        for node in list(node_dict):
-            last=False
-            for softname in arch_dict[node]["software"]:
-                if softname.startswith("program"):
-                    last=True
-                    break
-            if last:
-                node_sorted.append(node)
-            else:
-                node_sorted.insert(0, node)
-        if reverse:
-            node_sorted.reverse()
-        return node_sorted
-
     def run(self, init_dict, arch_dict):
         """
         启动软件并初始化
@@ -585,7 +565,7 @@ class Deploy(object):
         run_result=True
         run_stats_dict={}
         #for node in arch_dict:
-        for node in sorted_node(list(arch_dict), arch_dict):
+        for node in self.sorted_node(list(arch_dict), arch_dict):
             self.log.logger.info(f"***{node}启动***")
             run_stats_dict[node]={}
             port=init_dict[arch_dict[node]["ip"]]["port"]
@@ -613,30 +593,44 @@ class Deploy(object):
                 run_stats_dict[node][softname]=stats_value
         return run_result, run_stats_dict
 
-    def control_running_status(self, action,  init_dict, arch_dict, control_dict):
+    '''
+    def sorted_node(self, node_dict, arch_dict, reverse=False):
         """
-        软件start|stop
+        对主机排序(启动关闭), 有程序的主机最后一个
+        """
 
-        control={
-            "node1":["soft1", "soft2"], 
-            "node2":["soft1", "soft2"]
-        }
+        node_sorted=[]
+        for node in list(node_dict):
+            last=False
+            for softname in arch_dict[node]["software"]:
+                if softname.startswith("program"):
+                    last=True
+                    break
+            if last:
+                node_sorted.append(node)
+            else:
+                node_sorted.insert(0, node)
+        if reverse:
+            node_sorted.reverse()
+        return node_sorted
+    '''
+
+    def unit_control(self, control_dict, action, action_msg, init_dict, arch_dict):
         """
-        if action=="start":
-            action_msg="启动"
-        elif action=="stop":
-            action_msg="停止"
-        control_result=True
+            control_node_dict:[
+                "node1":["soft1", "soft2"], 
+                "node2":["soft1", "soft2"]
+            ]
+        """
+
         control_stats_dict={}
-        #for node in control_dict:
-        for node in self.sorted_node(list(control_dict, arch_dict)):
+        for node in control_dict:
             self.log.logger.info(f"***{node}节点{action_msg}***")
             control_stats_dict[node]={}
             port=init_dict[arch_dict[node]["ip"]]["port"]
             for softname in control_dict[node]:
                 self.log.logger.info(f"{softname}{action_msg}...")
                 stats_value=True
-
                 control_trans_files_dict=trans_files_dict.copy()
                 soft_py_name=self._get_soft_py(softname)
                 control_trans_files_dict.update(
@@ -644,7 +638,6 @@ class Deploy(object):
                             "py_file": [f"./bin/{soft_py_name}", f"{remote_code_dir}/{soft_py_name}"]
                             }
                         )
-
                 status=self.control(node, port, softname, action, control_trans_files_dict, arch_dict[node])
                 for line in status[1]:
                     self.log.logger.info(line.strip())
@@ -657,6 +650,97 @@ class Deploy(object):
                 control_stats_dict[node][softname]=stats_value
         return control_result, control_stats_dict
 
+    #def control_running_status(self, action, init_dict, arch_dict, control_dict):
+    def cluster_control(self, action, init_dict, arch_dict, control_dict):
+        """
+        软件start|stop
+
+        control_dict={
+            "node1":["soft1", "soft2"], 
+            "node2":["soft1", "soft2"]
+        }
+
+        return:
+            control_stats_dict={
+                "node1":{
+                    "soft1": True|False
+                }
+            }
+            
+        """
+        env_node_dict={}
+        program_node_dict={}
+        for node in control_dict:
+            for softname in arch_dict[node]["software"]:
+                for program_softname in program_soft:
+                    if softname.startswith(program_softname):
+                        if program_node_dict.get(node) is None:
+                            program_node_dict[node]=[]
+                        program_node_dict[node].append(softname)
+                    else:
+                        if env_node_dict.get(node) is None:
+                            env_node_dict[node]=[]
+                        env_node_dict[node].append(softname)
+
+        env_control_stats_dict={}
+        program_control_stats_dict={}
+        control_result=True
+        if action=="start":
+            env_result=True
+            if len(env_node_dict) != 0:
+                self.log.logger.info("基础服务启动...")
+                env_result, env_control_stats_dict=self.unit_control(env_node_dict, action, "启动", init_dict, arch_dict)
+                if env_result:
+                    self.log.logger.info("基础服务启动成功")
+                else:
+                    self.log.logger.error(f"基础服务启动失败, {env_control_stats_dict}")
+                    control_result=False
+            if len(program_node_dict) != 0:
+                if env_result:
+                    self.log.logger.info("项目启动...")
+                    program_result, program_control_stats_dict=self.unit_control(program_node_dict, action, "启动", init_dict, arch_dict)
+                    if program_result:
+                        self.log.logger.error("项目启动成功")
+                    else:
+                        self.log.logger.error(f"项目启动失败, {program_control_stats_dict}")
+                        control_result=False
+                else:
+                    self.log.logger.warning("基础服务启动失败, 项目启动忽略")
+        elif action=="stop":
+            program_result=True
+            if len(program_node_dict) != 0:
+                self.log.logger.info("项目关闭...")
+                program_result, program_control_stats_dict=self.unit_control(program_node_dict, action, "关闭", init_dict, arch_dict)
+                if program_result:
+                    self.log.logger.info("项目关闭成功")
+                else:
+                    self.log.logger.error(f"项目关闭失败, {program_control_stats_dict}")
+                    control_result=False
+            if len(env_node_dict) != 0:
+                if program_result:
+                    self.log.logger.info("基础服务关闭...")
+                    env_result, env_control_stats_dict=self.unit_control(env_node_dict, action, "关闭", init_dict, arch_dict)
+                    if env_result:
+                        self.log.logger.info("基础服务关闭成功")
+                    else:
+                        self.log.logger.error(f"基础服务关闭失败, {env_control_stats_dict}")
+                        control_result=False
+                else:
+                    self.log.logger.warning("项目关闭失败, 基础服务关闭忽略")
+
+        control_stats_dict={}
+        if len(env_control_stats_dict) != 0:
+            for node in env_control_stats_dict:
+                control_stats_dict[node]=env_control_stats_dict[node]
+                if program_control_stats_dict.get(node):
+                    control_stats_dict[node].update(program_control_stats_dict[node])
+        if len(program_control_stats_dict) != 0:
+            program_control_stats_dict.update(control_stats_dict)
+            control_stats_dict=program_control_stats_dict
+
+        return control_result, control_stats_dict
+
+    '''
     def start(self, init_dict, arch_dict, soft_start_dict):
         """
         软件启动
@@ -696,6 +780,7 @@ class Deploy(object):
                     start_result=False
                 start_stats_dict[node][softname]=stats_value
         return start_result, start_stats_dict
+    '''
 
     def _get_soft_port_list(self, arch_dict, node, softname):
         """
