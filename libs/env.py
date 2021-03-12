@@ -34,6 +34,7 @@ located_dir_link="/dream"
 report_dir="./report" # 巡检汇总目录
 report_file_list=["check.info", "slow_analysis.log"]
 
+program_soft=["tomcat", "program"]
 
 # 更新
 code_saved_remote_dir="/tmp"
@@ -88,7 +89,7 @@ local_pkg_name_dict={
         "erlang": "erlang_23_2.tar.gz", 
         "rabbitmq": "rabbitmq-server-generic-unix-3.8.9.tar.xz", 
         "rocketmq": "rocketmq-all-4.8.0-bin-release.tar.gz", 
-        "autocheck": "autocheck-1.3.3.tar.gz"
+        "autocheck": "autocheck-1.3.4.tar.gz"
         } 
 
 """
