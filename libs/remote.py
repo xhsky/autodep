@@ -21,19 +21,19 @@ class soft(object):
         self.port=port
         self.ssh_client=ssh_client
 
-    def init(self, py_file, init_args):
-        command=f"{remote_python_exec} {py_file} '{json.dumps(init_args)}'"
+    def init(self, py_file):
+        command=f"{remote_python_exec} {py_file}"
         log.logger.debug(f"init: {command}")
         status=self.ssh_client.exec(self.ip, self.port, command)
         return status
 
-    def sendmail(self):
-        command=f"cd {located_dir_link}/{autocheck_dst} ; {remote_python_exec} ./main.py sendmail"
+    def sendmail(self, py_file, args_dict):
+        command=f"cd {located_dir_link}/{autocheck_dst} ; {remote_python_exec} {py_file} 'autocheck' sendmail '{json.dumps(args_dict)}'"
         log.logger.debug(f"sendmail: {command}")
         status=self.ssh_client.exec(self.ip, self.port, command)
         return status
 
-    def control(self, py_file, softname, action, args_dict):
+    def remote_exec(self, py_file, softname, action, args_dict):
         """
         用于install, run, start, stop, 非init
         """
@@ -43,19 +43,19 @@ class soft(object):
         return status
 
     def install(self, py_file, softname, args_dict):
-        status=self.control(py_file, softname, "install", args_dict)
+        status=self.remote_exec(py_file, softname, "install", args_dict)
         return status
 
     def run(self, py_file, softname, args_dict):
-        status=self.control(py_file, softname, "run", args_dict)
+        status=self.remote_exec(py_file, softname, "run", args_dict)
         return status
 
     def start(self, py_file, softname, args_dict):
-        status=self.control(py_file, softname, "start", args_dict)
+        status=self.remote_exec(py_file, softname, "start", args_dict)
         return status
 
     def stop(self, py_file, softname, args_dict):
-        status=self.control(py_file, softname, "stop", args_dict)
+        status=self.remote_exec(py_file, softname, "stop", args_dict)
         return status
 
 class ssh(object):

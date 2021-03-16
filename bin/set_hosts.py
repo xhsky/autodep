@@ -9,13 +9,14 @@ from libs.env import log_remote_level
 
 def main():
     log=Logger({"remote": log_remote_level}, logger_name="set_hosts")
+    softname, action, conf_json=sys.argv[1:]
+    conf_dict=json.loads(conf_json)
+    hosts_info_dict=conf_dict["hosts_info"]
     return_value=0
 
     try:
-        args_json=sys.argv[1]
-        args=json.loads(args_json)
-        hostname=args["hostname"]
-        hosts_list=args["hosts"]
+        hostname=hosts_info_dict["hostname"]
+        hosts_list=hosts_info_dict["hosts"]
 
         log.logger.info(f"设置主机名为{hostname}")
         hostname_cmd=f"hostnamectl set-hostname {hostname}"

@@ -5,9 +5,10 @@
 import psutil
 import platform
 import os, sys, json
+import ntplib, time
 import subprocess
-from libs.common import Logger
-from libs.env import log_remote_level
+from libs.common import Logger, port_connect, exec_command
+from libs.env import log_remote_level, interface
 
 def main():
     try:
@@ -59,10 +60,42 @@ def main():
                         process_name=psutil.Process(pid).name()
                         port=i[3][1]
                         host_info_dict["Port"][port]=[pid, process_name]
+
+        # 接口连通测试
+        host_info_dict["Interface"]={}
+        for interface_name in interface:
+            if port_connect(interface[interface_name][0], interface[interface_name][1]):
+                host_info_dict["Interface"][interface_name]=True
+            else:
+                host_info_dict["Interface"][interface_name]=False
+
+        c=ntplib.NTPClient()
+        try:
+            response = c.request('ntp1.aliyun.com', timeout=2)
+            ts=response.tx_time
+            date_=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))
+            set_time=f"date -s '{date_}' && hwclock -w"
+            result, msg=exec_command(set_time)
+            if result:
+                host_info_dict["NTP"]={
+                        "result": True, 
+                        "msg": ""
+                        }
+            else:
+                host_info_dict["NTP"]={
+                        "result": False, 
+                        "msg": msg
+                        }
+        except Exception as e:
+            host_info_dict["NTP"]={
+                    "result": False, 
+                    "msg": str(e)
+                    }
+
         log.logger.info(json.dumps(host_info_dict))
         sys.exit(0)
     except Exception as e:
-        log.logger.error(e)
+        log.logger.error(str(e))
         sys.exit(1)
 
 if __name__ == "__main__":

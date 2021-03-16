@@ -87,10 +87,14 @@ def port_exist(port_list, seconds=120, exist_or_not=True):
 
 def port_connect(host, port):
     s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    result=s.connect_ex((host, port))
-    if result==0:
-        return True
-    else:
+    s.settimeout(2)
+    try:
+        result=s.connect_ex((host, port))
+        if result==0:
+            return True
+        else:
+            return False
+    except Exception:
         return False
 
 def install(soft_file, link_src, link_dst, pkg_dir, located):
@@ -368,7 +372,7 @@ class Logger(object):
             self.logger.addHandler(self.ph)
 
 def post_info(mode, info_dict, addr=None):
-    if mode=="platform":
+    if mode=="platform_info":
         data=json.dumps(info_dict)
         headers={
                 "Content-Type": "application/json"

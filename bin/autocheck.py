@@ -162,6 +162,18 @@ def main():
             log.logger.error(result)
             flag=1
         sys.exit(flag)
+    elif action=="sendmail":
+        command=f"cd {autocheck_dir} ; /opt/python3/bin/python3 ./main.py sendmail"
+        log.logger.debug(f"{command=}")
+        status, result=common.exec_command(command)
+        if status:
+            if result.returncode != 0:
+                log.logger.error(result.stderr)
+                flag=1
+        else:
+            log.logger.error(result)
+            flag=1
+        sys.exit(flag)
 
 if __name__ == "__main__":
     main()
