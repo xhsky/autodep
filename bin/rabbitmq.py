@@ -5,7 +5,7 @@
 
 import sys, os, json
 from libs import common
-from libs.env import log_remote_level, rabbitmq_src, rabbitmq_dst, rabbitmq_pkg_dir, rabbitmq_version
+from libs.env import log_remote_level, rabbitmq_src, rabbitmq_dst, rabbitmq_pkg_dir, rabbitmq_version, erl_dst
 
 def main():
     softname, action, conf_json=sys.argv[1:]
@@ -180,7 +180,7 @@ def main():
                 if not common.port_exist(mq_port_list, exist_or_not=False):
                     flag=2
                 else:
-                    command=f"cd /dream/erlang && ./bin/epmd -kill"
+                    command=f"cd {located}/{erl_dst} && ./bin/epmd -kill"
                     log.logger.debug(f"{command=}")
                     status, result=common.exec_command(command)
                     if status:
