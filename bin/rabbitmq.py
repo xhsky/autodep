@@ -19,11 +19,13 @@ def main():
     rabbitmq_port=rabbitmq_info_dict["port"].get("rabbitmq_port")
     epmd_port=rabbitmq_info_dict["port"].get("epmd_port")
     beam_port=rabbitmq_info_dict["port"].get("beam_port")
-    port_list=[                 
-            epmd_port, 
+    mq_port_list=[
             rabbitmq_port, 
             beam_port
-            ]           # epmd_port必须为第一个
+            ]
+
+    port_list=[epmd_port]
+    port_list.extend(mq_port_list)
 
     flag=0
     # 安装
@@ -174,17 +176,28 @@ def main():
                 log.logger.error(result.stderr)
                 flag=1
             else:
-                # rabbitmq关闭不会关闭epmd
-                log.logger.debug(f"检测端口: {port_list[1:]=}")
-                if not common.port_exist(port_list[1:], exist_or_not=False):
+                log.logger.debug(f"检测端口: {mq_port_list=}")
+                if not common.port_exist(mq_port_list, exist_or_not=False):
                     flag=2
+                else:
+                    command=f"cd /dream/erlang && ./bin/epmd -kill"
+                    log.logger.debug(f"{command=}")
+                    status, result=common.exec_command(command)
+                    if status:
+                        if result.returncode != 0:
+                            log.logger.error(result.stderr)
+                            flag=1
+                        else:
+                            log.logger.debug(f"检测端口: {port_list=}")
+                            if not common.port_exist(port_list, exist_or_not=False):
+                                flag=2
+                    else:
+                        log.logger.error(result)
+                        flag=3
         else:
             log.logger.error(result)
             flag=1
         sys.exit(flag)
-
-
-        pass
 
 if __name__ == "__main__":
     main()
