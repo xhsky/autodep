@@ -12,7 +12,7 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         update_config_file_name, \
         g_term_rows, g_term_cols, \
         located_dir_name, located_dir_link, autocheck_dst, report_dir, report_file_list, \
-        init_file, arch_file, update_file, start_file, stop_file, check_file, \
+        init_file, arch_file, update_file, start_file, stop_file, check_file, project_file, deploy_file, \
         program_unzip_dir
 
 for dir_ in [logs_dir, program_unzip_dir, report_dir]:
@@ -64,6 +64,8 @@ class Deploy(object):
                 config_file=update_file
             elif config=="check":
                 config_file=check_file
+            elif config=="project":
+                config_file=project_file
 
             try: 
                 with open(config_file, "r", encoding="utf8") as f:
@@ -671,7 +673,7 @@ class Deploy(object):
                 self.log.logger.info("项目启动...")
                 program_result, program_control_stats_dict=self.nodes_control(program_node_dict, "start", "启动", init_dict, arch_dict)
                 if program_result:
-                    self.log.logger.error("项目启动成功")
+                    self.log.logger.info("项目启动成功")
                 else:
                     self.log.logger.error(f"项目启动失败, {program_control_stats_dict}")
                     control_result=False
@@ -1771,7 +1773,7 @@ class graphics_deploy(Deploy):
                 json.dump(self.arch_dict, f, ensure_ascii=False)
             return True
 
-    def show_init_info(self, all_host_info_dict):
+    def show_hosts_info(self, all_host_info_dict):
         """
             显示各主机信息
         """
@@ -1919,7 +1921,7 @@ class graphics_deploy(Deploy):
                     os._exit(1)
 
                 if self.init_flag:
-                    result=self.update_extract(self.project_pkg, program_unzip_dir, ["arch.json", "update.json", "start.json"])
+                    result=self.update_extract(self.project_pkg, program_unzip_dir, ["project.json", "arch.json", "update.json", "start.json"])
                     if not result:
                         os._exit(1)
 
@@ -1955,7 +1957,7 @@ class graphics_deploy(Deploy):
         if exit_code==0:
             _, result=self.read_config(["host", "arch"])
             host_info_dict, arch_dict=result
-            result_code=self.show_init_info(host_info_dict)
+            result_code=self.show_hosts_info(host_info_dict)
             if result_code==self.d.OK:
                 result, dict_=self.resource_verifi(arch_dict, host_info_dict)
                 if result:
@@ -2090,8 +2092,7 @@ class graphics_deploy(Deploy):
         result, config_list=self.read_config(["update"])
         if result:
             update_dict=config_list[0]
-            #result, dict_=super(graphics_deploy, self).update(update_dict)
-            result, dict_=self.update(update_dict)
+            result, dict_=super(graphics_deploy, self).update(update_dict)  # 使用父类的update
             if result:
                 self.log.logger.info("项目部署完成")
             else:
@@ -2108,7 +2109,8 @@ class graphics_deploy(Deploy):
         result, config_list=self.read_config(["init", "arch", "start"])
         if result:
             init_dict, arch_dict, start_dict=config_list
-            result, dict_=super(graphics_deploy, self).start(init_dict, arch_dict, start_dict)
+            #result, dict_=super(graphics_deploy, self).start(init_dict, arch_dict, start_dict)
+            result, dict_=self.start(init_dict, arch_dict, start_dict)
             if result:
                 self.log.logger.info("启动完成")
             else:
@@ -2117,6 +2119,33 @@ class graphics_deploy(Deploy):
             self.log.logger.error(f"配置文件读取失败: {config_list}")
             dict_={}
         return result, dict_
+
+    def generate_deploy_file(self):
+        """
+        生成部署信息文件
+        """
+
+        result, config_list=self.read_config(["init", "arch", "host", "project"])
+        if not result:
+            return False, config_list
+
+        init_dict, arch_dict, host_info_dict, project_dict=config_list
+        deploy_dict={
+                "project_id": project_dict.get("project_id"), 
+                "project_name": project_dict.get("project_name"), 
+                "mode": "deploy", 
+                "stats": {
+                    "init": init_dict, 
+                    "arch": arch_dict, 
+                    "host": host_info_dict
+                    }
+                }
+        result, msg=self.write_config(deploy_dict, deploy_file)
+        if result:
+            self.log.logger.info(f"请将文件'{os.path.abspath(deploy_file)}'上传至平台 !")
+            return True, {}
+        else:
+            return False, msg
 
     def deploy(self, title):
         """
@@ -2134,12 +2163,13 @@ class graphics_deploy(Deploy):
         if code!=self.d.OK:
             return
 
-        stage_all=["install", "run", "program_update", "program_start"]
+        stage_all=["install", "run", "program_update", "program_start", "generate_deploy_file"]
         stage_method={
                 "install": self.install, 
                 "run": self.run, 
                 "program_update": self.program_update, 
-                "program_start": self.program_start
+                "program_start": self.program_start, 
+                "generate_deploy_file": self.generate_deploy_file
                 }
         read_fd, write_fd = os.pipe()
         child_pid = os.fork()
@@ -2190,7 +2220,7 @@ class graphics_deploy(Deploy):
         """
         while True:
             menu={
-                    "1": "主机检测", 
+                    "1": "集群配置", 
                     "2": "集群部署", 
                     "3": "集群管理", 
                     "4": "项目更新"
@@ -2210,7 +2240,7 @@ class graphics_deploy(Deploy):
                 self.log.logger.debug(f"{code=}, {tag=}")
                 self.log.logger.info(f"选择{menu[tag]}")
                 if tag=="1":
-                    self.init(menu[tag])
+                    self.configuration(menu[tag])
                 if tag=="2":
                     self.deploy(menu[tag])
                 if tag=="3":
@@ -2221,6 +2251,129 @@ class graphics_deploy(Deploy):
                 time.sleep(1)
             else:
                 self.cancel()
+
+    def config_project_name(self, title):
+        """
+        配置项目名称
+        """
+        result, config_list=self.read_config(["project"])
+        if not result:
+            self.log.logger.error(f"project.json读取失败, {config_list}")
+        else:
+            project_dict=config_list[0]
+            project_id=project_dict.get("project_id")
+            project_name=project_dict.get("project_name")
+            if project_name is None:
+                project_name=""
+
+            text="请输入项目名称"
+            while True:
+                code, project_name=self.d.inputbox(text, title=title, init=project_name, width=32, height=8)
+                if code==self.d.OK:
+                    if project_name.strip()=="":
+                        text="项目名不能为空, 请重新输入"
+                        continue
+                    else:
+                        project_dict["project_name"]=project_name
+                        result, msg=self.write_config(project_dict, project_file)
+                        if not result:
+                            self.log.logger.error(f"配置文件({project_file})写入失败, {msg}")
+                        else:
+                            return
+                else:
+                    break
+
+    def config_receive(title, text):
+        """
+        配置接收邮箱及短信
+        """
+        pass
+
+    def config_check(self, title):
+        """
+        配置巡检接收人
+        """
+        result, config_list=self.read_config(["host", "arch"])
+        if not result:
+            self.d.msgbox(f"{config_list}")
+            return
+        host_info_dict, arch_dict=config_list
+        mail_list=[]
+        sms_list=[]
+        #interface_list=["mail", "sms"]
+        for node in host_info_dict:
+            mail_list.append(host_info_dict[node]["Interface"]["mail"])
+            sms_list.append(host_info_dict[node]["Interface"]["sms"])
+        self.log.logger.debug(f"{mail_list=}, {sms_list=}")
+
+        mail_flag=False
+        if True in mail_list:
+            mail_flag=True
+
+        sms_flag=False
+        if True in sms_list:
+            sms_flag=True
+
+        if mail_flag==False and sms_flag==False:
+            self.d.msgbox("服务器无法连接外部接口, 不能配置自动巡检及预警", title="警告")
+            return
+        else:
+            while True:
+                menu={
+                        "1": "项目名称", 
+                        "2": "接收邮件", 
+                        "3": "接收短信", 
+                        }
+
+                code,tag=self.d.menu("", 
+                        choices=[
+                            ("1", menu["1"]), 
+                            ("2", menu["2"]),
+                            ("3", menu["3"]), 
+                            ], 
+                        title=title, 
+                        width=48
+                        )
+                if code==self.d.OK:
+                    self.log.logger.debug(f"{code=}, {tag=}")
+                    self.log.logger.info(f"选择{menu[tag]}")
+                    if tag=="1":
+                        self.config_project_name(menu[tag])
+                    if tag=="2":
+                        self.config_receive(menu[tag], "填写巡检及预警接收邮箱")
+                    if tag=="3":
+                        self.config_receive(menu[tag], "填写短信预警接收手机号")
+                else:
+                    break
+
+    def configuration(self, title):
+        """
+        集群配置: 
+        """
+        while True:
+            menu={
+                    "1": "主机检测", 
+                    "2": "巡检配置"
+                    }
+
+            code,tag=self.d.menu("", choices=[
+                        ("1", menu["1"]), 
+                        ("2", menu["2"])
+                        ], 
+                    title=title, 
+                    width=40, 
+                    height=6, 
+                    cancel_label="返回"
+                    )
+            if code==self.d.OK:
+                self.log.logger.debug(f"{code=}, {tag=}")
+                self.log.logger.info(f"选择{menu[tag]}")
+                if tag=="1":
+                    self.init(menu[tag])
+                if tag=="2":
+                    self.config_check(menu[tag])
+            else:
+                break
 
     def management(self, title):
         """
@@ -2482,7 +2635,7 @@ class graphics_deploy(Deploy):
                 if result:
                     self.log.logger.info("巡检完成")
                     if tarfile_:
-                        self.log.logger.info(f"请获取巡检报告文件: {tarfile_}")
+                        self.log.logger.info(f"请获取巡检报告文件: '{os.path.abspath(tarfile_)}'")
                 else:
                     self.log.logger.error("巡检失败")
                     os._exit(1)
