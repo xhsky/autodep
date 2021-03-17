@@ -19,10 +19,11 @@ host_info_file=f"./config/host_info.json"
 init_file="./config/init.json"
 arch_file="./config/arch.json"
 update_file="./config/update.json"
-#project_file="./config/project.json"
+project_file="./config/project.json"
 start_file="./config/start.json"
 stop_file="./config/stop.json"
 check_file="./config/check.json"
+deploy_file="./config/deploy.json"
 
 # ext路径
 ext_dir="../ext"
