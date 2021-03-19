@@ -54,6 +54,8 @@ g_term_cols=80
 
 # 测试模式, 正式环境关闭
 test_mode=True
+# 检测时是否开启资源校验
+resource_verify_mode=False
 
 # 目录配置
 #fixed_dir="/opt"

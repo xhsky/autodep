@@ -7,7 +7,7 @@ import locale, json, os, time, sys, requests, tarfile, math, shutil
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, log_graphics_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, ext_dir, local_pkg_name_dict, \
-        interface, test_mode, program_soft, \
+        interface, test_mode, resource_verify_mode, program_soft, \
         host_info_file, init_stats_file, install_stats_file, start_stats_file, update_stats_file, run_stats_file, \
         update_config_file_name, \
         g_term_rows, g_term_cols, \
@@ -346,19 +346,20 @@ class Deploy(object):
 
         ## 资源大小验证
         non_resouce_dict={}
-        #non_resouce_flag=False
-        #for node in arch_dict:
-        #    ip=arch_dict[node]["ip"]
-        #    non_resouce_dict[ip]={}
-        #    mem=ip_weights_dict[ip][0]-node_weights_dict[node][0]
-        #    cpu=ip_weights_dict[ip][1]-node_weights_dict[node][1]
-        #    if mem < 0:
-        #        non_resouce_flag=True
-        #        non_resouce_dict[ip]["Mem"]=node_weights_dict[node][0]
-        #    if cpu < 0:
-        #        non_resouce_flag=True
-        #        non_resouce_dict[ip]["CPU"]=node_weights_dict[node][1]
-        non_resouce_flag=False
+        if resource_verify_mode:
+            for node in arch_dict:
+                ip=arch_dict[node]["ip"]
+                non_resouce_dict[ip]={}
+                mem=ip_weights_dict[ip][0]-node_weights_dict[node][0]
+                cpu=ip_weights_dict[ip][1]-node_weights_dict[node][1]
+                if mem < 0:
+                    non_resouce_flag=True
+                    non_resouce_dict[ip]["Mem"]=node_weights_dict[node][0]
+                if cpu < 0:
+                    non_resouce_flag=True
+                    non_resouce_dict[ip]["CPU"]=node_weights_dict[node][1]
+        else:
+            non_resouce_flag=False
 
         if not non_resouce_flag:
             return True, arch_dict
@@ -842,6 +843,7 @@ class Deploy(object):
         """
         # 删除旧报告
         try:
+            os.makedirs(report_dir, exist_ok=1)
             for file_ in os.listdir(report_dir):
                 os.remove(f"{report_dir}/{file_}")
 
@@ -1970,10 +1972,6 @@ class graphics_deploy(Deploy):
         """
         图形: 更新
         """
-        project_pkg=self.get_file_path(f"{os.path.dirname(os.getcwd())}/", "请填写项目包文件路径")
-        if project_pkg == "":
-            return
-
         read_fd, write_fd = os.pipe()
         child_pid = os.fork()
 
@@ -1982,8 +1980,12 @@ class graphics_deploy(Deploy):
             with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
                 self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)
 
-                result=self.update_extract(project_pkg, program_unzip_dir, ["update.json"])
-                if not result:
+                if self.init_flag:
+                    result=self.update_extract(self.project_pkg, program_unzip_dir, ["update.json"])
+                    if not result:
+                        os._exit(1)
+                else:
+                    self.log.logger.error("\n\nError: 请使用-f参数指定更新文件")
                     os._exit(1)
 
                 code, result=self.read_config(["update"])
@@ -1999,9 +2001,10 @@ class graphics_deploy(Deploy):
                     self.log.logger.info("项目更新完成")
                 else:
                     self.log.logger.error("项目更新失败")
+                    os._exit(1)
             os._exit(0)
         os.close(write_fd)
-        self.d.programbox(fd=read_fd, title="项目更新", height=25, width=170, scrollbar=True)
+        self.d.programbox(fd=read_fd, title=title, height=25, width=170)
         exit_info = os.waitpid(child_pid, 0)[1]
         if os.WIFEXITED(exit_info):
             exit_code = os.WEXITSTATUS(exit_info)
@@ -2252,55 +2255,162 @@ class graphics_deploy(Deploy):
             else:
                 self.cancel()
 
-    def config_project_name(self, title):
+    def edit_check_config(self, title, check_dict):
         """
-        配置项目名称
+        配置巡检信息
+
+        check_dict={
+            "project_name": "", 
+            "timing": "18:30", 
+            "sender": "", 
+            "mail_list": [], 
+            "sms_list": []
+        }
         """
-        result, config_list=self.read_config(["project"])
+        xi=20
+        receive_length=200
+        field_length=15
+        n=1
+        elements=[
+                ("项目名称:", n, 1, check_dict.get("project_name"), n, xi, field_length, 0), 
+                ("定时巡检时间:", n+1, 1, check_dict.get("timing"), n+1, xi, 6, 0), 
+                ("巡检发送人:", n+2, 1, check_dict.get("sender"), n+2, xi, field_length, 0), 
+                ("邮箱地址:", n+3, 1, ",".join(check_dict.get("mail_list")), n+3, xi, receive_length, 0), 
+                ("手机号:", n+4, 1, ",".join(check_dict.get("sms_list")), n+4, xi, receive_length, 0), 
+                ]
+        code, fields=self.d.form(f"配置巡检信息:\n注: 多个邮箱地址或手机号使用','分割", elements=elements, title=title, width=80, height=13, ok_label="确认", cancel_label="取消")
+        return code, fields
+
+    def show_check_config(self, title, check_info_list):
+        """
+        显示巡检接收信息
+        """
+        HIDDEN = 0x1
+        READ_ONLY = 0x2
+        xi=20
+        receive_length=200
+        field_length=15
+        n=1
+        elements=[
+                ("项目名称:", n, 1, check_info_list[0], n, xi, field_length, 0, READ_ONLY), 
+                ("定时巡检时间:", n+1, 1, check_info_list[1], n+1, xi, 6, 0, READ_ONLY), 
+                ("发送者:", n+2, 1, check_info_list[2], n+2, xi, field_length, 0, READ_ONLY), 
+                ("邮箱地址:", n+3, 1, check_info_list[3], n+3, xi, receive_length, 0, READ_ONLY), 
+                ("手机号:", n+4, 1, check_info_list[4], n+4, xi, receive_length, 0, READ_ONLY), 
+                ]
+        code, _=self.d.mixedform(f"巡检信息:", elements=elements, title=title, width=80, ok_label="确认", cancel_label="取消")
+        return code
+
+    def _get_check_info(self, arch_dict, project_dict):
+        """
+        获取check_dict
+        return: 
+            check_dict={
+                "project_name": "", 
+                "timing": "18:30", 
+                "sender": "", 
+                "mail_list": [], 
+                "sms_list": []
+            }
+        """
+        project_name=project_dict.get("project_name")
+        if project_name is None:
+            project_name="xx项目"
+
+        sender="xxx"
+        timing="20:30"
+        node_name=list(arch_dict.keys())[0]
+
+        mail_list=[]
+        inspection_info_dict=arch_dict[node_name]["autocheck_info"].get("inspection_info")
+        if inspection_info_dict is not None:
+            sender=inspection_info_dict.get("inspection_sender")
+            timing=inspection_info_dict.get("inspection_time")
+            mail_list=inspection_info_dict.get("inspection_receive")
+        check_dict={
+            "project_name": project_name, 
+            "timing": timing, 
+            "sender": sender, 
+            "mail_list": mail_list
+        }
+
+        sms_list=[]
+        warning_info_dict=arch_dict[node_name]["autocheck_info"].get("warning_info")
+        if warning_info_dict is not None:
+            sms_info_dict=warning_info_dict.get("sms_info")
+            if sms_info_dict is not None:
+                sms_list=sms_info_dict.get("sms_receive")
+        check_dict["project_name"]=project_name
+        check_dict["sms_list"]=sms_list
+
+        return check_dict
+
+    def _set_check_info(self, arch_dict, project_dict, check_info_list):
+        """
+        获取check_dict
+        return: 
+            check_dict={
+                "project_name": "", 
+                "timing": "18:30", 
+                "sender": "", 
+                "mail_list": [], 
+                "sms_list": []
+            }
+        """
+        project_name=check_info_list[0]
+        timing=check_info_list[1]
+        sender=check_info_list[2]
+        mail_list= [] if check_info_list[3]=="" else check_info_list[3].split(",")
+        sms_list= [] if check_info_list[4]=="" else check_info_list[4].split(",")
+
+        project_dict["project_name"]=project_name
+        self.log.logger.debug(f"写入{project_file}")
+        result, msg=self.write_config(project_dict, project_file)
         if not result:
-            self.log.logger.error(f"project.json读取失败, {config_list}")
-        else:
-            project_dict=config_list[0]
-            project_id=project_dict.get("project_id")
-            project_name=project_dict.get("project_name")
-            if project_name is None:
-                project_name=""
+            return result, msg
 
-            text="请输入项目名称"
-            while True:
-                code, project_name=self.d.inputbox(text, title=title, init=project_name, width=32, height=8)
-                if code==self.d.OK:
-                    if project_name.strip()=="":
-                        text="项目名不能为空, 请重新输入"
-                        continue
-                    else:
-                        project_dict["project_name"]=project_name
-                        result, msg=self.write_config(project_dict, project_file)
-                        if not result:
-                            self.log.logger.error(f"配置文件({project_file})写入失败, {msg}")
-                        else:
-                            return
-                else:
-                    break
+        for node in arch_dict:
+            if len(mail_list)!=0:
+                arch_dict[node]["autocheck_info"]["inspection_info"]={}
+                arch_dict[node]["autocheck_info"]["inspection_info"]={
+                        "inspection_time": timing, 
+                        "inspection_sender": sender, 
+                        "inspection_receive": mail_list, 
+                        "inspection_subject": f"{project_name}巡检"
+                        }
+                arch_dict[node]["autocheck_info"]["warning_info"]={}
+                arch_dict[node]["autocheck_info"]["warning_info"]["mail_info"]={
+                        "mail_sender": sender, 
+                        "mail_receive": mail_list, 
+                        "mail_subject": f"{project_name}预警"
+                        }
+            if len(sms_list)!=0:
+                if arch_dict[node]["autocheck_info"].get("warning_info") is None:
+                    arch_dict[node]["autocheck_info"]["warning_info"]={}
+                arch_dict[node]["autocheck_info"]["warning_info"]["sms_info"]={
+                        "sms_receive": sms_list, 
+                        "sms_subject": f"{project_name}预警"
+                        }
 
-    def config_receive(title, text):
-        """
-        配置接收邮箱及短信
-        """
-        pass
+        self.log.logger.debug(f"写入{arch_file}")
+        result, msg=self.write_config(arch_dict, arch_file)
+        if not result:
+            return result, msg
+
+        return True, ""
 
     def config_check(self, title):
         """
         配置巡检接收人
         """
-        result, config_list=self.read_config(["host", "arch"])
+        result, config_list=self.read_config(["host", "arch", "project"])
         if not result:
             self.d.msgbox(f"{config_list}")
             return
-        host_info_dict, arch_dict=config_list
+        host_info_dict, arch_dict, project_dict=config_list
+
         mail_list=[]
         sms_list=[]
-        #interface_list=["mail", "sms"]
         for node in host_info_dict:
             mail_list.append(host_info_dict[node]["Interface"]["mail"])
             sms_list.append(host_info_dict[node]["Interface"]["sms"])
@@ -2318,33 +2428,25 @@ class graphics_deploy(Deploy):
             self.d.msgbox("服务器无法连接外部接口, 不能配置自动巡检及预警", title="警告")
             return
         else:
+            check_dict=self._get_check_info(arch_dict, project_dict)
+            self.log.logger.debug(f"{check_dict=}")
             while True:
-                menu={
-                        "1": "项目名称", 
-                        "2": "接收邮件", 
-                        "3": "接收短信", 
-                        }
-
-                code,tag=self.d.menu("", 
-                        choices=[
-                            ("1", menu["1"]), 
-                            ("2", menu["2"]),
-                            ("3", menu["3"]), 
-                            ], 
-                        title=title, 
-                        width=48
-                        )
+                code, check_info_list=self.edit_check_config(title, check_dict)
+                self.log.logger.debug(f"{check_info_list=}")
                 if code==self.d.OK:
-                    self.log.logger.debug(f"{code=}, {tag=}")
-                    self.log.logger.info(f"选择{menu[tag]}")
-                    if tag=="1":
-                        self.config_project_name(menu[tag])
-                    if tag=="2":
-                        self.config_receive(menu[tag], "填写巡检及预警接收邮箱")
-                    if tag=="3":
-                        self.config_receive(menu[tag], "填写短信预警接收手机号")
+                    code=self.show_check_config(title, check_info_list)
+                    if code==self.d.OK:
+                        result, msg=self._set_check_info(arch_dict, project_dict, check_info_list)
+                        if result:
+                            break
+                        else:
+                            self.log.logger.error(msg)
+                            self.d.msgbox(msg, title="警告")
+                            continue
+                    else:
+                        continue
                 else:
-                    break
+                    return
 
     def configuration(self, title):
         """
@@ -2710,11 +2812,12 @@ class platform_deploy(Deploy):
         code, result=self.read_config(["init"])
         if code:
             init_dict=result[0]
-            flag, connect_msg=self.connect_test(init_dict)
-            if flag==1:
+            result, connect_test_result=self.connect_test(init_dict)
+            if not result:
                 self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
-                for node_msg in connect_msg:
-                    self.log.logger.info(f"{node_msg[0]}:\t{node_msg[2]}")
+                for node in connect_test_result:
+                    if connect_test_result[node]["result"] != 0:
+                        self.log.logger.error(f"{node}:\t{connect_test_result[node]['err_msg']}")
                 init_result=False
             else:
                 local_python3_file=local_pkg_name_dict.get("python3")
@@ -2746,7 +2849,7 @@ class platform_deploy(Deploy):
                 "stats": None, 
                 }
         install_result=True
-        result=self.update_extract(program_pkg, program_unzip_dir, ["arch.json", "update.json", "start.json"])
+        result=self.update_extract(program_pkg, program_unzip_dir, ["project.json", "arch.json", "update.json", "start.json"])
         if result:
             code, result=self.read_config(["init", "arch"])
             if code:
@@ -2809,7 +2912,7 @@ class platform_deploy(Deploy):
         code, result=self.read_config(["init", "arch", "start"])
         if code:
             init_dict, arch_dict, start_dict=result
-            result, dict_=super(platform_deploy, self).cluster_control("start", init_dict, arch_dict, start_dict)
+            result, dict_=super(platform_deploy, self).start(init_dict, arch_dict, start_dict)
             if result:
                 self.log.logger.info("启动完成")
             else:
@@ -2835,7 +2938,7 @@ class platform_deploy(Deploy):
         code, result=self.read_config(["init", "arch", "stop"])
         if code:
             init_dict, arch_dict, stop_dict=result
-            result, dict_=super(platform_deploy, self).cluster_control("stop", init_dict, arch_dict, stop_dict)
+            result, dict_=super(platform_deploy, self).stop(init_dict, arch_dict, stop_dict)
             if result:
                 self.log.logger.info("停止完成")
             else:
@@ -2885,7 +2988,6 @@ class platform_deploy(Deploy):
             self.log.logger.error(f"配置文件读取失败: {result}")
             update_result=False
         update_stats_dict["result"]=update_result
-        #self.log.logger.info(f"{update_stats_dict=}")
         return update_stats_dict
 
     def deploy(self, program_pkg):
@@ -2940,15 +3042,13 @@ class platform_deploy(Deploy):
         result, config_list=self.read_config(["arch"])
         if result:
             arch_dict=config_list[0]
+            soft_status_dict=self.get_soft_status(arch_dict)
+            monitor_stats_dict["stats"]=soft_status_dict
+            self.log.logger.debug(f"软件状态值: {soft_status_dict}")
         else:
-            error_msg=f"配置文件读取失败: {result}"
+            error_msg=f"配置文件读取失败: {config_list}"
             monitor_result=False
             self.log.logger.error(error_msg)
-
-        soft_status_dict=self.get_soft_status(arch_dict)
-        monitor_stats_dict["stats"]=soft_status_dict
-        self.log.logger.debug(f"软件状态值: {soft_status_dict}")
-
         monitor_stats_dict["result"]=monitor_result
         return monitor_stats_dict
 
@@ -2985,3 +3085,4 @@ class platform_deploy(Deploy):
             check_result=False
         check_stats_dict["result"]=check_result
         return check_stats_dict
+

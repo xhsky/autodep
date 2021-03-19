@@ -58,7 +58,7 @@ def main():
             result_dict=d.monitor()
         elif arg=="check":
             result_dict=d.check()
-        d.generate_info("platform", result_dict)
+        d.generate_info("platform_info", result_dict)
     elif args.g is not None:
         d=deploy.graphics_deploy(args.f)
         d.show()
