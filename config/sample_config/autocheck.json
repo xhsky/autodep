@@ -1,0 +1,30 @@
+{
+	"web1": {
+		"software": ["autocheck"],
+		"located": "",
+		"autodep_info": {
+			"warning_info": { // 预警信息
+				"mail_info": { // 邮件预警信息
+					"mail_sender": "xxx", // 预警信息发送者名称
+					"mail_receive": ["x1@dreamdt.cn", "x2@dreamdt.cn"], // 预警信息接收者邮件
+					"mail_subject": "xx项目邮件预警" // 预警信息主题
+				},
+				"sms_info": { // 短信预警
+					"sms_receive": ["11111111111", "22222222222222"], // 预警信息接收者手机号
+					"sms_subject": "xx项目短信预警" // 预警信息主题
+				}
+			},
+			"inspection_info": { // 巡检信息
+				"inspection_time": "18:30", // 巡检信息发送时间
+				"inspection_sender": "xxx", // 巡检信息发送人名称
+				"inspection_receive": ["x1@dreamdt.cn", "x2@dreamdt.cn"], // 巡检信息接收者邮件
+				"inspection_subject": "xx项目邮件预警" // 巡检信息主题
+			},
+			"matching_info": {
+				"program1": { // 项目名称
+					"matching_keys": ["Error"] // 关键字列表
+				}
+			}
+		}
+	}
+}
