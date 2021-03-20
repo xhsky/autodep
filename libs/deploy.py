@@ -1933,6 +1933,7 @@ class graphics_deploy(Deploy):
                     self.log.logger.info("初始化完成\n")
                     self.log.logger.info("获取主机信息...")
                     all_host_info=self.get_host_msg(init_dict)
+                    self.log.logger.debug(f"主机信息: {all_host_info}")
                     all_host_dict=self.json_to_init_dict(all_host_info)
                     result, msg=self.write_config(all_host_dict, host_info_file)
                     if not result:
@@ -1957,6 +1958,7 @@ class graphics_deploy(Deploy):
             self.show_menu()
 
         if exit_code==0:
+            time.tzset()    # 主机信息获取过程中会重置时区, 程序内重新获取时区信息
             _, result=self.read_config(["host", "arch"])
             host_info_dict, arch_dict=result
             result_code=self.show_hosts_info(host_info_dict)
