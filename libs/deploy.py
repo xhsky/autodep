@@ -872,7 +872,7 @@ class Deploy(object):
                                 write_f.write("\n\n")
             else:
                 tarfile_=f"{report_dir}/report-{time.strftime('%Y%m%d%H%M', time.localtime())}.tar.gz"
-                with tarfile.open(tarfile_, "w") as tar:
+                with tarfile.open(tarfile_, "w:gz") as tar:
                     for file_ in report_file_list:
                         tar.add(f"{report_dir}/{file_}")
         except Exception as e:
