@@ -2625,6 +2625,7 @@ class graphics_deploy(Deploy):
                     title=title, 
                     width=48, 
                     cancel_label="返回", 
+                    ok_label="选择", 
                     help_button=True, 
                     help_label="查看选择"
                     )
