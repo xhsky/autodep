@@ -74,9 +74,9 @@ program_unzip_dir="./program_pkg"
 interface={
         "mail": ["smtp.dreamdt.cn", 25, None],                              # 邮件接口
         "sms": ["smartone.10690007.com", 80, "/proxysms/mt"],               # 短信接口
-        "platform_log": ["192.168.0.81", 8115, "/project/deploy/sendLog"],  # 公司平台日志接口
-        "platform_info": ["192.168.0.81", 8115, "/project/deploy/sendDetection"],  # 公司平台信息接口
-        "platform_check": ["192.168.0.81", 8115, "/project/deploy/uploadXjText"],  # 公司平台巡检文件接口
+        "platform_log": ["125.69.82.54", 14206, "/project/deploy/sendLog"],  # 公司平台日志接口
+        "platform_info": ["125.69.82.54", 14206, "/project/deploy/sendDetection"],  # 公司平台信息接口
+        "platform_check": ["125.69.82.54", 14206, "/project/deploy/uploadXjText"],  # 公司平台巡检文件接口
         }
 
 local_pkg_name_dict={
