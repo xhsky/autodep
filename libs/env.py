@@ -234,5 +234,13 @@ nginx_module_dict={
 	    location @rewrite_dsfa {
                 rewrite ^(.*)$ /dsfa$1 last;
 	    }
+        """, 
+        "智慧党校(含网络培训)-科研": """
+            location / {
+                %s
+                if (!-e $request_filename) {
+                    proxy_pass http://%s;
+                  }
+            }
         """
         }
