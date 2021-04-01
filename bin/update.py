@@ -41,12 +41,12 @@ def main():
                     break
                 code_dir_abs=f"{dest}/{code_dir_name}"
                 if os.path.exists(code_dir_abs):
-                    time_format=time.strftime("%Y%m%d-%H:%M:%S", time.localtime())
+                    time_format=time.strftime("%Y%m%d%H%M%S", time.localtime())
                     save_dir=f"{code_saved_remote_dir}/{code_dir_name}_{time_format}"
                     save_file=f"{save_dir}.tar.gz"
                     log.logger.info(f"备份'{code_dir_abs}'至'{save_file}'...")
-                    with tarfile.open(save_file, "w:gz", endoing="utf8") as s_tar:
-                        s_tar.add(save_dir)
+                    with tarfile.open(save_file, "w:gz", encoding="utf8") as s_tar:
+                        s_tar.add(code_dir_abs)
                     #shutil.move(code_dir_abs, save_dir)
                 log.logger.debug(f"解压'{tar_file}'至'{dest}'")
                 tar.extractall(dest)

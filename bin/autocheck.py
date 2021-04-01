@@ -95,18 +95,22 @@ def main():
 
 
         config["notify"]={}
-        if autocheck_info_dict["warning_info"].get("mail_info"):
-            config["notify"]["mail"]="1"
-            config["notify"]["mail_sender"]=autocheck_info_dict["warning_info"]["mail_info"]["mail_sender"]
-            config["notify"]["mail_receive"]=",".join(autocheck_info_dict["warning_info"]["mail_info"]["mail_receive"])
-            config["notify"]["mail_subject"]=autocheck_info_dict["warning_info"]["mail_info"]["mail_subject"]
+        if autocheck_info_dict.get("warning_info") is not None
+            if autocheck_info_dict["warning_info"].get("mail_info"):
+                config["notify"]["mail"]="1"
+                config["notify"]["mail_sender"]=autocheck_info_dict["warning_info"]["mail_info"]["mail_sender"]
+                config["notify"]["mail_receive"]=",".join(autocheck_info_dict["warning_info"]["mail_info"]["mail_receive"])
+                config["notify"]["mail_subject"]=autocheck_info_dict["warning_info"]["mail_info"]["mail_subject"]
+            else:
+                config["notify"]["mail"]="0"
+            if autocheck_info_dict["warning_info"].get("sms_info"):
+                config["notify"]["sms"]="1"
+                config["notify"]["sms_receive"]=",".join(autocheck_info_dict["warning_info"]["sms_info"]["sms_receive"])
+                config["notify"]["sms_subject"]=autocheck_info_dict["warning_info"]["sms_info"]["sms_subject"]
+            else:
+                config["notify"]["sms"]="0"
         else:
             config["notify"]["mail"]="0"
-        if autocheck_info_dict["warning_info"].get("sms_info"):
-            config["notify"]["sms"]="1"
-            config["notify"]["sms_receive"]=",".join(autocheck_info_dict["warning_info"]["sms_info"]["sms_receive"])
-            config["notify"]["sms_subject"]=autocheck_info_dict["warning_info"]["sms_info"]["sms_subject"]
-        else:
             config["notify"]["sms"]="0"
 
         config["send"]={}
