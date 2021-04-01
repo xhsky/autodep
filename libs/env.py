@@ -53,7 +53,7 @@ g_term_rows=20
 g_term_cols=80
 
 # 测试模式, 正式环境关闭
-test_mode=True
+test_mode=False
 # 检测时是否开启资源校验
 resource_verify_mode=False
 
