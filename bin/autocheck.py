@@ -95,7 +95,7 @@ def main():
 
 
         config["notify"]={}
-        if autocheck_info_dict.get("warning_info") is not None
+        if autocheck_info_dict.get("warning_info"):
             if autocheck_info_dict["warning_info"].get("mail_info"):
                 config["notify"]["mail"]="1"
                 config["notify"]["mail_sender"]=autocheck_info_dict["warning_info"]["mail_info"]["mail_sender"]
