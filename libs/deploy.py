@@ -1551,7 +1551,7 @@ class graphics_deploy(Deploy):
 
     '''
 
-    def edit_host_account_info(self, title, init_dict):
+    def edit_host_account_info(self, title, init_list):
         """
         编辑主机账号信息
         """
@@ -1559,22 +1559,22 @@ class graphics_deploy(Deploy):
         ip_field_length=15
         password_field_length=15
         port_field_length=5
-        if init_dict == {}:
+        if init_list == []:
             elements=[
                     ("IP:", 1, 1, "192.168.0.1", 1, first_node_xi_length, ip_field_length, 0), 
                     ("root用户密码:", 2, 1, "", 2, first_node_xi_length, password_field_length, 0), 
                     ("ssh端口:", 3, 1, "22", 3, first_node_xi_length, port_field_length, 0), 
                     ]
-            code, fields=self.d.form(f"请根据示例填写集群中主机信息\n\n第1台主机:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="添加完毕", cancel_label="取消")
+            code, fields=self.d.form(f"请根据示例填写集群中主机信息\n\n第1台主机:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消")
         else:
             elements=[]
             n=0
-            for ip in init_dict:
+            for account_info in init_list:
                 n=n+1
-                elements.append(("IP:", n, 1, ip, n, 5, ip_field_length, 0))
-                elements.append(("root用户密码:", n, 22, init_dict[ip]["root_password"], n, 36, password_field_length, 0))
-                elements.append(("ssh端口: ", n, 52, str(init_dict[ip]["port"]), n, 61, port_field_length, 0))
-            code, fields=self.d.form(f"填写主机信息:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="添加完毕", cancel_label="取消")
+                elements.append(("IP:", n, 1, account_info[0], n, 5, ip_field_length, 0))
+                elements.append(("root用户密码:", n, 22, account_info[1], n, 36, password_field_length, 0))
+                elements.append(("ssh端口: ", n, 52, str(account_info[2]), n, 61, port_field_length, 0))
+            code, fields=self.d.form(f"填写主机信息:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消")
         self.log.logger.debug(f"主机信息: {code=}, {fields=}")
         return code, fields
 
@@ -1595,33 +1595,48 @@ class graphics_deploy(Deploy):
             elements.append(("IP:", n, 1, ip, n, 5, ip_field_length, 0, READ_ONLY))
             elements.append(("root用户密码:", n, 22, init_dict[ip]["root_password"], n, 36, password_field_length, 0, READ_ONLY))
             elements.append(("ssh端口: ", n, 52, str(init_dict[ip]["port"]), n, 61, port_field_length, 0, READ_ONLY))
-        code, fields=self.d.mixedform(f"主机信息:", elements=elements, title=title, ok_label="初始化", cancel_label="修改")
+        code, fields=self.d.mixedform(f"确认主机信息:", elements=elements, title=title, ok_label="确认", cancel_label="修改")
         return code
 
     def config_init(self, title, init_dict):
         '''
             配置init.json
         '''
+
+        # 将init_dict转为有序的list显示
+        init_list=[]
+        for ip in init_dict:
+            init_list.append((ip, init_dict[ip]["root_password"], init_dict[ip]["port"]))
+
         while True:                     # 添加node信息
-            code, fields=self.edit_host_account_info(title, init_dict)
+            code, fields=self.edit_host_account_info(title, init_list)
             self.log.logger.debug(f"init field: {fields}")
 
-            # 将list转为init的dict
-            init_dict={}
+            # 将list转为init的list: [(ip, pwd, port), ]
+            init_list=[]
             for index, item in enumerate(fields):
                 if index % 3 == 0:
-                    init_dict[fields[index]]={
-                            "root_password": fields[index+1], 
-                            "port": fields[index+2]
-                            }
+                    account_info=(fields[index], fields[index+1], fields[index+2])
+                    init_list.append(account_info)
+
             if code=="extra":
-                init_dict[""]={            # 添加一个空的主机信息
-                        "root_password":"", 
-                        "port":"22"
-                        }         
+                new_ip=f'{".".join(account_info[0].split(".")[:-1])}.'
+                new_pwd=account_info[1]
+                new_port=account_info[2]
+                new_account_info=(new_ip, new_pwd, new_port)          # 添加一个空的主机信息
+                init_list.append(new_account_info)
+
             else:
-                if "" in init_dict:
-                    init_dict.pop("")
+                init_dict={}
+                for account_info in init_list:
+                    ip=account_info[0]
+                    pwd=account_info[1]
+                    port=account_info[2]
+                    if ip != "":             # ip信息为空, 则删除
+                        init_dict[ip]={
+                                "root_password": pwd, 
+                                "port": port
+                                }
                 return code, init_dict
 
     def get_file_path(self, init_path, title):
@@ -1850,7 +1865,7 @@ class graphics_deploy(Deploy):
                 elements.append((ip, n, 1, error_msg, n, xi_1, field_length, 0, READ_ONLY))
         elements.append(("", n+1, 1, "", n+1, xi_1, field_length, 0, HIDDEN))
         self.log.logger.debug(f"host info summary: {elements=}")
-        code, _=self.d.mixedform(f"请确认集群主机信息:", elements=elements, cancel_label="返回")
+        code, _=self.d.mixedform(f"请确认集群主机信息:", elements=elements, ok_label="开始部署", cancel_label="终止部署")
         return code
 
     def _show_non_resource(self, non_resouce_dict):
@@ -1883,26 +1898,33 @@ class graphics_deploy(Deploy):
         # 填写init.json并校验
         while True:
             code, init_dict=self.config_init(title, init_dict)
-            if code==self.d.OK:
+            if code==self.d.OK:             # 初始化按钮
                 result, dict_=self.account_verifi(init_dict)                # 校验init.dict
                 if not result:
                     continue
                 else:
-                    code=self.show_host_account_info(title, init_dict)      # 显示init_dict
-                    if code==self.d.OK:
+                    code=self.show_host_account_info(title, init_dict)      # 显示init_dict(确认主机信息)
+                    if code==self.d.OK:                                     # 确认
                         for _ in init_dict:                                 # 更改port类型为int
                             init_dict[_]["port"]=int(init_dict[_]["port"])
                         result, msg=self.write_config(init_dict, init_file)
                         if result:
-                            break
+                            code=self.d.yesno("是否需要配置巡检信息", title="消息")
+                            if code==self.d.OK:
+                                if self.config_check(title):
+                                    break
+                                else:
+                                    continue
+                            else:
+                                break
                         else:
                             self.log.logger.error(msg)
                             self.d.msgbox(msg)
-                            return
-                    else:
+                            return False
+                    else:       # 修改按钮
                         continue
-            else:
-                return 
+            else: # 取消按钮
+                return False
 
         # 开始初始化
         read_fd, write_fd = os.pipe()
@@ -1957,18 +1979,32 @@ class graphics_deploy(Deploy):
             self.d.msgbox("发生莫名错误, 请返回菜单重试", width=40, height=5)
             self.show_menu()
 
+        flag=True
         if exit_code==0:
             time.tzset()    # 主机信息获取过程中会重置时区, 程序内重新获取时区信息
-            _, result=self.read_config(["host", "arch"])
-            host_info_dict, arch_dict=result
+            _, result=self.read_config(["host", "arch", "check", "project"])
+            host_info_dict, arch_dict, check_dict, project_dict=result
             result_code=self.show_hosts_info(host_info_dict)
-            if result_code==self.d.OK:
-                result, dict_=self.resource_verifi(arch_dict, host_info_dict)
+            if result_code==self.d.OK:      # 开始部署
+                result, msg=self._set_check_info(arch_dict, project_dict, check_dict)
                 if result:
-                    self.log.logger.debug(f"写入arch配置")
-                    self.write_config(dict_, arch_file)
+                    result, dict_=self.resource_verifi(arch_dict, host_info_dict)
+                    if result:
+                        self.log.logger.debug(f"写入arch配置")
+                        self.write_config(dict_, arch_file)
+                    else:
+                        self._show_non_resource(dict_)
+                        flag=False
                 else:
-                    self._show_non_resource(dict_)
+                    self.log.logger.error(msg)
+                    self.d.msgbox(msg, title="警告")
+                    flag=False
+            else:                           # 终止部署
+                flag=False
+        else:
+            flag=False
+
+        return flag
 
     def update(self, title):
         """
@@ -2050,7 +2086,7 @@ class graphics_deploy(Deploy):
             elements.extend(info)
         elements.append(("", n+1, 1, "", n+1, xi, field_length, 0, HIDDEN))
         self.log.logger.debug(f"arch summary: {elements=}")
-        code, fields=self.d.mixedform(f"部署架构摘要:", elements=elements, title=title, ok_label="部署", cancel_label="返回")
+        code, fields=self.d.mixedform(f"部署架构摘要:", elements=elements, title=title, ok_label="确认", cancel_label="终止部署")
         return code
 
     def install(self):
@@ -2157,6 +2193,9 @@ class graphics_deploy(Deploy):
         图形: install, run, program_update, program_start
         """
 
+        if not self.init(title):
+            return
+
         result, config_list=self.read_config(["arch"])
         if not result:
             self.d.msgbox(config_list)
@@ -2225,18 +2264,16 @@ class graphics_deploy(Deploy):
         """
         while True:
             menu={
-                    "1": "集群配置", 
-                    "2": "集群部署", 
-                    "3": "集群管理", 
-                    "4": "项目更新"
+                    "1": "部署", 
+                    "2": "管理", 
+                    "3": "更新"
                     }
 
             code,tag=self.d.menu(f"若是首次进行部署, 请从\'{menu['1']}\'依次开始:", 
                     choices=[
                         ("1", menu["1"]), 
                         ("2", menu["2"]),
-                        ("3", menu["3"]), 
-                        ("4", menu["4"])
+                        ("3", menu["3"])
                         ], 
                     title="主菜单", 
                     width=48
@@ -2244,13 +2281,13 @@ class graphics_deploy(Deploy):
             if code==self.d.OK:
                 self.log.logger.debug(f"{code=}, {tag=}")
                 self.log.logger.info(f"选择{menu[tag]}")
+                #if tag=="1":
+                #    self.configuration(menu[tag])
                 if tag=="1":
-                    self.configuration(menu[tag])
-                if tag=="2":
                     self.deploy(menu[tag])
-                if tag=="3":
+                if tag=="2":
                     self.management(menu[tag])
-                if tag=="4":
+                if tag=="3":
                     self.update(menu[tag])
                 self.d.infobox(f"{menu[tag]}结束, 将返回主菜单...", title="提示", width=40, height=4)
                 time.sleep(1)
@@ -2300,10 +2337,10 @@ class graphics_deploy(Deploy):
                 ("邮箱地址:", n+3, 1, check_info_list[3], n+3, xi, receive_length, 0, READ_ONLY), 
                 ("手机号:", n+4, 1, check_info_list[4], n+4, xi, receive_length, 0, READ_ONLY), 
                 ]
-        code, _=self.d.mixedform(f"巡检信息:", elements=elements, title=title, width=80, ok_label="确认", cancel_label="取消")
+        code, _=self.d.mixedform(f"巡检信息:", elements=elements, title=title, width=80, ok_label="确认", cancel_label="修改")
         return code
 
-    def _get_check_info(self, arch_dict, project_dict):
+    def _get_check_info_bak(self, arch_dict, project_dict):
         """
         获取check_dict
         return: 
@@ -2347,7 +2384,7 @@ class graphics_deploy(Deploy):
 
         return check_dict
 
-    def _set_check_info(self, arch_dict, project_dict, check_info_list):
+    def _get_check_info(self):
         """
         获取check_dict
         return: 
@@ -2359,11 +2396,40 @@ class graphics_deploy(Deploy):
                 "sms_list": []
             }
         """
-        project_name=check_info_list[0]
-        timing=check_info_list[1]
-        sender=check_info_list[2]
-        mail_list= [] if check_info_list[3]=="" else check_info_list[3].split(",")
-        sms_list= [] if check_info_list[4]=="" else check_info_list[4].split(",")
+        check_dict_default={
+                "project_name": "", 
+                "timing": "18:30", 
+                "sender": "", 
+                "mail_list": [], 
+                "sms_list": []
+                }
+        if os.path.exists(check_file):
+            result, config_list=self.read_config(["check"])
+            if result:
+                check_dict=config_list[0]
+            else:
+                check_dict=check_dict_default
+        else:
+            check_dict=check_dict_default
+        return check_dict
+
+    def _set_check_info(self, arch_dict, project_dict, check_dict):
+        """
+        获取check_dict
+        return: 
+            check_dict={
+                "project_name": "", 
+                "timing": "18:30", 
+                "sender": "", 
+                "mail_list": [], 
+                "sms_list": []
+            }
+        """
+        project_name=check_dict["project_name"]
+        timing=check_dict["timing"]
+        sender=check_dict["sender"]
+        mail_list=check_dict["mail_list"]
+        sms_list=check_dict["sms_list"] 
 
         project_dict["project_name"]=project_name
         self.log.logger.debug(f"写入{project_file}")
@@ -2401,7 +2467,7 @@ class graphics_deploy(Deploy):
 
         return True, ""
 
-    def config_check(self, title):
+    def config_check_bak(self, title):
         """
         配置巡检接收人
         """
@@ -2450,8 +2516,71 @@ class graphics_deploy(Deploy):
                 else:
                     return
 
-    def configuration(self, title):
+    def config_check(self, title):
         """
+        配置巡检接收人
+        """
+        #result, config_list=self.read_config(["host", "arch", "project"])
+        #if not result:
+        #    self.d.msgbox(f"{config_list}")
+        #    return
+        #host_info_dict, arch_dict, project_dict=config_list
+
+        #mail_list=[]
+        #sms_list=[]
+        #for node in host_info_dict:
+        #    mail_list.append(host_info_dict[node]["Interface"]["mail"])
+        #    sms_list.append(host_info_dict[node]["Interface"]["sms"])
+        #self.log.logger.debug(f"{mail_list=}, {sms_list=}")
+
+        #mail_flag=False
+        #if True in mail_list:
+        #    mail_flag=True
+
+        #sms_flag=False
+        #if True in sms_list:
+        #    sms_flag=True
+
+        #if mail_flag==False and sms_flag==False:
+        #    self.d.msgbox("服务器无法连接外部接口, 不能配置自动巡检及预警", title="警告")
+        #    return
+        #else:
+
+        check_dict=self._get_check_info()
+        self.log.logger.debug(f"{check_dict=}")
+        while True:
+            code, check_info_list=self.edit_check_config(title, check_dict)
+            self.log.logger.debug(f"{check_info_list=}")
+            if code==self.d.OK:         # 确认
+                code=self.show_check_config(title, check_info_list)
+                if code==self.d.OK:     # 确认
+                    check_dict={
+                            "project_name": check_info_list[0], 
+                            "timing": check_info_list[1], 
+                            "sender": check_info_list[2], 
+                            "mail_list": [] if check_info_list[3] == "" else check_info_list[3].split(","), 
+                            "sms_list": [] if check_info_list[4] == "" else check_info_list[4].split(",")
+                            }
+                    result, msg=self.write_config(check_dict, check_file)
+                    if result:
+                        return True
+                    else:
+                        self.d.msgbox(msg, title="警告")
+                        continue
+                    #result, msg=self._set_check_info(arch_dict, project_dict, check_info_list)
+                    #if result:
+                    #    break
+                    #else:
+                    #    self.log.logger.error(msg)
+                    #    self.d.msgbox(msg, title="警告")
+                    #    continue
+                else:                   # 修改
+                    continue
+            else:
+                return False
+
+    def configuration(self, title):
+        """已丢弃
         集群配置: 
         """
         while True:
@@ -2485,10 +2614,10 @@ class graphics_deploy(Deploy):
         """
         while True:
             menu={
-                    "1": "集群监控", 
-                    "2": "软件启动", 
-                    "3": "软件停止", 
-                    "4": "集群巡检"
+                    "1": "状态", 
+                    "2": "启动", 
+                    "3": "停止", 
+                    "4": "巡检"
                     }
 
             code,tag=self.d.menu("", choices=[
@@ -2618,6 +2747,11 @@ class graphics_deploy(Deploy):
         node_list=[]
         for node in arch_dict:
             node_list.append((node, ""))
+        
+        if action=="start":
+            help_msg="启动"
+        elif action=="stop":
+            help_msg="停止"
 
         while True:
             code,node=self.d.menu(f"选择节点", 
@@ -2627,7 +2761,7 @@ class graphics_deploy(Deploy):
                     cancel_label="返回", 
                     ok_label="选择", 
                     help_button=True, 
-                    help_label="查看选择"
+                    help_label=help_msg
                     )
             if code==self.d.OK:
                 self.log.logger.debug(f"{code=}, {node=}")
