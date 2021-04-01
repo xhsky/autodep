@@ -35,7 +35,7 @@ located_dir_link="/dream"
 report_dir="./report" # 巡检汇总目录
 report_file_list=["check.info", "slow_analysis.log"]
 
-program_soft=["tomcat", "program"]
+program_soft=["tomcat", "program", "autocheck"]
 
 # 更新
 code_saved_remote_dir="/tmp"
