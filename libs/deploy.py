@@ -2006,10 +2006,45 @@ class graphics_deploy(Deploy):
 
         return flag
 
+    def update_management(self, title):
+        """
+        更新管理: 
+            更新
+            回滚
+        """
+        while True:
+            menu={
+                    "1": "更新", 
+                    "2": "回滚", 
+                    }
+
+            code,tag=self.d.menu(f"", 
+                    choices=[
+                        ("1", menu["1"]), 
+                        ("2", menu["2"]),
+                        ], 
+                    title=title, 
+                    width=48, 
+                    height=6
+                    )
+            if code==self.d.OK:
+                self.log.logger.debug(f"{code=}, {tag=}")
+                self.log.logger.info(f"选择{menu[tag]}")
+                if tag=="1":
+                    self.update(menu[tag])
+                if tag=="2":
+                    self.rollback(menu[tag])
+            else:
+                break
+
     def update(self, title):
         """
         图形: 更新
         """
+        code=self.d.yesno("此过程将会重启项目服务, \n是否确认继续?", title="提醒") 
+        if code != self.d.OK:
+            return
+
         read_fd, write_fd = os.pipe()
         child_pid = os.fork()
 
@@ -2052,6 +2087,12 @@ class graphics_deploy(Deploy):
         else:
             self.d.msgbox("发生莫名错误, 请返回菜单重试", width=40, height=5)
             self.show_menu()
+
+    def rollback(self, title):
+        """
+        项目回滚
+        """
+        pass
 
     def show_arch_summary(self, title, arch_dict):
         HIDDEN = 0x1
@@ -2288,7 +2329,7 @@ class graphics_deploy(Deploy):
                 if tag=="2":
                     self.management(menu[tag])
                 if tag=="3":
-                    self.update(menu[tag])
+                    self.update_management(menu[tag])
                 self.d.infobox(f"{menu[tag]}结束, 将返回主菜单...", title="提示", width=40, height=4)
                 time.sleep(1)
             else:
