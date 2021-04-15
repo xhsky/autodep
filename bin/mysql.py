@@ -10,56 +10,45 @@ def init(db_info_dict, mysql_dir, init_password, cluster_info_dict, role, log):
     root_password=db_info_dict.get("root_password")
     change_pass_command=f"{mysql_dir}/bin/mysqladmin  -uroot -p'{init_password}' password {root_password}"
     log.logger.debug(f"更改root密码: {change_pass_command=}")
-    status, result=common.exec_command(change_pass_command)
-    if status:
-        if result.returncode != 0:
-            log.logger.error(result.stderr)
-            return 1
-        else:
-            if db_info_dict.get("business_db") is not None:
-                log.logger.debug("创建账号及数据库")
-                init_sql_list=[]
-                for db_name, user_name, user_password in zip(db_info_dict.get("business_db"), db_info_dict.get("business_user"), db_info_dict.get("business_password")):
-                    db_sql=f"create database if not exists {db_name};"
-                    use_sql=f"use {db_name};"
-                    user_sql=f"create user if not exists '{user_name}'@'%' identified by '{user_password}';"
-                    grant_sql=f"grant all on {db_name}.* to '{user_name}'@'%';"
-                    init_sql_list.append(db_sql)
-                    init_sql_list.append(use_sql)
-                    init_sql_list.append(user_sql)
-                    init_sql_list.append(grant_sql)
-                init_sql=" ".join(init_sql_list)
-                init_commands=f'export MYSQL_PWD="{root_password}" ; echo "{init_sql}" | {mysql_dir}/bin/mysql -uroot'
-                log.logger.debug(f"{init_commands=}")
-                status, result=common.exec_command(init_commands)
-                if status:
-                    if result.returncode != 0:
-                        log.logger.error(result.stderr)
-                        return 1
+    result, msg=common.exec_command(change_pass_command)
+    if result:
+        if db_info_dict.get("business_db") is not None:
+            log.logger.debug("创建账号及数据库")
+            init_sql_list=[]
+            for db_name, user_name, user_password in zip(db_info_dict.get("business_db"), db_info_dict.get("business_user"), db_info_dict.get("business_password")):
+                db_sql=f"create database if not exists {db_name};"
+                use_sql=f"use {db_name};"
+                user_sql=f"create user if not exists '{user_name}'@'%' identified by '{user_password}';"
+                grant_sql=f"grant all on {db_name}.* to '{user_name}'@'%';"
+                init_sql_list.append(db_sql)
+                init_sql_list.append(use_sql)
+                init_sql_list.append(user_sql)
+                init_sql_list.append(grant_sql)
+            init_sql=" ".join(init_sql_list)
+            init_commands=f'export MYSQL_PWD="{root_password}" ; echo "{init_sql}" | {mysql_dir}/bin/mysql -uroot'
+            log.logger.debug(f"{init_commands=}")
+            result, msg=common.exec_command(init_commands)
+            if result:
+                if role != "stand-alone":
+                    log.logger.debug("开始主从配置")
+                    if role == "master":
+                        sync_sql=f"create user 'repl'@'%' identified with mysql_native_password by 'DreamSoft_123456'; grant replication slave on *.* to 'repl'@'%';"
+                    elif role == "slave":
+                        sync_host, sync_port=cluster_info_dict.get("sync_host").split(":")
+                        sync_sql=f"change master to master_host='{sync_host}', master_port={sync_port}, master_user='repl', master_password='DreamSoft_123456', master_auto_position=1; start slave;"
+                    cluster_commands=f'export MYSQL_PWD="{root_password}" ; echo "{sync_sql}" | {mysql_dir}/bin/mysql -uroot'
+                    log.logger.debug(f"{cluster_commands=}")
+                    status, result=common.exec_command(cluster_commands)
+                    if status:
+                        return 0
                     else:
-                        if role != "stand-alone":
-                            log.logger.debug("开始主从配置")
-                            if role == "master":
-                                sync_sql=f"create user 'repl'@'%' identified with mysql_native_password by 'DreamSoft_123456'; grant replication slave on *.* to 'repl'@'%';"
-                            elif role == "slave":
-                                sync_host, sync_port=cluster_info_dict.get("sync_host").split(":")
-                                sync_sql=f"change master to master_host='{sync_host}', master_port={sync_port}, master_user='repl', master_password='DreamSoft_123456', master_auto_position=1; start slave;"
-                            cluster_commands=f'export MYSQL_PWD="{root_password}" ; echo "{sync_sql}" | {mysql_dir}/bin/mysql -uroot'
-                            log.logger.debug(f"{cluster_commands=}")
-                            status, result=common.exec_command(cluster_commands)
-                            if status:
-                                if result.returncode != 0:
-                                    return 1
-                                else:
-                                    return 0
-                            else:
-                                log.logger.error(result)
-                                return 1
-                else:
-                    log.logger.error(result)
-                    return 1
+                        log.logger.error(result)
+                        return 1
+            else:
+                log.logger.error(msg)
+                return 1
     else:
-        log.logger.error(result)
+        log.logger.error(msg)
         return 1
 
 def main():
@@ -93,12 +82,9 @@ def main():
         pkg_file=conf_dict["pkg_file"]
         command=f"id -u {mysql_user} &> /dev/null || useradd -r -s /bin/false {mysql_user}"
         log.logger.debug(f"创建用户: {command=}")
-        status, result=common.exec_command(command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-        else:
-            log.logger.error(result)
+        result, msg=common.exec_command(command)
+        if not result:
+            log.logger.error(msg)
 
         value, msg=common.install(pkg_file, mysql_src, mysql_dst, mysql_pkg_dir, located)
         if not value:
@@ -109,14 +95,9 @@ def main():
         # 配置
         mk_dirs_commands=f"mkdir -p {mysql_dir}/{{{my_data},{my_logs}}} && mkdir -p {mysql_dir}/{my_logs}/{{binlog,redolog,undolog,relay}} && chown -R {mysql_user}:{mysql_user} {located}/{mysql_src}* && ln -snf {located}/{mysql_src}* /usr/local/mysql && \cp -f {mysql_dir}/support-files/mysql.server /etc/init.d/mysqld && systemctl daemon-reload"
         log.logger.debug(f"建立目录, 授权: {mk_dirs_commands=}")
-        status, result=common.exec_command(mk_dirs_commands)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-                flag=1
-                sys.exit(flag)
-        else:
-            log.logger.error(result)
+        result, msg=common.exec_command(mk_dirs_commands)
+        if not result:
+            log.logger.error(msg)
             flag=1
             sys.exit(flag)
 
@@ -264,44 +245,36 @@ def main():
         #init_command=f"{mysql_dir}/bin/mysqld --initialize --user={mysql_user} --datadir={mysql_dir}/{my_data}"
         init_command=f"{mysql_dir}/bin/mysqld --initialize --user={mysql_user}"
         log.logger.debug(f"初始化中: {init_command=}")
-        status, result=common.exec_command(init_command, timeout=600)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
+        result, msg=common.exec_command(init_command, timeout=600)
+        if result:
+            try:
+                log.logger.debug("获取随机密码")
+                with open(f"{mysql_dir}/{my_logs}/mysqld.log", "r") as f:
+                    for i in f.readlines():
+                        if "temporary password" in i:
+                            pass_line=i.split(" ")
+                            init_password=pass_line[-1].strip()
+                            log.logger.debug(f"{init_password=}")
+                            break
+            except Exception as e:
+                log.logger.error(str(e))
                 flag=1
-            else:
-                try:
-                    log.logger.debug("获取随机密码")
-                    with open(f"{mysql_dir}/{my_logs}/mysqld.log", "r") as f:
-                        for i in f.readlines():
-                            if "temporary password" in i:
-                                pass_line=i.split(" ")
-                                init_password=pass_line[-1].strip()
-                                log.logger.debug(f"{init_password=}")
-                                break
-                except Exception as e:
-                    log.logger.error(str(e))
-                    flag=1
-                    sys.exit(flag)
+                sys.exit(flag)
 
-                start_command=f"systemctl start mysqld"
-                log.logger.debug(f"{start_command=}")
-                status, result=common.exec_command(start_command, timeout=600)
-                if status:
-                    if result.returncode != 0:
-                        log.logger.error(result.stderr)
-                        flag=1
-                    else:
-                        log.logger.debug(f"检测端口: {port_list=}")
-                        if common.port_exist(port_list):
-                            flag=init(db_info_dict, mysql_dir, init_password, cluster_info_dict, role, log)
-                        else:
-                            flag=2
+            start_command=f"systemctl start mysqld"
+            log.logger.debug(f"{start_command=}")
+            result, msg=common.exec_command(start_command, timeout=600)
+            if result:
+                log.logger.debug(f"检测端口: {port_list=}")
+                if common.port_exist(port_list):
+                    flag=init(db_info_dict, mysql_dir, init_password, cluster_info_dict, role, log)
                 else:
-                    log.logger.error(result)
-                    flag=1
+                    flag=2
+            else:
+                log.logger.error(msg)
+                flag=1
         else:
-            log.logger.error(result)
+            log.logger.error(msg)
             flag=1
 
         sys.exit(flag)
@@ -309,36 +282,29 @@ def main():
     elif action=="start":
         start_command=f"systemctl start mysqld"
         log.logger.debug(f"{start_command=}")
-        status, result=common.exec_command(start_command, timeout=600)
+        result, msg=common.exec_command(start_command, timeout=600)
         if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-                flag=1
-            else:
-                log.logger.debug(f"检测端口: {port_list=}")
-                if not common.port_exist(port_list):
-                    flag=2
+            log.logger.debug(f"检测端口: {port_list=}")
+            if not common.port_exist(port_list):
+                flag=2
         else:
-            log.logger.error(result)
+            log.logger.error(msg)
             flag=1
         sys.exit(flag)
 
     elif action=="stop":
         stop_command=f"systemctl stop mysqld"
         log.logger.debug(f"{stop_command=}")
-        status, result=common.exec_command(stop_command, timeout=600)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-                flag=1
-            else:
-                log.logger.debug(f"检测端口: {port_list=}")
-                if not common.port_exist(port_list, exist_or_not=False):
-                    flag=2
+        result, msg=common.exec_command(stop_command, timeout=600)
+        if result:
+            log.logger.debug(f"检测端口: {port_list=}")
+            if not common.port_exist(port_list, exist_or_not=False):
+                flag=2
         else:
-            log.logger.error(result)
+            log.logger.error(msg)
             flag=1
         sys.exit(flag)
+
 
 if __name__ == "__main__":
     """

@@ -76,14 +76,9 @@ def main():
         try:
             if time.tzname[time.daylight] != "CST":             # 校验时区
                 set_time_zone="timedatectl set-timezone Asia/Shanghai"
-                status, result=exec_command(set_time_zone)
-                if status:
-                    if result.returncode != 0:
-                        check_time=False
-                        msg=result.stderr
-                else:
+                result, msg=exec_command(set_time_zone)
+                if not result:
                     check_time=False
-                    msg=result
             time.tzset()    # 程序内重新获取时区信息
             # 校准时间
             response = c.request('ntp1.aliyun.com', timeout=2)
@@ -91,15 +86,10 @@ def main():
             date_=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))
             set_time=f"date -s '{date_}' && hwclock -w"
             log.logger.info(f"{set_time}")
-            status, result=exec_command(set_time)
+            result, msg=exec_command(set_time)
             if check_time:
-                if status:
-                    if result.returncode != 0:
-                        check_time=False
-                        msg=result.stderr
-                else:
+                if not result:
                     check_time=False
-                    msg=result
             host_info_dict["NTP"]={
                     "result": check_time, 
                     "msg": msg

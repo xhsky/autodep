@@ -120,82 +120,62 @@ def main():
     elif action=="run":
         command=f"cd {rabbitmq_dir} && ./sbin/rabbitmq-server -detached" 
         log.logger.debug(f"{command=}")
-        status, result=common.exec_command(command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-                flag=1
+        result, msg=common.exec_command(command)
+        if result:
+            log.logger.debug(f"检测端口: {port_list=}")
+            if not common.port_exist(port_list, seconds=180):
+                flag=2
             else:
-                log.logger.debug(f"检测端口: {port_list=}")
-                if not common.port_exist(port_list, seconds=180):
-                    flag=2
-                else:
-                    # 设置账号, vhost及权限
-                    vhosts_list=conf_dict["rabbitmq_info"].get("vhosts")
-                    users_list=conf_dict["rabbitmq_info"].get("users")
-                    passwords_list=conf_dict["rabbitmq_info"].get("passwords")
-                    if vhosts_list is not None and users_list is not None and passwords_list is not None:
-                        log.logger.debug("添加账号权限")
-                        for vhost, user, password in zip(vhosts_list, users_list, passwords_list):
-                            account_command=f"rabbitmqctl add_user {user} {password} && rabbitmqctl add_vhost {vhost} && rabbitmqctl set_permissions -p {vhost} {user} '.*' '.*' '.*'"
-                            log.logger.debug(f"{account_command=}")
-                            status, result=common.exec_command(account_command)
-                            if status:
-                                if result.returncode != 0:
-                                    log.logger.error(result.stderr)
-                                    flag=1
-                            else:
-                                log.logger.error(result)
-                                flag=1
+                # 设置账号, vhost及权限
+                vhosts_list=conf_dict["rabbitmq_info"].get("vhosts")
+                users_list=conf_dict["rabbitmq_info"].get("users")
+                passwords_list=conf_dict["rabbitmq_info"].get("passwords")
+                if vhosts_list is not None and users_list is not None and passwords_list is not None:
+                    log.logger.debug("添加账号权限")
+                    for vhost, user, password in zip(vhosts_list, users_list, passwords_list):
+                        account_command=f"rabbitmqctl add_user {user} {password} && rabbitmqctl add_vhost {vhost} && rabbitmqctl set_permissions -p {vhost} {user} '.*' '.*' '.*'"
+                        log.logger.debug(f"{account_command=}")
+                        result, msg=common.exec_command(account_command)
+                        if not result:
+                            log.logger.error(msg)
+                            flag=1
         else:
-            log.logger.error(result)
+            log.logger.error(msg)
             flag=1
         sys.exit(flag)
     elif action=="start":
         command=f"cd {rabbitmq_dir} && ./sbin/rabbitmq-server -detached" 
         log.logger.debug(f"{command=}")
-        status, result=common.exec_command(command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-                flag=1
-            else:
-                log.logger.debug(f"检测端口: {port_list=}")
-                if not common.port_exist(port_list, seconds=180):
-                    flag=2
+        result, msg=common.exec_command(command)
+        if result:
+            log.logger.debug(f"检测端口: {port_list=}")
+            if not common.port_exist(port_list, seconds=180):
+                flag=2
         else:
-            log.logger.error(result)
+            log.logger.error(msg)
             flag=1
         sys.exit(flag)
     elif action=="stop":
         command=f"cd {rabbitmq_dir} && ./sbin/rabbitmqctl stop" 
         log.logger.debug(f"{command=}")
-        status, result=common.exec_command(command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-                flag=1
+        result, msg=common.exec_command(command)
+        if result:
+            log.logger.debug(f"检测端口: {mq_port_list=}")
+            if not common.port_exist(mq_port_list, exist_or_not=False):
+                flag=2
             else:
-                log.logger.debug(f"检测端口: {mq_port_list=}")
-                if not common.port_exist(mq_port_list, exist_or_not=False):
-                    flag=2
+                command=f"cd {located}/{erl_dst} && ./bin/epmd -kill"
+                log.logger.debug(f"{command=}")
+                result, msg=common.exec_command(command)
+                if result:
+                    log.logger.debug(f"检测端口: {port_list=}")
+                    if not common.port_exist(port_list, exist_or_not=False):
+                        flag=2
                 else:
-                    command=f"cd {located}/{erl_dst} && ./bin/epmd -kill"
-                    log.logger.debug(f"{command=}")
-                    status, result=common.exec_command(command)
-                    if status:
-                        if result.returncode != 0:
-                            log.logger.error(result.stderr)
-                            flag=1
-                        else:
-                            log.logger.debug(f"检测端口: {port_list=}")
-                            if not common.port_exist(port_list, exist_or_not=False):
-                                flag=2
-                    else:
-                        log.logger.error(result)
-                        flag=3
+                    log.logger.error(msg)
+                    flag=3
         else:
-            log.logger.error(result)
+            log.logger.error(msg)
             flag=1
         sys.exit(flag)
 

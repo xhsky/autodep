@@ -29,12 +29,12 @@ def main():
         config = configparser.ConfigParser()
         config["autocheck"]={}
         hostname_command="hostname -s"
-        status, result=common.exec_command(hostname_command)
-        log.logger.debug(f"{result=}")
-        if status:
-            config["autocheck"]["hostname"]=result.stdout.strip()
+        result, msg=common.exec_command(hostname_command)
+        log.logger.debug(f"{msg=}")
+        if result:
+            config["autocheck"]["hostname"]=msg.strip()
         else:
-            log.logger.error(result.stderr)
+            log.logger.error(msg)
             sys.exit(1)
 
         config["autocheck"]["warning_percent"]="95"
@@ -142,39 +142,27 @@ def main():
     elif action=="run" or action=="start":
         command=f"cd {autocheck_dir} ; /opt/python3/bin/python3 ./main.py start"
         log.logger.debug(f"{command=}")
-        status, result=common.exec_command(command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-                flag=1
-            else:
-                if not os.path.exists(f"{autocheck_dir}/logs/autocheck.pid"):
-                    flag=2
+        result, msg=common.exec_command(command)
+        if result:
+            if not os.path.exists(f"{autocheck_dir}/logs/autocheck.pid"):
+                flag=2
         else:
-            log.logger.error(result)
+            log.logger.error(msg)
             flag=1
         sys.exit(flag)
     elif action=="stop":
         command=f"cd {autocheck_dir} ; /opt/python3/bin/python3 ./main.py stop"
         log.logger.debug(f"{command=}")
-        status, result=common.exec_command(command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-                flag=1
-        else:
-            log.logger.error(result)
+        result, msg=common.exec_command(command)
+        if not result:
+            log.logger.error(msg)
             flag=1
         sys.exit(flag)
     elif action=="sendmail":
         command=f"cd {autocheck_dir} ; /opt/python3/bin/python3 ./main.py sendmail"
         log.logger.debug(f"{command=}")
-        status, result=common.exec_command(command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-                flag=1
-        else:
+        result, msg=common.exec_command(command)
+        if not result:
             log.logger.error(result)
             flag=1
         sys.exit(flag)

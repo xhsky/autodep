@@ -220,13 +220,9 @@ def main():
         if result:
             command=f"sysctl -p {sysctl_conf_file} && echo never > /sys/kernel/mm/transparent_hugepage/enabled"
             log.logger.debug(f"刷新配置: {command=}")
-            status, result=common.exec_command(command)
-            if status:
-                if result.returncode != 0:
-                    log.logger.error(f"{result.stderr}")
-                    flag=1
-            else:
-                log.logger.error(result)
+            result=common.exec_command(command)
+            if not result:
+                log.logger.error(msg)
                 flag=1
         else:
             log.logger.error(msg)
@@ -237,67 +233,51 @@ def main():
         # exec使用get_pty, redis配置为后台运行, 但未启动完全时, 断开依然会停止, 故使用sleep 2让其完全启动
         redis_start_command=f"cd {redis_dir} && bin/redis-server conf/redis.conf"
         log.logger.debug(f"redis启动: {redis_start_command=}")
-        status, result=common.exec_command(redis_start_command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
+        result, msg=common.exec_command(redis_start_command)
+        if result:
+            log.logger.debug(f"检测端口: {redis_port} ")
+            if not common.port_exist([redis_port]):
                 flag=1
-            else:
-                log.logger.debug(f"检测端口: {redis_port} ")
-                if not common.port_exist([redis_port]):
-                    flag=1
         else:
-            log.logger.error(result)
+            log.logger.error(msg)
             flag=1
 
         if sentinel_flag:
             sentinel_port=sentinel_info.get("sentinel_port")
             sentinel_start_command=f"cd {redis_dir} && bin/redis-sentinel conf/sentinel.conf"
             log.logger.debug(f"sentinel启动: {sentinel_start_command=}")
-            status, result=common.exec_command(sentinel_start_command)
-            if status:
-                if result.returncode != 0:
-                    log.logger.error(result.stderr)
+            result, msg=common.exec_command(sentinel_start_command)
+            if result:
+                log.logger.debug(f"检测端口: {sentinel_port} ")
+                if not common.port_exist([sentinel_port]):
                     flag=1
-                else:
-                    log.logger.debug(f"检测端口: {sentinel_port} ")
-                    if not common.port_exist([sentinel_port]):
-                        flag=1
             else:
-                log.logger.error(result)
+                log.logger.error(msg)
                 flag=1
         sys.exit(flag)
     elif action=="stop":
         redis_stop_command=f"cd {redis_dir} && bin/redis-cli -a {password} shutdown"
         log.logger.debug(f"redis停止: {redis_stop_command=}")
-        status, result=common.exec_command(redis_stop_command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
+        result, msg=common.exec_command(redis_stop_command)
+        if result:
+            log.logger.debug(f"检测端口: {redis_port} ")
+            if not common.port_exist([redis_port], exist_or_not=False):
                 flag=1
-            else:
-                log.logger.debug(f"检测端口: {redis_port} ")
-                if not common.port_exist([redis_port], exist_or_not=False):
-                    flag=1
         else:
-            log.logger.error(result)
+            log.logger.error(msg)
             flag=1
 
         if sentinel_flag:
             sentinel_port=sentinel_info.get("sentinel_port")
             sentinel_start_command=f"cd {redis_dir} && bin/redis-cli -a {password} -p {sentinel_port}"
             log.logger.debug(f"sentinel停止: {sentinel_stop_command=}")
-            status, result=common.exec_command(sentinel_stop_command)
-            if status:
-                if result.returncode != 0:
-                    log.logger.error(result.stderr)
+            result, msg=common.exec_command(sentinel_stop_command)
+            if result:
+                log.logger.debug(f"检测端口: {sentinel_port} ")
+                if not common.port_exist([sentinel_port], exist_or_not=False):
                     flag=1
-                else:
-                    log.logger.debug(f"检测端口: {sentinel_port} ")
-                    if not common.port_exist([sentinel_port], exist_or_not=False):
-                        flag=1
             else:
-                log.logger.error(result)
+                log.logger.error(msg)
                 flag=1
         sys.exit(flag)
 

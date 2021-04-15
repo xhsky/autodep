@@ -25,13 +25,9 @@ def main():
         pkg_file=conf_dict["pkg_file"]
         command="id -u nginx &> /dev/null || useradd -r nginx"
         log.logger.debug(f"创建用户: {command=}")
-        status, result=common.exec_command(command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-        else:
-            log.logger.error(result)
-
+        result, msg=common.exec_command(command)
+        if not result:
+            log.logger.error(msg)
         value, msg=common.install(pkg_file, nginx_src, nginx_dst, nginx_pkg_dir, located)
         if not value:
             log.logger.error(msg)
@@ -162,13 +158,9 @@ def main():
         if result:
             command=f"cd {nginx_dir} && ./sbin/nginx -t"
             log.logger.debug(f"检测配置文件: {command=}")
-            status, result=common.exec_command(command)
-            if status:
-                if result.returncode != 0:
-                    log.logger.error(result.stderr)
-                    flag=1
-            else:
-                log.logger.error(result)
+            result, msg=common.exec_command(command)
+            if not result:
+                log.logger.error(msg)
                 flag=1  
         else:
             log.logger.error(msg)
@@ -179,33 +171,25 @@ def main():
     elif action=="run" or action=="start":
         start_command=f"cd {nginx_dir} ; ./sbin/nginx"
         log.logger.debug(f"{start_command=}")
-        status, result=common.exec_command(start_command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-                flag=1
-            else:
-                log.logger.debug(f"检测端口: {port_list=}")
-                if not common.port_exist(port_list):
-                    flag=2
+        result, msg=common.exec_command(start_command)
+        if result:
+            log.logger.debug(f"检测端口: {port_list=}")
+            if not common.port_exist(port_list):
+                flag=2
         else:
-            log.logger.error(result)
+            log.logger.error(msg)
             flag=1
         sys.exit(flag)
     elif action=="stop":
         start_command=f"cd {nginx_dir} ; ./sbin/nginx -s stop"
         log.logger.debug(f"{start_command=}")
-        status, result=common.exec_command(start_command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-                flag=1
-            else:
-                log.logger.debug(f"检测端口: {port_list=}")
-                if not common.port_exist(port_list, exist_or_not=False):
-                    flag=2
+        result, msg=common.exec_command(start_command)
+        if result:
+            log.logger.debug(f"检测端口: {port_list=}")
+            if not common.port_exist(port_list, exist_or_not=False):
+                flag=2
         else:
-            log.logger.error(result)
+            log.logger.error(msg)
             flag=1
         sys.exit(flag)
 

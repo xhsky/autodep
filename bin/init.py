@@ -13,13 +13,9 @@ def main():
     log.logger.info(f"关闭防火墙")
     firewalld_cmd=f"systemctl disable firewalld && systemctl stop firewalld"
     log.logger.debug(f"{firewalld_cmd=}")
-    status, result=exec_command(firewalld_cmd)
-    if status:
-        if result.returncode != 0:
-            log.logger.error(f"关闭防火墙失败: {result.stderr}")
-            return_value=1
-    else:
-        log.logger.error(f"关闭防火墙失败: {result}")
+    result, msg=exec_command(firewalld_cmd)
+    if not result:
+        log.logger.error(f"关闭防火墙失败: {msg}")
         return_value=1
 
     # 关闭selinux
@@ -50,34 +46,26 @@ def main():
     value=65536
     ulimit_conf_file="/etc/security/limits.conf"
 
-    status, result=exec_command("ulimit -n")
-    if status:
-        if result.returncode==0:
-            nofile_value=int(result.stdout)
-            if nofile_value < value:
-                with open(ulimit_conf_file, "a") as f:
-                    f.write("root - nofile 65536\n")
-                log.logger.info(f"设置nofile值为{value}")
-        else:
-            log.logger.error(f"获取nofile失败: {result.stderr}")
-            return_value=1
+    result, msg=exec_command("ulimit -n")
+    if result:
+        nofile_value=int(msg)
+        if nofile_value < value:
+            with open(ulimit_conf_file, "a") as f:
+                f.write("root - nofile 65536\n")
+            log.logger.info(f"设置nofile值为{value}")
     else:
-        log.logger.error(f"获取nofile失败: {result}")
+        log.logger.error(f"获取nofile失败: {msg}")
         return_value=1
 
-    status, result=exec_command("ulimit -u")
-    if status:
-        if result.returncode==0:
-            nproc_value=int(result.stdout)
-            if nproc_value < value:
-                with open(ulimit_conf_file, "a") as f:
-                    f.write("root - nproc 65536\n")
-                log.logger.info(f"设置nproc值为{value}")
-        else:
-            log.logger.error(f"获取nproc失败: {result.stderr}")
-            return_value=1
+    result, msg=exec_command("ulimit -u")
+    if result:
+        nproc_value=int(msg)
+        if nproc_value < value:
+            with open(ulimit_conf_file, "a") as f:
+                f.write("root - nproc 65536\n")
+            log.logger.info(f"设置nproc值为{value}")
     else:
-        log.logger.error(f"获取nproc失败: {result}")
+        log.logger.error(f"获取nproc失败: {msg}")
         return_value=1
 
     sys.exit(return_value)

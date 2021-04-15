@@ -26,10 +26,12 @@ def find_pid(port):
 def exec_command(command, timeout=45):
     try:
         result=run(command, capture_output=True, encoding="utf8", shell=True, timeout=timeout)
-        return True, result
+        if result.returncode == 0:
+            return True, result.stdout
+        else:
+            return False, result.stderr
     except Exception as e:
-        result=str(e)
-        return False, result
+        return False, str(e)
 
 def format_size(byte, integer=False):
     #byte=float(byte)
@@ -134,29 +136,23 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
             for i in pkg_list:
                 command=f"rpm -qpi {pkg_dir}/{i} | head -n 3"
                 log.logger.debug(f"{command=}")
-                status, result=exec_command(command)
-                if status:
-                    if result.returncode != 0:
-                        return False, result.stderr
+                result, msg=exec_command(command)
+                if result:
+                    #pkg_name=result.stdout.split(":")[1].strip()
+                    pkg_info=msg.split("\n")
+                    pkg_name=pkg_info[0].split(":")[1].strip()
+                    pkg_version=pkg_info[2].split(":")[1].strip()
+                    command=f"rpm -qi {pkg_name}"
+                    log.logger.debug(f"{command=}")
+                    result, msg=exec_command(command)
+                    if result:                                                # 判断已安装的pkg与未安装的pkg的版本大小, 未安装的pkg版本大则安装
+                        installed_pkg_version=msg.split("\n")[2].split(":")[1].strip()
+                        if pkg_version > installed_pkg_version:
+                            not_intall_pkg_list.append(i)
                     else:
-                        #pkg_name=result.stdout.split(":")[1].strip()
-                        pkg_info=result.stdout.split("\n")
-                        pkg_name=pkg_info[0].split(":")[1].strip()
-                        pkg_version=pkg_info[2].split(":")[1].strip()
-                        command=f"rpm -qi {pkg_name}"
-                        log.logger.debug(f"{command=}")
-                        status, result=exec_command(command)
-                        if status:
-                            if result.returncode != 0:
-                                not_intall_pkg_list.append(i)
-                            else:                                               # 判断已安装的pkg与未安装的pkg的版本大小, 未安装的pkg版本大则安装
-                                installed_pkg_version=result.stdout.split("\n")[2].split(":")[1].strip()
-                                if pkg_version > installed_pkg_version:
-                                    not_intall_pkg_list.append(i)
-                        else:
-                            return False, result
+                        not_intall_pkg_list.append(i)
                 else:
-                    return False, result
+                    return False, msg
 
             log.logger.debug(f"未安装包: {not_intall_pkg_list=}")
             if len(not_intall_pkg_list) == 0:
@@ -165,15 +161,11 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
                 pkgs=" ".join(not_intall_pkg_list)
                 command=f"cd {pkg_dir} && rpm -Uvh {pkgs} &> /dev/null"
                 log.logger.debug(f"{command=}")
-                status, result=exec_command(command)
-                if status:
-                    if result.returncode != 0:
-                        log.logger.error(f"{result.returncode=}")
-                        return False, result.stderr
-                    else:
-                        return True, None
+                result, msg=exec_command(command)
+                if result:
+                    return True, msg
                 else:
-                    return False, result
+                    return False, msg
         else:
             return True, None
     except Exception as e:

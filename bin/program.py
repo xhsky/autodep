@@ -36,17 +36,13 @@ def main():
                 break
         start_command=f"cd {program_dir} ; nohup java -Xms{jvm_mem} -Xmx{jvm_mem} -jar {jar} --server.port={port_list[0]} --spring.profiles.active=prod &> jar.log &"
         log.logger.debug(f"{start_command=}")
-        status, result=common.exec_command(start_command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-                flag=1
-            else:
-                log.logger.debug(f"检测端口: {port_list=}")
-                if not common.port_exist(port_list, seconds=600):
-                    flag=2
+        result, msg=common.exec_command(start_command)
+        if result:
+            log.logger.debug(f"检测端口: {port_list=}")
+            if not common.port_exist(port_list, seconds=600):
+                flag=2
         else:
-            log.logger.error(result)
+            log.logger.error(msg)
             flag=1
 
         sys.exit(flag)
@@ -57,21 +53,30 @@ def main():
             if pid != 0:
                 stop_command=f"kill -9 {pid}"
                 log.logger.debug(f"{stop_command=}")
-                status, result=common.exec_command(stop_command)
-                if status:
-                    if result.returncode != 0:
-                        log.logger.error(result.stderr)
-                        flag=1
-                    else:
-                        log.logger.debug(f"检测端口: {port_list=}")
-                        if not common.port_exist(port_list, exist_or_not=False):
-                            flag=2
+                result, msg=common.exec_command(stop_command)
+                if result:
+                    log.logger.debug(f"检测端口: {port_list=}")
+                    if not common.port_exist(port_list, exist_or_not=False):
+                        flag=2
                 else:
-                    log.logger.error(result)
+                    log.logger.error(msg)
                     flag=1
             else:
                 log.logger.warning(f"{softname}未运行")
                 flag=1
+        sys.exit(flag)
+    elif action=="heapdump":
+        command=f"jmap -dump:format=b, file=heapdump.dump {pid}"
+        log.logger.debug(f"{start_command=}")
+        result, msg=common.exec_command(start_command)
+        if result:
+            log.logger.debug(f"检测端口: {port_list=}")
+            if not common.port_exist(port_list, seconds=600):
+                flag=2
+        else:
+            log.logger.error(msg)
+            flag=1
+
         sys.exit(flag)
 
 if __name__ == "__main__":

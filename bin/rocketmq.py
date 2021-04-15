@@ -110,13 +110,9 @@ def main():
         for log_file in log_file_list:
             command=f"sed -i 's#${{user.home}}#{rocketmq_dir}#' {log_file}"
             log.logger.debug(f"修改日志目录: {command}")
-            status, result=common.exec_command(command)
-            if status:
-                if result.returncode != 0:
-                    log.logger.error(result.stderr)
-                    flag=1
-            else:
-                log.logger.error(result)
+            result, msg=common.exec_command(command)
+            if not result:
+                log.logger.error(msg)
                 flag=1
         ## 修改配置文件
         cluster_name=rocketmq_info_dict.get("cluster_name")
@@ -211,31 +207,23 @@ def main():
         broker_command=f"cd {rocketmq_dir} && bash ./bin/start.sh broker" 
 
         log.logger.debug(f"{namesrv_command=}")
-        status, result=common.exec_command(namesrv_command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-                flag=1
+        result, msg=common.exec_command(namesrv_command)
+        if result:
+            log.logger.debug(f"检测端口: {namesrv_port_list=}")
+            if not common.port_exist(namesrv_port_list):
+                flag=2
             else:
-                log.logger.debug(f"检测端口: {namesrv_port_list=}")
-                if not common.port_exist(namesrv_port_list):
-                    flag=2
+                log.logger.debug(f"{broker_command=}")
+                result, msg=common.exec_command(broker_command)
+                if result:
+                    log.logger.debug(f"检测端口: {broker_port_list=}")
+                    if not common.port_exist(broker_port_list):
+                        flag=2
                 else:
-                    log.logger.debug(f"{broker_command=}")
-                    status, result=common.exec_command(broker_command)
-                    if status:
-                        if result.returncode != 0:
-                            log.logger.error(result.stderr)
-                            flag=1
-                        else:
-                            log.logger.debug(f"检测端口: {broker_port_list=}")
-                            if not common.port_exist(broker_port_list):
-                                flag=2
-                    else:
-                        log.logger.error(result)
-                        flag=1
+                    log.logger.error(msg)
+                    flag=1
         else:
-            log.logger.error(result)
+            log.logger.error(msg)
             flag=1
         sys.exit(flag)
     elif action=="stop":
@@ -243,31 +231,23 @@ def main():
         broker_command=f"cd {rocketmq_dir} && bash bin/mqshutdown broker" 
 
         log.logger.debug(f"{namesrv_command=}")
-        status, result=common.exec_command(namesrv_command)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(result.stderr)
-                flag=1
+        result, msg=common.exec_command(namesrv_command)
+        if result:
+            log.logger.debug(f"检测端口: {namesrv_port_list=}")
+            if not common.port_exist(namesrv_port_list, exist_or_not=False):
+                flag=2
             else:
-                log.logger.debug(f"检测端口: {namesrv_port_list=}")
-                if not common.port_exist(namesrv_port_list, exist_or_not=False):
-                    flag=2
+                log.logger.debug(f"{broker_command=}")
+                result, msg=common.exec_command(broker_command)
+                if result:
+                    log.logger.debug(f"检测端口: {broker_port_list=}")
+                    if not common.port_exist(broker_port_list, exist_or_not=False):
+                        flag=2
                 else:
-                    log.logger.debug(f"{broker_command=}")
-                    status, result=common.exec_command(broker_command)
-                    if status:
-                        if result.returncode != 0:
-                            log.logger.error(result.stderr)
-                            flag=1
-                        else:
-                            log.logger.debug(f"检测端口: {broker_port_list=}")
-                            if not common.port_exist(broker_port_list, exist_or_not=False):
-                                flag=2
-                    else:
-                        log.logger.error(result)
-                        flag=1
+                    log.logger.error(msg)
+                    flag=1
         else:
-            log.logger.error(result)
+            log.logger.error(msg)
             flag=1
         sys.exit(flag)
 

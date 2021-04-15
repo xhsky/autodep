@@ -21,13 +21,9 @@ def main():
         log.logger.info(f"设置主机名为{hostname}")
         hostname_cmd=f"hostnamectl set-hostname {hostname}"
         log.logger.debug(f"{hostname_cmd=}")
-        status, result=exec_command(hostname_cmd)
-        if status:
-            if result.returncode != 0:
-                log.logger.error(f"设置主机名失败: {result.stderr}")
-                return_value=1
-        else:
-            log.logger.error(f"设置主机名失败: {result}")
+        result, msg=exec_command(hostname_cmd)
+        if not result:
+            log.logger.error(f"设置主机名失败: {msg}")
             return_value=1
 
         # 配置hosts
