@@ -24,6 +24,7 @@ start_file="./config/start.json"
 stop_file="./config/stop.json"
 check_file="./config/check.json"
 deploy_file="./config/deploy.json"
+program_file="./config/program.json"
 
 # ext路径
 ext_dir="../ext"
@@ -32,13 +33,19 @@ ext_dir="../ext"
 located_dir_name="dream"
 located_dir_link="/dream"
 
+rollback_dir=f"{located_dir_link}/rollback"
+
 report_dir="./report" # 巡检汇总目录
 report_file_list=["check.info", "slow_analysis.log"]
 
-program_soft=["tomcat", "program", "autocheck"]
+# 项目软件, 列表顺序即为启动顺序(autocheck须为最后一个, 避免备份)
+program_soft=["tomcat", "program", "nginx", "autocheck"]
+
+# 数据库软件
+env_soft=["mysql"]
 
 # 更新
-code_saved_remote_dir="/tmp"
+#code_saved_remote_dir="/tmp"
 
 # 部署各阶段状态文件
 init_stats_file=f"{logs_dir}/init.json"
@@ -53,7 +60,7 @@ g_term_rows=20
 g_term_cols=80
 
 # 测试模式, 正式环境关闭
-test_mode=False
+test_mode=True
 # 检测时是否开启资源校验
 resource_verify_mode=False
 
