@@ -7,11 +7,11 @@ import sys, os
 import json, tarfile
 from libs import remote
 from libs.env import update_package_dir, test_mode, \
-        remote_python_exec, remote_code_dir, program_unzip_dir
+        remote_python_exec, remote_code_dir, rollback_dir
 
+'''
 def db_update(package, update_dict, log):
-    """
-    数据库更新
+    """数据库更新
     return:
 
     """
@@ -73,70 +73,123 @@ def db_update(package, update_dict, log):
 
     hosts_update_dict[host]=update_result
     return update_result, hosts_update_dict
+'''
 
-def code_update(package, update_dict, log):
-    """
-    代码更新
-    """
+def update(mode, package, program_dir, args_dict, delete_flag, init_dict, arch_dict, log):
+    """项目更新
+    mode: code|db
+    package: /path/file_name
+    args_dict: update_dict["update_info"]
 
-    log.logger.info("开始代码更新")
-    args_dict={
-            "type": update_dict["update_info"]["type"], 
-            "dest": update_dict["update_info"]["dest"], 
-            }
+    update_result: True|False
+    hosts_update_dict: {
+        node: True
+        }
+
+    """
     ssh_client=remote.ssh()
-    hosts_update_dict={}
+    update_package_abs=f"{update_package_dir}/{package.split('/')[-1]}"
+    update_py_file="update.py"
+    trans_files=[
+            (package, update_package_abs), 
+            (f"./bin/{update_py_file}", f"{remote_code_dir}/{update_py_file}"), 
+            ]
+    args_dict["pkg_file"]=update_package_abs
+    args_dict["delete_flag"]=delete_flag
     update_result=True
-    try:
-        for host_str in update_dict["update_info"]["hosts"]:
+    hosts_update_dict={}
+    if mode=="code":
+        propertiesPath=args_dict.get("propertiesPath")
+        if propertiesPath:
+            trans_files.append(
+                    (f"{program_dir}/{propertiesPath}", f"{update_package_dir}/{propertiesPath}")
+                    )
+            args_dict["propertiesPath"]=f"{update_package_dir}/{propertiesPath}"
+        for node in args_dict["hosts"]:
             state_value=True
-            host_and_port=host_str.split(":")
-            host=host_and_port[0]
-            try:
-                port=int(host_and_port[1])
-            except IndexError:
-                port=22
-
-            log.logger.info(f"'{host}'更新")
-            log.logger.info("传输更新包...")
-            update_package_abs=f"{update_package_dir}/{package.split('/')[-1]}"
-
-            update_py_file="update.py"
-            trans_files=[
-                    (package, update_package_abs), 
-                    (f"./bin/{update_py_file}", f"{remote_code_dir}/{update_py_file}"), 
-                    ]
-            propertiesPath=update_dict["update_info"].get("propertiesPath")
-            if propertiesPath:
-                trans_files.append(
-                        (f"{program_unzip_dir}/{propertiesPath}", f"{update_package_dir}/{propertiesPath}")
-                        )
-                args_dict["propertiesPath"]=f"{update_package_dir}/{propertiesPath}"
-
-            if test_mode:
-                trans_files.append(("./libs/common.py", f"{remote_code_dir}/common.py"))
-                trans_files.append(("./libs/env.py", f"{remote_code_dir}/env.py"))
+            port=init_dict[arch_dict[node]["ip"]]["port"]
+            log.logger.info(f"{node}: 传输项目包...")
             for i in trans_files:
-                log.logger.debug(f"{i[0]} --> {host}:{i[1]}")
-                ssh_client.scp(host, port, "root", i[0], i[1])
-            args_dict["tar_file"]=update_package_abs
-            update_command=f"{remote_python_exec} {remote_code_dir}/{update_py_file} '{json.dumps(args_dict)}'"
+                log.logger.debug(f"{i[0]} --> {node}:{i[1]}")
+                ssh_client.scp(node, port, "root", i[0], i[1])
+            update_command=f"{remote_python_exec} {remote_code_dir}/{update_py_file} {mode}_update '{json.dumps(args_dict)}'"
             log.logger.debug(f"{update_command}")
-            status=ssh_client.exec(host, port, update_command)
+            status=ssh_client.exec(node, port, update_command)
             for line in status[1]:
                 log.logger.info(line.strip())
             if status[1].channel.recv_exit_status()==0:
-                log.logger.info(f"{host}更新完成\n")
+                log.logger.info(f"{node}: 完成")
             else:
                 update_result=False
                 state_value=False
-                log.logger.error(f"{host}更新失败\n")
-            hosts_update_dict[host]=state_value
-    except Exception as e:
-        log.logger.error(f"更新失败: {str(e)}")
-        update_result=False
-    
+                log.logger.error(f"{node}失败")
+            hosts_update_dict[node]=state_value
+    elif mode=="db":
+        state_value=True
+        node=args_dict["host"]
+        port=init_dict[arch_dict[node]["ip"]]["port"]
+        log.logger.info(f"{node}: 传输数据包...")
+        for i in trans_files:
+            log.logger.debug(f"{i[0]} --> {node}:{i[1]}")
+            ssh_client.scp(node, port, "root", i[0], i[1])
+        update_command=f"{remote_python_exec} {remote_code_dir}/{update_py_file} {mode}_update '{json.dumps(args_dict)}'"
+        log.logger.debug(f"{update_command}")
+        status=ssh_client.exec(node, port, update_command)
+        for line in status[1]:
+            log.logger.info(line.strip())
+        if status[1].channel.recv_exit_status()==0:
+            log.logger.info(f"{node}: 完成")
+        else:
+            update_result=False
+            state_value=False
+            log.logger.error(f"{node}: 失败")
+        hosts_update_dict[node]=state_value
     return update_result, hosts_update_dict
+
+def backup(node, port, backup_name, backup_type, backup_dict, backup_version, log):
+    """项目备份
+    """
+    ssh_client=remote.ssh()
+    backup_result=True
+    backup_dict["back_name"]=backup_name
+    try:
+        backup_py_file="update.py"
+        trans_files=[
+                (f"./bin/{update_py_file}", f"{remote_code_dir}/{update_py_file}"), 
+                ]
+        if test_mode:
+            trans_files.append(("./libs/common.py", f"{remote_code_dir}/common.py"))
+            trans_files.append(("./libs/env.py", f"{remote_code_dir}/env.py"))
+        for i in trans_files:
+            log.logger.debug(f"{i[0]} --> {node}:{i[1]}")
+            ssh_client.scp(node, port, "root", i[0], i[1])
+        backup_command=f"{remote_python_exec} {remote_code_dir}/{backup_py_file} {backup_type}_backup '{json.dumps(backup_dict)}'"
+        log.logger.debug(f"{backup_command=}")
+        status=ssh_client.exec(node, port, backup_command)
+        for line in status[1]:
+            log.logger.info(line.strip())
+        if status[1].channel.recv_exit_status()==0:
+            backup_file=f"{rollback_dir}/{backup_name}"
+            rollback_file=f"{rollback_dir}/{backup_version}/{backup_name}"
+            log.logger.info(f"{node}: {backup_file} --> {rollback_file}")
+            result=ssh_client.get(node, port, "root", backup_file, rollback_file)
+            if result:
+                if backup_dict.get("propertiesPath"):
+                    backup_config_file=f"{rollback_dir}/{backup_dict.get('propertiesPath')}"
+                    rollback_config_file=f"{rollback_dir}/{backup_version}/{backup_dict.get('propertiesPath')}"
+                    log.logger.info(f"{node}: {backup_config_file} --> {rollback_config_file}")
+                    ssh_client.get(node, port, "root", backup_config_file, rollback_config_file)
+                log.logger.info(f"{backup_name}备份完成\n")
+            else:
+                log.logger.error("{backup_name}备份失败, {result}\n")
+                backup_result=False
+        else:
+            backup_result=False
+            log.logger.error(f"{backup_name}备份失败\n")
+    except Exception as e:
+        log.logger.error(f"{backup_name}备份失败: {str(e)}")
+        backup_result=False
+    return backup_result
 
 if __name__ == "__main__":
     main()
