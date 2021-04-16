@@ -13,7 +13,8 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         g_term_rows, g_term_cols, \
         located_dir_name, located_dir_link, autocheck_dst, report_dir, report_file_list, \
         init_file, arch_file, update_file, start_file, stop_file, check_file, project_file, deploy_file, program_file, \
-        program_unzip_dir
+        program_unzip_dir, \
+        normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 for dir_ in [logs_dir, program_unzip_dir, report_dir]:
     if not os.path.exists(dir_):
@@ -64,6 +65,8 @@ class Deploy(object):
                 config_file=check_file
             elif config=="project":
                 config_file=project_file
+            elif config=="program":
+                config_file=program_file
 
             try: 
                 with open(config_file, "r", encoding="utf8") as f:
@@ -89,7 +92,7 @@ class Deploy(object):
         """
         all_host_dict={}
         for node in all_host_info:
-            if all_host_info[node][0] == 0:
+            if all_host_info[node][0] == normal_code:
                 # 将str转为json
                 node_info=all_host_info[node][1]
                 node_info=node_info[node_info.index("{"):]
@@ -104,7 +107,6 @@ class Deploy(object):
     def generate_info(self, mode, info_dict, **kwargs):
         """信息生成: 平台, 文件
         """
-
         if mode=="platform_info":
             info="状态信息已发送至平台\n"
             error_info="状态信息发送失败\n"
@@ -127,13 +129,12 @@ class Deploy(object):
 
     def connect_test(self, init_dict):
         """测试init.json的账号, 密码, 端口
-
-            return:
-                result,                       
-                connect_msg={
-                "status": N, 
-                "msg": msg
-                }
+        return:
+            result,                       
+            connect_msg={
+            "status": N, 
+            "msg": msg
+            }
         """
         ssh_client=ssh()
         connect_test_result={}
@@ -142,7 +143,7 @@ class Deploy(object):
             port=init_dict[node].get("port")
             password=init_dict[node].get("root_password")
             status, msg=ssh_client.password_conn(node, port, password)
-            if status != 0:
+            if status != normal_code:
                 result=False
             connect_test_result[node]={
                     "result": status, 
@@ -167,7 +168,7 @@ class Deploy(object):
             stdout_msg=status[1].read().strip().decode("utf8")
             stderr_msg=status[2].read().strip().decode("utf8")
             stats_value=status[1].channel.recv_exit_status()
-            if  stats_value != 0:
+            if  stats_value != normal_code:
                 msg=stdout_msg
             else:
                 msg=stderr_msg
@@ -436,7 +437,7 @@ class Deploy(object):
                 status=self.remote_exec(ip, port, softname, remote_py, action, control_trans_files_dict, arch_dict[node])
                 for line in status[1]:
                     self.log.logger.info(line.strip())
-                if status[1].channel.recv_exit_status() == 0:
+                if status[1].channel.recv_exit_status() == normal_code:
                     self.log.logger.info(f"{softname}{action_msg}完成")
                 else:
                     self.log.logger.error(f"{softname}{action_msg}失败")
@@ -482,7 +483,7 @@ class Deploy(object):
                 command=f"tar -xf {remote_python3_file} -C {remote_python_install_dir}"
                 self.log.logger.debug(f"配置Python环境")
                 status=self.ssh_client.exec(node, port, command)
-                if status[1].channel.recv_exit_status() != 0:
+                if status[1].channel.recv_exit_status() != normal_code:
                     error_info=f"Python3安装报错, 进程退出: {status[2].read().decode('utf8')}"
                     self.log.logger.error(error_info)
                     init_result=False
@@ -504,7 +505,7 @@ class Deploy(object):
 
                 for line in status[1]:
                     self.log.logger.info(line.strip())
-                if status[1].channel.recv_exit_status() != 0:
+                if status[1].channel.recv_exit_status() != normal_code:
                     error_info=f"{node}远程初始化失败"
                     self.log.logger.error(error_info)
                     init_result=False
@@ -582,7 +583,6 @@ class Deploy(object):
 
     def _divide_service(self, control_dict):
         """将需要控制的软件分为基础服务和项目服务, 并排序
-
         return:
             env_node_dict={
                 "node1": ["soft1"]
@@ -682,6 +682,8 @@ class Deploy(object):
         control_result=True
         if len(program_node_dict) != 0:
             self.log.logger.info("项目关闭...")
+            for node in program_node_dict:
+                program_node_dict[node].reverse()
             program_result, program_control_stats_dict=self.nodes_control(program_node_dict, "stop", "关闭", init_dict, arch_dict)
             if program_result:
                 self.log.logger.info("项目关闭成功")
@@ -726,12 +728,12 @@ class Deploy(object):
                 #program_result, program_stats_dict=self.stop(init_dict, arch_dict, program_dict)
         return program_result, program_stats_dict
 
-    def program_backup(self, init_dict, arch_dict, program_dict, backup_version):
+    def program_backup(self, init_dict, arch_dict, program_dict, backup_version, rollback_version_dir):
         """项目备份, 用于回滚
         program_dict: update_dict
         """
-        if not os.path.exists(rollback_dir):
-            os.makedirs(rollback_dir, exist_ok=1)
+        if not os.path.exists(rollback_version_dir):
+            os.makedirs(rollback_version_dir, exist_ok=1)
         backup_result=True
         backup_stats_dict={}
         for i in program_dict:
@@ -792,14 +794,14 @@ class Deploy(object):
         return:
             {
             "node1": {
-                "softname1": 0|1|2,     # 0: 启动, 1: 未启动, 2: 启动但不正常
-                "softname2": 0|1|2, 
+                "softname1": activated_code|stopped_code|abnormal_code,     # 启动, 未启动, 启动但不正常
+                "softname2": activated_code|stopped_code|abnormal_code,     # 启动, 未启动, 启动但不正常
             }
             }
         """
-        soft_status_dict={}
+        soft_stats_dict={}
         for node in arch_dict:
-            soft_status_dict[node]={}
+            soft_stats_dict[node]={}
             for softname in arch_dict[node]["software"]:
                 port_status=[]
                 port_list=self._get_soft_port_list(arch_dict, node, softname)
@@ -814,7 +816,12 @@ class Deploy(object):
                     else:
                         softname_status=2
                     soft_status_dict[node][softname]=softname_status
-        return soft_status_dict
+        soft_stats_dict={}
+        for node in arch_dict:
+            soft_stats_dict[node]={}
+
+        monitor_result, soft_stats_dict=self.nodes_control(env_node_dict, "run", "运行", init_dict, arch_dict)
+        return monitor_result, soft_stats_dict
 
     def update_extract(self, tarfile_, dir_, config_file_list):
         """项目包/更新包解压
@@ -903,7 +910,7 @@ class Deploy(object):
         return tarfile_
 
     def check(self, check_dict, init_dict, arch_dict):
-        """启动软件并初始化
+        """获取巡检信息
         check_dict={
             "nodes":["node1", "node2"]
         }
@@ -1065,7 +1072,7 @@ class graphics_deploy(Deploy):
         if project_pkg is not None:
             if not os.path.exists(project_pkg):
                 print(f"Error: {project_pkg}文件不存在, 请确认")
-                sys.exit(1)
+                sys.exit(error_code)
             self.init_flag=True
             self.project_pkg=project_pkg
         else:
@@ -1074,7 +1081,7 @@ class graphics_deploy(Deploy):
         # 安装dialog
         if not self._install_dialog():
             print("Error: dialog安装失败, 请手动安装后再执行")
-            sys.exit(1)
+            sys.exit(error_code)
 
         locale.setlocale(locale.LC_ALL, '')
         self.d = self.Dialog(dialog="dialog", autowidgetsize=1)
@@ -1581,111 +1588,6 @@ class graphics_deploy(Deploy):
             self.log.logger.error(f"无法加载{config_file}: {e}")
             return False
 
-    '''
-
-    def edit_host_account_info(self, title, init_list):
-        """编辑主机账号信息
-        """
-        first_node_xi_length=20
-        ip_field_length=15
-        password_field_length=15
-        port_field_length=5
-        if init_list == []:
-            elements=[
-                    ("IP:", 1, 1, "192.168.0.1", 1, first_node_xi_length, ip_field_length, 0), 
-                    ("root用户密码:", 2, 1, "", 2, first_node_xi_length, password_field_length, 0), 
-                    ("ssh端口:", 3, 1, "22", 3, first_node_xi_length, port_field_length, 0), 
-                    ]
-            code, fields=self.d.form(f"请根据示例填写集群中主机信息\n\n第1台主机:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消")
-        else:
-            elements=[]
-            n=0
-            for account_info in init_list:
-                n=n+1
-                elements.append(("IP:", n, 1, account_info[0], n, 5, ip_field_length, 0))
-                elements.append(("root用户密码:", n, 22, account_info[1], n, 36, password_field_length, 0))
-                elements.append(("ssh端口: ", n, 52, str(account_info[2]), n, 61, port_field_length, 0))
-            code, fields=self.d.form(f"填写主机信息:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消")
-        self.log.logger.debug(f"主机信息: {code=}, {fields=}")
-        return code, fields
-
-    def show_host_account_info(self, title, init_dict):
-        """显示并确认主机账号信息
-        """
-        HIDDEN = 0x1
-        READ_ONLY = 0x2
-        first_node_xi_length=20
-        ip_field_length=15
-        password_field_length=15
-        port_field_length=5
-        elements=[]
-        n=0
-        for ip in init_dict:
-            n=n+1
-            elements.append(("IP:", n, 1, ip, n, 5, ip_field_length, 0, READ_ONLY))
-            elements.append(("root用户密码:", n, 22, init_dict[ip]["root_password"], n, 36, password_field_length, 0, READ_ONLY))
-            elements.append(("ssh端口: ", n, 52, str(init_dict[ip]["port"]), n, 61, port_field_length, 0, READ_ONLY))
-        code, fields=self.d.mixedform(f"确认主机信息:", elements=elements, title=title, ok_label="确认", cancel_label="修改")
-        return code
-
-    def config_init(self, title, init_dict):
-        '''配置init.json
-        '''
-
-        # 将init_dict转为有序的list显示
-        init_list=[]
-        for ip in init_dict:
-            init_list.append((ip, init_dict[ip]["root_password"], init_dict[ip]["port"]))
-
-        while True:                     # 添加node信息
-            code, fields=self.edit_host_account_info(title, init_list)
-            self.log.logger.debug(f"init field: {fields}")
-
-            # 将list转为init的list: [(ip, pwd, port), ]
-            init_list=[]
-            for index, item in enumerate(fields):
-                if index % 3 == 0:
-                    account_info=(fields[index], fields[index+1], fields[index+2])
-                    init_list.append(account_info)
-
-            if code=="extra":
-                new_ip=f'{".".join(account_info[0].split(".")[:-1])}.'
-                new_pwd=account_info[1]
-                new_port=account_info[2]
-                new_account_info=(new_ip, new_pwd, new_port)          # 添加一个空的主机信息
-                init_list.append(new_account_info)
-
-            else:
-                init_dict={}
-                for account_info in init_list:
-                    ip=account_info[0]
-                    pwd=account_info[1]
-                    port=account_info[2]
-                    if ip != "":             # ip信息为空, 则删除
-                        init_dict[ip]={
-                                "root_password": pwd, 
-                                "port": port
-                                }
-                return code, init_dict
-
-    def get_file_path(self, init_path, title):
-        """获取选择文件路径
-        """
-        while True:
-            code, file_=self.d.fselect(init_path, height=8, width=65, title=title)
-            if code==self.d.OK:
-                code=self.d.yesno(f"确认选择文件: {file_} ?", height=6, width=45)
-                if code==self.d.OK:
-                    if os.path.exists(file_):
-                        if os.path.isfile(file_):
-                            return file_
-                        else:
-                            self.d.msgbox(f"该选择'{file_}'不是文件, 请重新选择", height=6, width=45)
-                    else:
-                        self.d.msgbox(f"该文件'{file_}'不存在, 请重新选择", height=6, width=45)
-            else:
-                return ""
-
     def _exclude_resouce(self, host_info_dict, arch_dict):
         """排除已安装软件的资源
         """
@@ -1809,6 +1711,109 @@ class graphics_deploy(Deploy):
             with open(self.arch_file, "w", encoding="utf8") as f:
                 json.dump(self.arch_dict, f, ensure_ascii=False)
             return True
+    '''
+
+    def edit_host_account_info(self, title, init_list):
+        """编辑主机账号信息
+        """
+        first_node_xi_length=20
+        ip_field_length=15
+        password_field_length=15
+        port_field_length=5
+        if init_list == []:
+            elements=[
+                    ("IP:", 1, 1, "192.168.0.1", 1, first_node_xi_length, ip_field_length, 0), 
+                    ("root用户密码:", 2, 1, "", 2, first_node_xi_length, password_field_length, 0), 
+                    ("ssh端口:", 3, 1, "22", 3, first_node_xi_length, port_field_length, 0), 
+                    ]
+            code, fields=self.d.form(f"请根据示例填写集群中主机信息\n\n第1台主机:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消")
+        else:
+            elements=[]
+            n=0
+            for account_info in init_list:
+                n=n+1
+                elements.append(("IP:", n, 1, account_info[0], n, 5, ip_field_length, 0))
+                elements.append(("root用户密码:", n, 22, account_info[1], n, 36, password_field_length, 0))
+                elements.append(("ssh端口: ", n, 52, str(account_info[2]), n, 61, port_field_length, 0))
+            code, fields=self.d.form(f"填写主机信息:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消")
+        self.log.logger.debug(f"主机信息: {code=}, {fields=}")
+        return code, fields
+
+    def show_host_account_info(self, title, init_dict):
+        """显示并确认主机账号信息
+        """
+        HIDDEN = 0x1
+        READ_ONLY = 0x2
+        first_node_xi_length=20
+        ip_field_length=15
+        password_field_length=15
+        port_field_length=5
+        elements=[]
+        n=0
+        for ip in init_dict:
+            n=n+1
+            elements.append(("IP:", n, 1, ip, n, 5, ip_field_length, 0, READ_ONLY))
+            elements.append(("root用户密码:", n, 22, init_dict[ip]["root_password"], n, 36, password_field_length, 0, READ_ONLY))
+            elements.append(("ssh端口: ", n, 52, str(init_dict[ip]["port"]), n, 61, port_field_length, 0, READ_ONLY))
+        code, fields=self.d.mixedform(f"确认主机信息:", elements=elements, title=title, ok_label="确认", cancel_label="修改")
+        return code
+
+    def config_init(self, title, init_dict):
+        '''配置init.json
+        '''
+
+        # 将init_dict转为有序的list显示
+        init_list=[]
+        for ip in init_dict:
+            init_list.append((ip, init_dict[ip]["root_password"], init_dict[ip]["port"]))
+
+        while True:                     # 添加node信息
+            code, fields=self.edit_host_account_info(title, init_list)
+            self.log.logger.debug(f"init field: {fields}")
+
+            # 将list转为init的list: [(ip, pwd, port), ]
+            init_list=[]
+            for index, item in enumerate(fields):
+                if index % 3 == 0:
+                    account_info=(fields[index], fields[index+1], fields[index+2])
+                    init_list.append(account_info)
+
+            if code=="extra":
+                new_ip=f'{".".join(account_info[0].split(".")[:-1])}.'
+                new_pwd=account_info[1]
+                new_port=account_info[2]
+                new_account_info=(new_ip, new_pwd, new_port)          # 添加一个空的主机信息
+                init_list.append(new_account_info)
+            else:
+                init_dict={}
+                for account_info in init_list:
+                    ip=account_info[0]
+                    pwd=account_info[1]
+                    port=account_info[2]
+                    if ip != "":             # ip信息为空, 则删除
+                        init_dict[ip]={
+                                "root_password": pwd, 
+                                "port": port
+                                }
+                return code, init_dict
+
+    def get_file_path(self, init_path, title):
+        """获取选择文件路径
+        """
+        while True:
+            code, file_=self.d.fselect(init_path, height=8, width=65, title=title)
+            if code==self.d.OK:
+                code=self.d.yesno(f"确认选择文件: {file_} ?", height=6, width=45)
+                if code==self.d.OK:
+                    if os.path.exists(file_):
+                        if os.path.isfile(file_):
+                            return file_
+                        else:
+                            self.d.msgbox(f"该选择'{file_}'不是文件, 请重新选择", height=6, width=45)
+                    else:
+                        self.d.msgbox(f"该文件'{file_}'不存在, 请重新选择", height=6, width=45)
+            else:
+                return ""
 
     def show_hosts_info(self, all_host_info_dict):
         """显示各主机信息
@@ -1957,14 +1962,14 @@ class graphics_deploy(Deploy):
                 if not result:
                     self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
                     for node in connect_test_result:
-                        if connect_test_result[node]["result"] != 0:
+                        if connect_test_result[node]["result"] != normal_code:
                             self.log.logger.error(f"{node}:\t{connect_test_result[node]['err_msg']}")
-                    os._exit(1)
+                    os._exit(error_code)
 
                 if self.init_flag:
                     result=self.update_extract(self.project_pkg, program_unzip_dir, ["project.json", "arch.json", "update.json", "start.json"])
                     if not result:
-                        os._exit(1)
+                        os._exit(error_code)
 
                 local_python3_file=local_pkg_name_dict["python3"]
                 status, dict_=super(graphics_deploy, self).init(init_dict, f"{ext_dir}/{local_python3_file}")
@@ -1977,13 +1982,13 @@ class graphics_deploy(Deploy):
                     result, msg=self.write_config(all_host_dict, host_info_file)
                     if not result:
                         self.log.logger.error(msg)
-                        os._exit(1)
+                        os._exit(error_code)
                     else:
                         self.log.logger.info("主机信息已获取, 请查看")
                 else:
                     self.log.logger.error(f"初始化失败: {status}")
-                    os._exit(1)
-            os._exit(0)
+                    os._exit(error_code)
+            os._exit(normal_code)
         os.close(write_fd)
         self.d.programbox(fd=read_fd, title=title, height=25, width=170, scrollbar=True)
         exit_info = os.waitpid(child_pid, 0)[1]
@@ -1997,7 +2002,7 @@ class graphics_deploy(Deploy):
             self.show_menu()
 
         flag=True
-        if exit_code==0:
+        if exit_code==normal_code:
             time.tzset()    # 主机信息获取过程中会重置时区, 程序内重新获取时区信息
             _, config_list=self.read_config(["host"])
             host_info_dict=config_list[0]
@@ -2053,7 +2058,7 @@ class graphics_deploy(Deploy):
                 self.log.logger.debug(f"{code=}, {tag=}")
                 self.log.logger.info(f"选择{menu[tag]}")
                 if tag=="1":
-                    self.update(menu[tag])
+                    self.update(menu[tag], False)
                 if tag=="2":
                     self.rollback(menu[tag])
             else:
@@ -2061,6 +2066,7 @@ class graphics_deploy(Deploy):
 
     def update(self, title, delete_flag):
         """图形: 更新
+        delete_flag: bool         # True: 更新前删除原数据, False: 更新前保留原数据(覆盖)
         """
         code=self.d.yesno("此过程将会重启项目服务, \n是否确认继续?", title="提醒") 
         if code != self.d.OK:
@@ -2076,27 +2082,28 @@ class graphics_deploy(Deploy):
                 if self.init_flag:
                     result=self.update_extract(self.project_pkg, program_unzip_dir, ["update.json"])
                     if not result:
-                        os._exit(1)
+                        os._exit(error_code)
                 else:
                     self.log.logger.error("\n\nError: 请使用-f参数指定更新文件")
-                    os._exit(1)
+                    os._exit(error_code)
                 code, result=self.read_config(["init", "arch", "program", "update"])
                 if code:
-                    init_dict, arch_dict, program_dict, update_dict=result[0]
+                    init_dict, arch_dict, program_dict, update_dict=result
                 else:
                     self.log.logger.error(f"配置文件读取失败: {result}")
-                    os._exit(1)
+                    os._exit(error_code)
                 self.log.logger.info("项目服务关闭...")
                 result, dict_=super(graphics_deploy, self).program_control(init_dict, arch_dict, "stop")
                 if result:
                     self.log.logger.info("项目服务关闭完成")
                     self.log.logger.info("开始项目备份...")
                     backup_version=time.strftime('%Y%m%d%H%M', time.localtime())
-                    result, dict_=self.program_backup(init_dict, arch_dict, program_dict, backup_version)
+                    rollback_version_dir=f"{rollback_dir}/{backup_version}"
+                    result, dict_=self.program_backup(init_dict, arch_dict, program_dict, backup_version, rollback_version_dir)
                     if result:
                         self.log.logger.info(f"项目备份完成, 备份版本号为{backup_version}")
                         self.log.logger.info("开始项目更新...")
-                        result, dict_=super(graphics_deploy, self).update(update_dict)
+                        result, dict_=super(graphics_deploy, self).update(update_dict, program_dir, delete_flag, init_arch, arch_dict)
                         if result:
                             self.log.logger.info("项目更新完成")
                             self.log.logger.info("项目服务启动...")
@@ -2105,18 +2112,18 @@ class graphics_deploy(Deploy):
                                 self.log.logger.info("项目启动完成")
                             else:
                                 self.log.logger.error(f"项目启动失败, {dict_}")
-                                os._exit(1)
+                                os._exit(error_code)
                         else:
                             self.log.logger.error(f"项目更新失败, {dict_}")
-                            os._exit(1)
+                            os._exit(error_code)
                     else:
                         self.log.logger.error(f"项目备份失败, {dict_}")
-                        os._exit(1)
+                        os._exit(error_code)
                 else:
                     self.log.logger.error(f"项目服务关闭失败, {dict_}")
-                    os._exit(1)
+                    os._exit(error_code)
 
-            os._exit(0)
+            os._exit(normal_code)
         os.close(write_fd)
         self.d.programbox(fd=read_fd, title=title, height=25, width=170)
         exit_info = os.waitpid(child_pid, 0)[1]
@@ -2134,7 +2141,7 @@ class graphics_deploy(Deploy):
         """
         rollback_list=self.get_rollback_list()
         if len(rollback_list)==0:
-            self.d.msgbox("尚未更新", title=title)
+            self.d.msgbox("尚未有回滚备份", title="提示")
             return
         else:
             choices=[]
@@ -2151,7 +2158,7 @@ class graphics_deploy(Deploy):
             if code==self.d.OK:
                 self.log.logger.debug(f"{code=}, {tag=}")
                 timestamp=time.strftime('%Y%m%d%H%M',time.strptime(tag,'%Y-%m-%d %H:%M'))
-                self.update(title)
+                self.update(title, True)
             else:
                 return
 
@@ -2706,7 +2713,6 @@ class graphics_deploy(Deploy):
     def monitor(self, title):
         """显示软件状态
         """
-
         result, config_list=self.read_config(["arch"])
         if result:
             arch_dict=config_list[0]
@@ -2726,9 +2732,9 @@ class graphics_deploy(Deploy):
         elements=[]
 
         status_value_msg_dict={
-                0: "正常", 
-                1: "未启动", 
-                2:  "异常"
+                activated_code: "正常", 
+                stopped_code: "未启动", 
+                abnormal_code:  "异常"
                 }
         n=0
         for node in soft_status_dict:
@@ -2950,7 +2956,6 @@ class graphics_deploy(Deploy):
         """
         msg="检测并配置dialog环境, 请稍等..."
         self.log.logger.info(msg)
-        print(msg)
         command="rpm -qi dialog"
         result, msg=exec_command(command)
         self.log.logger.debug(command)

@@ -156,6 +156,7 @@ class ssh(object):
     def __del__(self):
         self.ssh.close()
 
+'''
 class DB(object):
     """
     数据库操作
@@ -178,3 +179,4 @@ class DB(object):
             self.conn.close()
         except Exception:
             pass
+'''
