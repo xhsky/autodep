@@ -55,6 +55,13 @@ run_stats_file=f"{logs_dir}/run.json"
 update_stats_file=f"{logs_dir}/update.json"
 update_config_file_name="update.json"
 
+# 程序运行返回值
+normal_code=0
+error_code=127
+activated_code=1
+stopped_code=2
+abnormal_code=3
+
 # 文本图形化安装时的最小窗口尺寸
 g_term_rows=20
 g_term_cols=80
