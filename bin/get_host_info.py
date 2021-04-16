@@ -8,7 +8,7 @@ import os, sys, json
 import ntplib, time
 import subprocess
 from libs.common import Logger, port_connect, exec_command
-from libs.env import log_remote_level, interface
+from libs.env import log_remote_level, interface, normal_code, error_code
 
 def main():
     try:
@@ -16,6 +16,15 @@ def main():
         host_info_dict={}
 
         os_name, hostname, kernel_version=list(platform.uname())[0:3]
+        result, msg=exec_command("lsb_release -sd")
+        if result:
+            os_name=msg.split()
+        else:
+            redhat_file="/etc/redhat-release"
+            if os.path.exists(redhat_file):
+                with open(redhat_file, "r") as f:
+                    os_name=f.read().strip()
+        """
         try:
             result=subprocess.run(["lsb_release", "-sd"], capture_output=True, encoding="utf8")
             if result.returncode==0:
@@ -25,6 +34,7 @@ def main():
             if os.path.exists(redhat_file):
                 with open(redhat_file, "r") as f:
                     os_name=f.read().strip()
+        """
 
         host_info_dict["os_name"]=os_name
         host_info_dict["kernel_version"]=kernel_version
@@ -101,10 +111,10 @@ def main():
                     }
 
         log.logger.info(json.dumps(host_info_dict))
-        sys.exit(0)
+        sys.exit(normal_code)
     except Exception as e:
         log.logger.error(str(e))
-        sys.exit(1)
+        sys.exit(error_code)
 
 if __name__ == "__main__":
     main()

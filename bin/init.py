@@ -4,7 +4,8 @@
 
 import sys, os, json
 from libs.common import Logger, exec_command
-from libs.env import log_remote_level
+from libs.env import log_remote_level, normal_code, error_code
+
 
 def main():
     log=Logger({"remote": log_remote_level}, logger_name="init")
@@ -16,7 +17,7 @@ def main():
     result, msg=exec_command(firewalld_cmd)
     if not result:
         log.logger.error(f"关闭防火墙失败: {msg}")
-        return_value=1
+        return_value=error_code
 
     # 关闭selinux
     selinux_conf_file="/etc/selinux/config"
@@ -33,14 +34,10 @@ def main():
             log.logger.info(f"关闭SELinux")
             with open(selinux_conf_file, "w") as f:
                 f.writelines(text)
-            status, result=exec_command("setenforce 0")
-            if status:
-                if result.returncode != 0 and result.returncode != 256:
-                    return_value=1
-                    log.logger.error(f"关闭SELinux失败: {result.stderr}")
-            else:
-                return_value=1
-                log.logger.error(f"关闭SELinux失败: {result}")
+            result, msg=exec_command("setenforce 0")
+            if not result:
+                log.logger.error(f"关闭SELinux失败: {msg}")
+                return_value=error_code
 
     # 更改nofile, nproc
     value=65536
@@ -55,7 +52,7 @@ def main():
             log.logger.info(f"设置nofile值为{value}")
     else:
         log.logger.error(f"获取nofile失败: {msg}")
-        return_value=1
+        return_value=error_code
 
     result, msg=exec_command("ulimit -u")
     if result:
@@ -66,8 +63,7 @@ def main():
             log.logger.info(f"设置nproc值为{value}")
     else:
         log.logger.error(f"获取nproc失败: {msg}")
-        return_value=1
-
+        return_value=error_code
     sys.exit(return_value)
 
 if __name__ == "__main__":

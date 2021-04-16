@@ -5,14 +5,14 @@
 
 import sys, json
 from libs.common import Logger, exec_command
-from libs.env import log_remote_level
+from libs.env import log_remote_level, normal_code, error_code
 
 def main():
     log=Logger({"remote": log_remote_level}, logger_name="set_hosts")
     softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
     hosts_info_dict=conf_dict["hosts_info"]
-    return_value=0
+    return_value=normal_code
 
     try:
         hostname=hosts_info_dict["hostname"]
@@ -24,7 +24,7 @@ def main():
         result, msg=exec_command(hostname_cmd)
         if not result:
             log.logger.error(f"设置主机名失败: {msg}")
-            return_value=1
+            return_value=error_code
 
         # 配置hosts
         hosts_file="/etc/hosts"
@@ -40,7 +40,7 @@ def main():
         log.logger.info(f"hosts配置完成")
     except Exception as e:
         log.logger.error(f"hosts配置失败: {e}")
-        return_value=1
+        return_value=error_code
     
     return return_value
     

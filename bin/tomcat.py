@@ -5,7 +5,8 @@
 import sys, os, json
 import shutil
 from libs import common
-from libs.env import log_remote_level, tomcat_src, tomcat_dst, tomcat_pkg_dir, tomcat_version
+from libs.env import log_remote_level, tomcat_src, tomcat_dst, tomcat_pkg_dir, tomcat_version, \
+        normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def main():
     softname, action, conf_json=sys.argv[1:]
@@ -307,5 +308,55 @@ def main():
     elif action=="stop":
         pass
 
+def install():
+    """安装
+    """
+    pass
+
 if __name__ == "__main__":
-    main()
+    softname, action, conf_json=sys.argv[1:]
+    conf_dict=json.loads(conf_json)
+    located=conf_dict.get("located")
+
+    log=common.Logger({"remote": log_remote_level}, loggger_name="tomcat")
+    tomcat_dir=f"{located}/{tomcat_dst}"
+    tomcat_info_dict=conf_dict["tomcat_info"]
+    http_port=tomcat_info_dict["port"].get("http_port")
+    shutdown_port=tomcat_info_dict["port"].get("shutdown_port")
+    #ajp_port=tomcat_info_dict["port"].get("ajp_port")
+    ajp_port=8009
+    port_list=[
+            http_port, 
+            shutdown_port
+            ]
+
+    if action=="install":
+        sys.exit(install())
+    elif action=="run":
+        sys.exit(run())
+    elif action=="start":
+        status_value=monitor()
+        if status_value==activated_code:
+            sys.exit(activated_code)
+        elif status_value==stopped_code:
+            sys.exit(start())
+        elif status_value==abnormal_code:
+            if stop()==normal_code:
+                sys.exit(start())
+            else:
+                sys.exit(error_code)
+    elif action=="stop":
+        status_value=monitor()
+        if status_value==activated_code:
+            sys.exit(stop())
+        elif status_value==stopped_code:
+            sys.exit(stopped_code)
+        elif status_value==abnormal_code:
+            if stop()==normal_code:
+                sys.exit(normal_code)
+            else:
+                sys.exit(error_code)
+    elif action=="monitor":
+        sys.exit(monitor())
+    else:
+        sys.exit(error_code)

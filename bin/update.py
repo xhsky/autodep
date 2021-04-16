@@ -6,7 +6,7 @@
 import sys, json, os, time
 import tarfile, shutil
 from libs import common
-from libs.env import log_remote_level, update_package_dir, rollback_dir
+from libs.env import log_remote_level, update_package_dir, rollback_dir, normal_code, error_code
 
 def code_update(args_dict, log):
     """用于本地代码更新
@@ -29,7 +29,7 @@ def code_update(args_dict, log):
             os.makedirs(dest, exist_ok=1)
         except Exception as e:
             log.logger.error(f"无法建立目录: {str(e)}")
-            return 1
+            return error_code
     try:
         if code_type=="frontend":
             log.logger.debug("开始前端更新...")
@@ -65,8 +65,8 @@ def code_update(args_dict, log):
             os.remove(pkg_file)
     except Exception as e:
         log.logger.error(f"更新失败: {str(e)}")
-        return 2
-    return 0
+        return error_code
+    return normal_code
 
 def db_update(args_dict, log):
     """用于数据库更新
@@ -101,25 +101,25 @@ def db_update(args_dict, log):
                 result, msg=common.exec_command(drop_db_command, timeout=3600)
                 if not result:
                     self.log.logger.error(msg)
-                    return 3
+                    return error_code
             source_db_command=f"mysql -uroot -p{password} {db_name} < {db_file}"
             log.logger.debug(f"{source_db_command=}")
             result, msg=common.exec_command(source_db_command, timeout=3600)
             if result:
-                return 0
+                return normal_code
             else:
                 log.logger.error(msg)
-                return 1
+                return error_code
         else:
             log.logger.error(f"{db_type}类型不支持")
-            return 1
+            return error_code
 
         if os.path.exists(db_file):
             log.logger.info("清理更新包...")
             os.remove(db_file)
     except Exception as e:
         log.logger.error(f"更新失败: {str(e)}")
-        return 2
+        return error_code
 
 def code_backup(args_dict, log):
     """代码备份
@@ -140,15 +140,15 @@ def code_backup(args_dict, log):
             shutil.copyfile(f"{dest}/application-prod.{propertiesPath.split('.')[-1]}", f"{rollback_dir}/{propertiesPath}")
         except Exception as e:
             log.logger.error(str(e))
-            return 1
+            return error_code
     elif code_type=="frontend":
         try:
             with tarfile.open(f"{rollback_dir}/{backup_name}", "w:gz", encoding="utf8") as tar:
                 tar.add(dest)
         except Exception as e:
             log.logger.error(str(e))
-            return 1
-    return 0
+            return error_code
+    return normal_code
 
 def db_backup(args_dict, log):
     """数据库备份
@@ -166,20 +166,20 @@ def db_backup(args_dict, log):
             db_file_size=os.path.getsize(db_file)
             if  db_file_size < 1024 * 1024 * 10:
                 self.log.logger.warning(f"导出文件过小, {db_file}: {common.format_size(db_file_size)}")
-                return 1
+                return error_code
             db_gz_file=f"{rollback_dir}/{backup_name}"
             try:
                 with tarfile.open(db_gz_file, "w:gz", encoding="utf8") as tar:
                     tar.add(db_file)
             except Exception as e:
                 log.logger.error(str(e))
-                return 2
+                return error_code
         else:
             log.logger.error(msg)
-            return 3
+            return error_code
     else:
         pass
-    return 0
+    return normal_code
 
 def main():
     action, args_json=sys.argv[1:]

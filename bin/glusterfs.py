@@ -7,6 +7,7 @@ from libs import common
 from libs.env import log_remote_level, glusterfs_src, glusterfs_dst, \
         glusterfs_all_pkg_dir, glusterfs_client_pkg_dir, \
         glusterfs_volume_name, glusterfs_version
+        normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def install():
     pkg_file=conf_dict["pkg_file"]
@@ -191,14 +192,34 @@ if __name__ == "__main__":
         glusterd_port=server_info_dict["port"].get("glusterd_port")
         volume_port=server_info_dict["port"].get("volume_port")
 
-    flag=0
-    action_dict={
-            "install": install, 
-            "run": run, 
-            "start": start, 
-            "stop": stop, 
-            "monitor": monitor
-            }
-    if action in action_dict:
-        flag=action_dict[action]()
-        sys.exit(flag)
+    if action=="install":
+        sys.exit(install())
+    elif action=="run":
+        sys.exit(run())
+    elif action=="start":
+        status_value=monitor()
+        if status_value==activated_code:
+            sys.exit(activated_code)
+        elif status_value==stopped_code:
+            sys.exit(start())
+        elif status_value==abnormal_code:
+            if stop()==normal_code:
+                sys.exit(start())
+            else:
+                sys.exit(error_code)
+    elif action=="stop":
+        status_value=monitor()
+        if status_value==activated_code:
+            sys.exit(stop())
+        elif status_value==stopped_code:
+            sys.exit(stopped_code)
+        elif status_value==abnormal_code:
+            if stop()==normal_code:
+                sys.exit(normal_code)
+            else:
+                sys.exit(error_code)
+    elif action=="monitor":
+        sys.exit(monitor())
+    else:
+        sys.exit(error_code)
+
