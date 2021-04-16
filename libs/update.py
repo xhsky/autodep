@@ -7,7 +7,8 @@ import sys, os
 import json, tarfile
 from libs import remote
 from libs.env import update_package_dir, test_mode, \
-        remote_python_exec, remote_code_dir, rollback_dir
+        remote_python_exec, remote_code_dir, rollback_dir, \
+        normal_code, error_code
 
 '''
 def db_update(package, update_dict, log):
@@ -117,7 +118,7 @@ def update(mode, package, program_dir, args_dict, delete_flag, init_dict, arch_d
             status=ssh_client.exec(node, port, update_command)
             for line in status[1]:
                 log.logger.info(line.strip())
-            if status[1].channel.recv_exit_status()==0:
+            if status[1].channel.recv_exit_status()== normal_code:
                 log.logger.info(f"{node}: 完成")
             else:
                 update_result=False
@@ -137,7 +138,7 @@ def update(mode, package, program_dir, args_dict, delete_flag, init_dict, arch_d
         status=ssh_client.exec(node, port, update_command)
         for line in status[1]:
             log.logger.info(line.strip())
-        if status[1].channel.recv_exit_status()==0:
+        if status[1].channel.recv_exit_status()==normal_code:
             log.logger.info(f"{node}: 完成")
         else:
             update_result=False
@@ -168,7 +169,7 @@ def backup(node, port, backup_name, backup_type, backup_dict, backup_version, lo
         status=ssh_client.exec(node, port, backup_command)
         for line in status[1]:
             log.logger.info(line.strip())
-        if status[1].channel.recv_exit_status()==0:
+        if status[1].channel.recv_exit_status()==normal_code:
             backup_file=f"{rollback_dir}/{backup_name}"
             rollback_file=f"{rollback_dir}/{backup_version}/{backup_name}"
             log.logger.info(f"{node}: {backup_file} --> {rollback_file}")
