@@ -9,7 +9,8 @@ import textwrap
 from logging import handlers
 import logging
 import requests, json
-from libs.env import interface, located_dir_link
+from libs.env import interface, located_dir_link, \
+        activated_code, stopped_code, abnormal_code
 
 def find_pid(port):
     """根据端口获取相应的pid
@@ -22,6 +23,22 @@ def find_pid(port):
     else:
         pid=0
     return pid
+
+def soft_monitor(node, port_list):
+    """监控
+    return:
+        0: 启动, 1: 未启动, 2: 启动但不正常
+    """
+    port_status=[]
+    for port in port_list:
+        port_status.append(port_connect(node, port))
+
+    if True not in port_status:
+        return normal_code
+    elif False not in port_status:
+        return stopped_code
+    else:
+        return abnormal_code
 
 def exec_command(command, timeout=45):
     try:
