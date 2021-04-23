@@ -138,6 +138,13 @@ def stop():
             return_value=error_code
     return return_value
 
+def monitor():
+    """监控
+    return:
+        启动, 未启动, 启动但不正常
+    """
+    return common.soft_monitor("localhost", port_list)
+
 def heapdump():
     """jvm
     """

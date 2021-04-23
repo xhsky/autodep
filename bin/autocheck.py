@@ -5,7 +5,8 @@
 import sys, os, json
 import configparser
 from libs import common
-from libs.env import log_remote_level, autocheck_src, autocheck_dst, autocheck_pkg_dir, autocheck_version
+from libs.env import log_remote_level, autocheck_src, autocheck_dst, autocheck_pkg_dir, autocheck_version, \
+        normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def main():
     softname, action, conf_json=sys.argv[1:]
@@ -322,7 +323,7 @@ def stop():
 def monitor():
     """监控
     """
-    return flag
+    return activated_code
 
 def sendmail():
     """发送巡检信息
@@ -338,6 +339,7 @@ def sendmail():
 if __name__ == "__main__":
     softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
+    located=conf_dict["located"]
     log=common.Logger({"remote": log_remote_level}, loggger_name="autocheck")
 
     autocheck_dir=f"{located}/{autocheck_dst}"

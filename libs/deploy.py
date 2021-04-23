@@ -386,6 +386,8 @@ class Deploy(object):
             status=soft_control.stop(remote_py_file, softname, args_dict)
         elif action=="sendmail":
             status=soft_control.sendmail(remote_py_file, args_dict)
+        elif action=="monitor":
+            status=soft_control.monitor(remote_py_file, softname, args_dict)
         return status
 
     def nodes_control(self, control_dict, action, action_msg, init_dict, arch_dict):
@@ -437,12 +439,13 @@ class Deploy(object):
                 status=self.remote_exec(ip, port, softname, remote_py, action, control_trans_files_dict, arch_dict[node])
                 for line in status[1]:
                     self.log.logger.info(line.strip())
-                if status[1].channel.recv_exit_status() == normal_code:
+                result_code=status[1].channel.recv_exit_status()
+                if  result_code== normal_code:
                     self.log.logger.info(f"{softname}{action_msg}完成")
                 else:
                     self.log.logger.error(f"{softname}{action_msg}失败")
-                    stats_value=False
                     control_result=False
+                stats_value=result_code
                 control_stats_dict[node][softname]=stats_value
         return control_result, control_stats_dict
 
@@ -754,6 +757,7 @@ class Deploy(object):
                 backup_result=False
         return backup_result, backup_stats_dict
 
+    '''
     def _get_soft_port_list(self, arch_dict, node, softname):
         """获取单个软件的端口列表
         """
@@ -787,8 +791,9 @@ class Deploy(object):
             port_list.append(arch_dict[node][f"{softname}_info"]["port"])
 
         return port_list
+    '''
 
-    def get_soft_status(self, arch_dict):
+    def get_soft_status(self, init_dict, arch_dict):
         """获取软件状态
 
         return:
@@ -800,27 +805,27 @@ class Deploy(object):
             }
         """
         soft_stats_dict={}
+        #for node in arch_dict:
+        #    soft_stats_dict[node]={}
+        #    for softname in arch_dict[node]["software"]:
+        #        port_status=[]
+        #        port_list=self._get_soft_port_list(arch_dict, node, softname)
+        #        self.log.logger.debug(f"{node}, {softname=}, {port_list=}")
+        #        if len(port_list) != 0:
+        #            for port in port_list:
+        #                port_status.append(port_connect(node, int(port)))
+        #            if True not in port_status:
+        #                softname_status=1
+        #            elif False not in port_status:
+        #                softname_status=0
+        #            else:
+        #                softname_status=2
+        #            soft_status_dict[node][softname]=softname_status
+        soft_dict={}
         for node in arch_dict:
-            soft_stats_dict[node]={}
-            for softname in arch_dict[node]["software"]:
-                port_status=[]
-                port_list=self._get_soft_port_list(arch_dict, node, softname)
-                self.log.logger.debug(f"{node}, {softname=}, {port_list=}")
-                if len(port_list) != 0:
-                    for port in port_list:
-                        port_status.append(port_connect(node, int(port)))
-                    if True not in port_status:
-                        softname_status=1
-                    elif False not in port_status:
-                        softname_status=0
-                    else:
-                        softname_status=2
-                    soft_status_dict[node][softname]=softname_status
-        soft_stats_dict={}
-        for node in arch_dict:
-            soft_stats_dict[node]={}
+            soft_dict[node]=arch_dict[node]["software"]
 
-        monitor_result, soft_stats_dict=self.nodes_control(env_node_dict, "run", "运行", init_dict, arch_dict)
+        monitor_result, soft_stats_dict=self.nodes_control(soft_dict, "monitor", "状态", init_dict, arch_dict)
         return monitor_result, soft_stats_dict
 
     def update_extract(self, tarfile_, dir_, config_file_list):
@@ -2713,15 +2718,15 @@ class graphics_deploy(Deploy):
     def monitor(self, title):
         """显示软件状态
         """
-        result, config_list=self.read_config(["arch"])
+        result, config_list=self.read_config(["init", "arch"])
         if result:
-            arch_dict=config_list[0]
+            init_dict, arch_dict=config_list
         else:
             self.log.logger.error(config_list)
             self.d.msgbox(config_list)
             return
 
-        soft_status_dict=self.get_soft_status(arch_dict)
+        result, soft_status_dict=self.get_soft_status(init_dict, arch_dict)
         self.log.logger.debug(f"软件状态值: {soft_status_dict}")
 
         HIDDEN = 0x1

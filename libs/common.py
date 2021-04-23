@@ -34,9 +34,9 @@ def soft_monitor(node, port_list):
         port_status.append(port_connect(node, port))
 
     if True not in port_status:
-        return normal_code
-    elif False not in port_status:
         return stopped_code
+    elif False not in port_status:
+        return activated_code
     else:
         return abnormal_code
 

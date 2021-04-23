@@ -203,6 +203,7 @@ if __name__ == "__main__":
     conf_dict=json.loads(conf_json)
     log=common.Logger({"remote": log_remote_level}, loggger_name="nginx")
 
+    located=conf_dict["located"]
     nginx_dir=f"{located}/{nginx_dst}"
     nginx_info_dict=conf_dict["nginx_info"]
     vhosts_info_dict=nginx_info_dict["vhost_info"]
