@@ -1,0 +1,141 @@
+{
+  "init": {
+    "py": "init.py"
+  }, 
+  "set_hosts": {
+    "py": "set_hosts.py"
+  }, 
+  "python3": {
+    "file": "python3.tar.gz",
+    "version": "3.8"
+  }, 
+  "nginx": {
+    "file": "nginx-1.17.9-bin.tar.gz", 
+    "version": "1.17.9", 
+    "py": "nginx.py", 
+    "type": "env"
+  }, 
+  "jdk": {
+    "file": "jdk-8u251-linux-x64.tar.gz", 
+    "version": "1.8.251", 
+    "py": "jdk.py", 
+    "type": "env"
+  }, 
+  "tomcat": {
+    "file": "apache-tomcat-8.5.51.tar.gz", 
+    "version": "8.5.51", 
+    "py": "tomcat.py", 
+    "type": "program"
+  }, 
+  "ffmpeg": {
+    "file": "ffmpeg-4.2.2-bin.tar.gz", 
+    "version": "4.2.2", 
+    "py": "ffmpeg.py", 
+    "type": "env"
+  }, 
+  "redis": {
+     "file":"redis-5.0.7-bin.tar.gz", 
+     "version": "5.0.7", 
+     "py": "redis.py", 
+     "type": "env"
+  }, 
+  "mysql": {
+    "file": "mysql-8.0.19.tar.gz", 
+    "version": "8.0.19", 
+    "py": "mysql.py", 
+     "type": "env"
+  }, 
+  "glusterfs": {
+    "file": "glusterfs-7.5-rpm.tar.gz", 
+    "version": "7.5", 
+    "py": "glusterfs.py"
+  }, 
+  "elasticsearch": {
+    "file": "elasticsearch-7.8.1-linux-x86_64.tar.gz", 
+    "version": "7.8.1", 
+    "py": "elasticsearch.py", 
+    "type": "env"
+  }, 
+  "erlang": {
+    "file":"erlang-23.2.tar.gz", 
+    "version": "23.2", 
+    "py": "erlang.py", 
+    "type": "env"
+  }, 
+  "rabbitmq": {
+    "file": "rabbitmq-server-generic-unix-3.8.9.tar.xz", 
+    "version": "3.8.9", 
+    "py": "rabbitmq.py", 
+    "type": "env"
+  }, 
+  "rocketmq": {
+    "file": "rocketmq-all-4.8.0-bin-release.tar.gz", 
+    "version": "4.8.0", 
+    "py": "rocketmq.py", 
+    "type": "env"
+  }, 
+  "autocheck": {
+    "file":"autocheck-1.3.4.tar.gz", 
+    "version": "1.3.4", 
+    "py": "rocketmq.py", 
+    "type": "check"
+  }, 
+  "nacos": {
+    "file": "nacos-server-1.4.1.tar.gz", 
+    "version": "1.4.1", 
+    "py": "nacos.py", 
+    "type": "platform"
+  }, 
+  "nacos_mysql_sql": {
+    "file": "nacos-mysql-sql-1.4.1.tar.gz", 
+    "version": "1.4.1", 
+    "py": "sql.py", 
+    "type": "sql"
+  }, 
+  "program": {
+    "graduate": {
+      "basics": {
+        "file": "dsfa-graduate-basics-starter-1.0.0-SNAPSHOT.jar", 
+        "version": "1.0.0", 
+        "py": "program.py", 
+        "type": "program"
+      }, 
+      "main": {
+        "file": "dsfa-graduate-main-small-1.0.0-SNAPSHOT.jar", 
+        "version": "1.0.0", 
+        "py": "program.py", 
+        "type": "program"
+      }, 
+      "recruit": {
+        "file": "dsfa-graduate-recruit-starter-1.0.0-SNAPSHOT.jar", 
+        "version": "1.0.0", 
+        "py": "program.py", 
+        "type": "program"
+      }, 
+      "teaching": {
+        "file": "dsfa-graduate-teaching-starter-1.0.0-SNAPSHOT.jar", 
+        "version": "1.0.0", 
+        "py": "program.py", 
+        "type": "program"
+      }, 
+      "frontend": {
+        "file": "graduate.tar.gz", 
+        "version": "1.0.0", 
+        "py": "frontend.py", 
+        "type": "frontend"
+      }, 
+      "sql": {
+        "file": "dsfa_graduate_sql-1.0.0.tar.gz", 
+        "version": "1.0.0", 
+        "py": "sql.py", 
+        "type": "sql"
+      }
+    }, 
+    "gateway": {
+      "file": "dream-dsfa-teas-gateway-1.0.tar.gz", 
+      "version": "1.0", 
+      "py": "gateway.py", 
+      "type": "program"
+    } 
+  }
+} 

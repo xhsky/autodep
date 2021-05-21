@@ -5,7 +5,7 @@
 
 import sys, os, json
 from libs import common
-from libs.env import log_remote_level, rocketmq_src, rocketmq_dst, rocketmq_pkg_dir, rocketmq_version, \
+from libs.env import log_remote_level, rocketmq_src, rocketmq_dst, rocketmq_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def config_jvm(file_, jvm_mem, log):

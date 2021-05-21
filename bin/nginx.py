@@ -4,8 +4,7 @@
 
 import sys, json, os
 from libs import common
-from libs.env import log_remote_level, nginx_src, nginx_dst, nginx_pkg_dir, nginx_version, \
-        nginx_server_config, nginx_module_dict, \
+from libs.env import log_remote_level, nginx_src, nginx_dst, nginx_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def install():
@@ -23,41 +22,63 @@ def install():
         log.logger.error(msg)
         return error_code
 
-    # 配置
-    worker_processes=nginx_info_dict.get("worker_processes")
-
     # vhost文件路径
     vhosts_file=f"{nginx_dir}/conf/vhosts.conf"
     try:
-        #log.logger.debug(f"创建vhosts目录: {vhosts_dir}")
-        #os.makedirs(vhosts_dir, exist_ok=1)
         server_config_list=[]
         for port in vhosts_info_dict:
-            config_mod=[]
-            upstream_servers_list=[]
-            for config_name in vhosts_info_dict[port]:
-                proxy_name=vhosts_info_dict[port][config_name]["proxy_name"]
-                # 配置upstream
-                upstream_servers=f"\nupstream {proxy_name} {{"
-                for proxy_host in vhosts_info_dict[port][config_name].get("proxy_hosts"):
-                    upstream_servers=f"{upstream_servers}\n\tserver {proxy_host};" 
-                else:
-                    upstream_servers=f"{upstream_servers}\n}}" 
-                    upstream_servers_list.append(upstream_servers)
-                # 配置root
-                code_dir=vhosts_info_dict[port][config_name].get("code_dir")
-                if code_dir is None:
-                    code_dir=""
-                else:
-                    code_dir=f"root {code_dir};"
+            nginx_server_config=f"""\
+            server {{
+                    listen       {int(port)};
+                    server_name  localhost;
 
-                config_mod.append(nginx_module_dict[config_name] % (code_dir, proxy_name))
-            upstream_servers="\n".join(upstream_servers_list)
-            server_config_list.append(f"{upstream_servers}\n{nginx_server_config}" % (port, "\n".join(config_mod)))
+                    #charset koi8-r;
+
+                    access_log  logs/{port}.access.log  main;
+
+                    error_page   500 502 503 504  /50x.html;
+                    location = /50x.html {
+                        root   html;
+                    }
+
+                    location = /favicon.ico {{
+                        return 200;     		# 忽略浏览器的title前面的图标
+                    }}
+            }}
+            """
+            for name in vhosts_info_dict[port]:
+                mode=vhosts_info_dict[port][name]
+                if mode=="proxy":
+                    # 配置upstream
+                    proxy_name=vhosts_info_dict[port][name]["proxy_name"]
+                    upstream_servers=f"upstream {proxy_name} {{"
+                    for proxy_host in vhosts_info_dict[port][name]["proxy_hosts"]:
+                        upstream_servers=f"{upstream_servers}\n\tserver {proxy_host};" 
+                    else:
+                        upstream_servers=f"{upstream_servers}\n}}" 
+                    nginx_server_config=f"{upstream_servers}\n{nginx_server_config}"
+
+                    name_config=f"""\
+                            location {name} {{
+                                proxy_pass http://{proxy_name};
+                                }}
+                    """
+                elif mode=="location":
+                    name_config=f"""\
+                            location {name} {{
+                                alias {vhosts_info_dict[port][name]['code_dir']};
+                                }}
+                    """
+                nginx_server_config=f"{nginx_server_config}\n{name_config}"
+            else:
+                nginx_server_config=f"{nginx_server_config}\n}}"
+                server_config_list.append(nginx_server_config)
     except Exception as e:
         log.logger.error(f"配置vhosts失败: {str(e)}")
         return error_code
 
+    # 配置
+    worker_processes=nginx_info_dict.get("worker_processes")
     nginx_conf_text=f"""\
             user  nginx;
             worker_processes  {worker_processes};
@@ -79,9 +100,9 @@ def install():
                 default_type  application/octet-stream;
                 charset utf-8;
 
-                #log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
-                #                  '$status $body_bytes_sent "$http_referer" '
-                #                  '"$http_user_agent" "$http_x_forwarded_for"';
+                log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                                  '$status $body_bytes_sent "$http_referer" '
+                                  '"$http_user_agent" "$http_x_forwarded_for"';
 
                 #access_log  logs/access.log  main;
 

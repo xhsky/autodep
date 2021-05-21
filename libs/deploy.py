@@ -3,20 +3,21 @@
 # 2020-10-21 17:37:47
 # sky
 
-import locale, json, os, time, sys, requests, tarfile, math, shutil
+import locale, json, os, time, sys, tarfile, math, shutil
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, log_graphics_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
-        remote_code_dir, remote_pkgs_dir, ext_dir, local_pkg_name_dict, \
-        interface, test_mode, resource_verify_mode, program_soft, \
+        remote_code_dir, remote_pkgs_dir, ext_dir, \
+        interface, test_mode, resource_verify_mode, \
         host_info_file, init_stats_file, install_stats_file, start_stats_file, update_stats_file, run_stats_file, \
         update_config_file_name, rollback_dir, \
         g_term_rows, g_term_cols, \
+        tool_service_code, portless_service_code, \
         located_dir_name, located_dir_link, autocheck_dst, report_dir, report_file_list, \
-        init_file, arch_file, update_file, start_file, stop_file, check_file, project_file, deploy_file, program_file, \
-        program_unzip_dir, \
+        init_file, arch_file, update_file, start_file, stop_file, check_file, project_file, deploy_file, program_file, ext_file, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
-for dir_ in [logs_dir, program_unzip_dir, report_dir]:
+#for dir_ in [logs_dir, program_unzip_dir, report_dir]:
+for dir_ in [logs_dir, report_dir]:
     if not os.path.exists(dir_):
         os.makedirs(dir_, exist_ok=1)
 
@@ -67,7 +68,8 @@ class Deploy(object):
                 config_file=project_file
             elif config=="program":
                 config_file=program_file
-
+            elif config=="ext":
+                config_file=ext_file
             try: 
                 with open(config_file, "r", encoding="utf8") as f:
                     config_json=json.load(f)
@@ -235,8 +237,10 @@ class Deploy(object):
             mem=str(self._format_size(mem1)+self._format_size(mem2))
         elif softname=="tomcat":
             mem=arch_dict[node]["tomcat_info"]["jvm_mem"]
+        elif softname=="nacos":
+            mem=arch_dict[node]["nacos_info"]["jvm_mem"]
         elif softname.startswith("program"):
-            mem=arch_dict[node][f"{softname}_info"]["jvm_mem"]
+            mem=arch_dict[node][softname]["jvm_mem"]
         else:
             mem="0G"
         cpu=1
@@ -256,45 +260,48 @@ class Deploy(object):
             max_disk_dict[ip]=disk_sorted[-1][0]
         return max_disk_dict
 
-    def _get_soft_py(self, softname):
-        """根据软件名称获取对应的py文件名称
+    def get_soft_info(self, softname, ext_dict, info_type):
+        """根据软件名称获取对应软件的信息
+        softname: 
+        ext_dict:
+        info_type: file|py
+
+        return:
+            ../ext/soft-version.tar.gz    # file
+            ./bin/soft.py                 # py
         """
         if softname.lower().startswith("program"):
-            soft_py="program.py"
-        elif softname.lower()=="init":
-            soft_py="init.py"
-        elif softname.lower()=="elasticsearch":
-            soft_py="elasticsearch.py"
-        elif softname.lower()=="erlang":
-            soft_py="erlang.py"
-        elif softname.lower()=="ffmpeg":
-            soft_py="ffmpeg.py"
-        elif softname.lower()=="glusterfs":
-            soft_py="glusterfs.py"
-        elif softname.lower()=="jdk":
-            soft_py="jdk.py"
-        elif softname.lower()=="mysql":
-            soft_py="mysql.py"
-        elif softname.lower()=="nginx":
-            soft_py="nginx.py"
-        elif softname.lower()=="rabbitmq":
-            soft_py="rabbitmq.py"
-        elif softname.lower()=="redis":
-            soft_py="redis.py"
-        elif softname.lower()=="rocketmq":
-            soft_py="rocketmq.py"
-        elif softname.lower()=="tomcat":
-            soft_py="tomcat.py"
-        elif softname.lower()=="autocheck":
-            soft_py="autocheck.py"
-        elif softname.lower()=="set_hosts":
-            soft_py="set_hosts.py"
-        else:
-            soft_py=softname
-        return soft_py
+            type_name, product_name, module_name=softname.split("_")
+            if info_type=="file":
+                file_name=ext_dict[type_name][product_name][module_name]["file"]
+                soft_file=f"{ext_dir}/{product_name}/{file_name}"
+                soft_info_str=soft_file
+            elif info_type=="py":
+                py_name=ext_dict[type_name][product_name][module_name]["py"]
+                soft_py=f"./bin/{py_name}"
+                soft_info_str=soft_py
+            elif info_type=="type":
+                soft_type=ext_dict[type_name][product_name][module_name]["type"]
+                soft_info_str=soft_type
+        else: 
+            if info_type=="file":
+                file_name=ext_dict[softname].get("file")
+                if file_name is not None:
+                    soft_file=f"{ext_dir}/{file_name}"
+                else:
+                    soft_file=file_name
+                soft_info_str=soft_file
+            elif info_type=="py":
+                py_name=ext_dict[softname]["py"]
+                soft_py=f"./bin/{py_name}"
+                soft_info_str=soft_py
+            elif info_type=="type":
+                soft_type=ext_dict[softname]["type"]
+                soft_info_str=soft_type
+        return soft_info_str
 
     def resource_verifi(self, arch_dict, host_info_dict):
-        """根据模板中各节点安装软件的权重和 对应 集群中各节点权重(排序对应), 并将将ip/located赋值给node配置
+        """根据模板中各节点安装软件的权重和 对应 集群中各节点权重和(排序对应), 并将将ip/located赋值给node配置
         """
         node_weights_dict={}
         ip_weights_dict={}
@@ -390,25 +397,25 @@ class Deploy(object):
             status=soft_control.monitor(remote_py_file, softname, args_dict)
         return status
 
-    def nodes_control(self, control_dict, action, action_msg, init_dict, arch_dict):
+    def nodes_control(self, control_dict, action, action_msg, init_dict, arch_dict, ext_dict):
         """对control_dict中节点的软件执行action操作
-
-        control_dict={
-            "node1":["soft1", "soft2"], 
-            "node2":["soft1", "soft2"]
-        }
-
-        return:
-            control_result: True|False              # 整体运行结果
-            control_stats_dict: {                   # 运行结果
-                "node1":{
-                    "soft1": True, 
-                    "soft2": False
-                    }
+            control_dict={
+                "node1":["soft1", "soft2"], 
+                "node2":["soft1", "soft2"]
             }
+
+            return:
+                control_result: True|False              # 整体运行结果
+                control_stats_dict: {                   # 运行结果
+                    "node1":{
+                        "soft1": code
+                        "soft2": code
+                        }
+                }
         """
         control_result=True
         control_stats_dict={}
+        #normal_code_list=[normal_code, activated_code, stopped_code]
         for node in control_dict:
             self.log.logger.info(f"***{node}节点{action_msg}***")
             control_stats_dict[node]={}
@@ -416,40 +423,44 @@ class Deploy(object):
             port=init_dict[arch_dict[node]["ip"]]["port"]
             for softname in control_dict[node]:
                 self.log.logger.info(f"{softname}{action_msg}...")
-                stats_value=True
 
                 control_trans_files_dict=trans_files_dict.copy()
-                soft_py_name=self._get_soft_py(softname)
-                pkg_file=local_pkg_name_dict.get(softname)
-                remote_py=f"{remote_code_dir}/{soft_py_name}"
-                locale_py=f"./bin/{soft_py_name}"
+                py_file=self.get_soft_info(softname, ext_dict, "py")
+                remote_py_file=f"{remote_code_dir}/{py_file.split('/')[-1]}"
                 if test_mode or action=="install":
                     control_trans_files_dict.update(
                             {
-                                "py_file": [locale_py, remote_py]
+                                "py_file": [py_file, remote_py_file]
                                 }
                             )
-                if action=="install" and pkg_file is not None:
+                pkg_file=self.get_soft_info(softname, ext_dict, "file")
+                if action=="install" and pkg_file is not None:          # install阶段无pkg文件的情况
+                    remote_pkg_file=f"{remote_pkgs_dir}/{pkg_file.split('/')[-1]}"
                     control_trans_files_dict.update(
                             {
-                                "pkg_file": [f"{ext_dir}/{pkg_file}", f"{remote_pkgs_dir}/{pkg_file}"]
+                                "pkg_file": [pkg_file, remote_pkg_file]
                                 }
                             )
 
-                status=self.remote_exec(ip, port, softname, remote_py, action, control_trans_files_dict, arch_dict[node])
+                status=self.remote_exec(ip, port, softname, remote_py_file, action, control_trans_files_dict, arch_dict[node])
                 for line in status[1]:
                     self.log.logger.info(line.strip())
                 result_code=status[1].channel.recv_exit_status()
-                if  result_code== normal_code:
+                #if  result_code != error_code and result_code != abnormal_code:
+                #if  result_code in normal_code_list:
+                if result_code==normal_code:
                     self.log.logger.info(f"{softname}{action_msg}完成")
+                elif result_code==activated_code:
+                    self.log.logger.warning(f"{softname}运行中")
+                elif result_code==stopped_code:
+                    self.log.logger.warning(f"{softname}未启动")
                 else:
                     self.log.logger.error(f"{softname}{action_msg}失败")
                     control_result=False
-                stats_value=result_code
-                control_stats_dict[node][softname]=stats_value
+                control_stats_dict[node][softname]=result_code
         return control_result, control_stats_dict
 
-    def init(self, init_dict, local_python3_file):
+    def init(self, init_dict, ext_dict):
         """主机环境初始化
             * 生成秘钥
             * 免密码登录
@@ -479,6 +490,7 @@ class Deploy(object):
                 self.log.logger.info(f"免密码登录设置完成")
                 
                 # 传输Python
+                local_python3_file=self.get_soft_info("python3", ext_dict, "file")
                 remote_python3_file=f"{remote_python_transfer_dir}/{local_python3_file.split('/')[-1]}"
                 self.log.logger.debug(f"传输Python安装包...")
                 self.ssh_client.scp(node, port, "root", local_python3_file, remote_python3_file)
@@ -486,7 +498,7 @@ class Deploy(object):
                 command=f"tar -xf {remote_python3_file} -C {remote_python_install_dir}"
                 self.log.logger.debug(f"配置Python环境")
                 status=self.ssh_client.exec(node, port, command)
-                if status[1].channel.recv_exit_status() != normal_code:
+                if status[1].channel.recv_exit_status() != 0:
                     error_info=f"Python3安装报错, 进程退出: {status[2].read().decode('utf8')}"
                     self.log.logger.error(error_info)
                     init_result=False
@@ -497,12 +509,13 @@ class Deploy(object):
                     self.log.logger.info(f"配置Python3环境完成")
 
                 # 执行init.py
-                init_py=self._get_soft_py("init")
-                remote_py_file=f"{remote_code_dir}/{init_py}"
+                init_py=self.get_soft_info("init", ext_dict, "py")
+                #init_py=self._get_soft_py("init")
+                remote_py_file=f"{remote_code_dir}/{init_py.split('/')[-1]}"
                 trans_files_dict={
                         "lib_file": ["./libs/common.py", f"{remote_code_dir}/libs/common.py"],
                         "env_file": ["./libs/env.py", f"{remote_code_dir}/libs/env.py"],
-                        "py_file": [f"./bin/{init_py}", remote_py_file]
+                        "py_file": [init_py, remote_py_file]
                         }
                 status=self.remote_exec(node, port, "init", remote_py_file, "init", trans_files_dict, None)
 
@@ -528,7 +541,7 @@ class Deploy(object):
                     }
         return init_result, init_stats_dict
 
-    def install(self, init_dict, arch_dict):
+    def install(self, init_dict, arch_dict, ext_dict):
         """软件安装
         return:
             install_stats_dict={
@@ -555,68 +568,87 @@ class Deploy(object):
             control_dict[node]=arch_dict[node]["software"]
 
         install_result, install_stats_dict=self.nodes_control(control_dict, "install", "安装", \
-                init_dict, arch_dict)
+                init_dict, arch_dict, ext_dict)
 
         return install_result, install_stats_dict
 
-    def run(self, init_dict, arch_dict):
+    def run(self, init_dict, arch_dict, ext_dict):
         """启动软件并初始化
 
         return:
             run_result: True|False
             run_stats_dict={
                 "node1": {
-                    "soft1": True|False
+                    "soft1": code
                 }
             }
         """
         # 构造需要启动的节点及软件结构
         control_dict={}
         for node in arch_dict:
-            #for softname in arch_dict[node]["software"][:]:
-            #    for program_softname in program_soft:
-            #        if softname.startswith(program_softname):
-            #            arch_dict[node]["software"].remove(softname)
-            #            break
             control_dict[node]=arch_dict[node]["software"]
-        env_node_dict, _ = self._divide_service(control_dict)
 
-        run_result, run_stats_dict=self.nodes_control(env_node_dict, "run", "运行", init_dict, arch_dict)
+        soft_type_dict=self._divide_service(control_dict, ext_dict)
+
+        run_result=True
+        run_stats_dict={}
+        for soft_type in soft_type_dict:
+            if len(soft_type_dict[soft_type]) != 0:
+                self.log.logger.info(f"***{soft_type}服务运行***")
+                run_result, type_stats_dict=self.nodes_control(soft_type_dict[soft_type], "run", "运行", init_dict, arch_dict, ext_dict)
+                run_stats_dict[soft_type]=type_stats_dict
+                if run_result:
+                    continue
+                else:
+                    break
         return run_result, run_stats_dict
 
-    def _divide_service(self, control_dict):
+    def _divide_service(self, control_dict, ext_dict):
         """将需要控制的软件分为基础服务和项目服务, 并排序
+        env: mysql, redis, jdk, rocketmq, erlang, rabbitmq, es, ffmpeg, glusterfs-server, nginx
+        sql: nacos_sql, program-sql
+        platform: gluterfs-client, nacos
+        program: jar
+        frontend: frontend
+        check: autocheck
+
+        control_dict={
+            "node1": [sof1, soft2], 
+            "node2": [sof1, soft2]
+        }
+        ext_dict: ext.json
+
         return:
-            env_node_dict={
-                "node1": ["soft1"]
-            }
-            program_node_dict={
-                "node1": ["soft1"]
+            soft_type_dict={
+                "env": {
+                    "node1": [soft1, soft2], 
+                    "node2": [soft1, soft2]
+                }, 
+                "platform": {
+                    "node1": [soft1, soft2], 
+                    "node2": [soft1, soft2]
+                }, 
+                ...
             }
         """
-        env_node_dict={}
-        program_node_dict={}
-        for node in control_dict:
-            for program_softname in program_soft:
-                for softname in control_dict[node]:
-                    if softname.startswith(program_softname):
-                        if program_node_dict.get(node) is None:
-                            program_node_dict[node]=[]
-                        program_node_dict[node].append(softname)
-                        break
+
+        soft_type_dict={}
+        soft_type_list=["env", "sql", "platform", "program", "frontend", "check"]       # 指定软件类型顺序
+        for soft_type in soft_type_list:        # dict插入有序
+            soft_type_dict[soft_type]={}
 
         for node in control_dict:
-            if program_node_dict.get(node) is not None:
-                for softname in control_dict[node]:
-                    if softname not in program_node_dict[node]:
-                        if env_node_dict.get(node) is None:
-                            env_node_dict[node]=[]
-                        env_node_dict[node].append(softname)
-            else:
-                env_node_dict[node]=control_dict[node]
-
-        self.log.logger.debug(f"{env_node_dict=}, {program_node_dict=}")
-        return env_node_dict, program_node_dict
+            for softname in control_dict[node]:
+                soft_type=self.get_soft_info(softname, ext_dict, "type")
+                if soft_type_dict[soft_type].get(node) is None:
+                    soft_type_dict[soft_type][node]=[]
+                soft_type_dict[soft_type][node].append(softname)
+        ## 删除空key
+        #for soft_type in soft_type_dict:
+        #    if soft_type_dict[soft_type] == {}:
+        #        soft_type_dict.pop(soft_type)
+        self.log.logger.debug(f"{soft_type_dict=}")
+        return soft_type_dict
 
     def _get_control_stats_dict(self, env_control_stats_dict, program_control_stats_dict):
         """合并env和program的stats_dict
@@ -632,82 +664,59 @@ class Deploy(object):
             control_stats_dict=program_control_stats_dict
         return control_stats_dict
 
-    def start(self, init_dict, arch_dict, control_dict):
+    def start(self, control_dict, init_dict, arch_dict, ext_dict):
         """软件start
-
-        control_dict={
-            "node1":["soft1", "soft2"], 
-            "node2":["soft1", "soft2"]
-        }
-
-        return:
-            control_stats_dict={
-                "node1":{
-                    "soft1": True|False
-                }
+            control_dict={
+                "node1":["soft1", "soft2"], 
+                "node2":["soft1", "soft2"]
             }
-            
+            return:
+                start_stats_dict={
+                    "node1":{
+                        "soft1": code
+                    }
+                }
         """
-        env_node_dict, program_node_dict=self._divide_service(control_dict)
-        env_control_stats_dict={}
-        program_control_stats_dict={}
-        control_result=True
-        env_result=True
-        if len(env_node_dict) != 0:
-            self.log.logger.info("基础服务启动...")
-            env_result, env_control_stats_dict=self.nodes_control(env_node_dict, "start", "启动", init_dict, arch_dict)
-            if env_result:
-                self.log.logger.info("基础服务启动成功")
-            else:
-                self.log.logger.error(f"基础服务启动失败, {env_control_stats_dict}")
-                control_result=False
-        if len(program_node_dict) != 0:
-            if env_result:
-                self.log.logger.info("项目启动...")
-                program_result, program_control_stats_dict=self.nodes_control(program_node_dict, "start", "启动", init_dict, arch_dict)
-                if program_result:
-                    self.log.logger.info("项目启动成功")
+        soft_type_dict=self._divide_service(control_dict, ext_dict)
+        start_result=True
+        start_stats_dict={}
+        for soft_type in soft_type_dict:
+            if len(soft_type_dict[soft_type]) != 0:
+                self.log.logger.info(f"***{soft_type}服务启动***")
+                start_result, start_stats_dict=self.nodes_control(soft_type_dict[soft_type], "start", "启动", init_dict, arch_dict, ext_dict)
+                if start_result:
+                    continue
                 else:
-                    self.log.logger.error(f"项目启动失败, {program_control_stats_dict}")
-                    control_result=False
-            else:
-                self.log.logger.warning("基础服务启动失败, 项目启动忽略")
-        control_stats_dict=self._get_control_stats_dict(env_control_stats_dict, program_control_stats_dict)
-        return control_result, control_stats_dict
+                    break
+        return start_result, start_stats_dict
 
-    def stop(self, init_dict, arch_dict, control_dict):
+    def stop(self, control_dict, init_dict, arch_dict, ext_dict):
         """软件stop
+            control_dict={
+                "node1":["soft1", "soft2"], 
+                "node2":["soft1", "soft2"]
+            }
+            return:
+                stop_stats_dict={
+                    "node1":{
+                        "soft1": code
+                    }
+                }
         """
-        env_node_dict, program_node_dict=self._divide_service(control_dict)
-        env_control_stats_dict={}
-        program_control_stats_dict={}
-        program_result=True
-        control_result=True
-        if len(program_node_dict) != 0:
-            self.log.logger.info("项目关闭...")
-            for node in program_node_dict:
-                program_node_dict[node].reverse()
-            program_result, program_control_stats_dict=self.nodes_control(program_node_dict, "stop", "关闭", init_dict, arch_dict)
-            if program_result:
-                self.log.logger.info("项目关闭成功")
-            else:
-                self.log.logger.error(f"项目关闭失败, {program_control_stats_dict}")
-                control_result=False
-        if len(env_node_dict) != 0:
-            if program_result:
-                self.log.logger.info("基础服务关闭...")
-                env_result, env_control_stats_dict=self.nodes_control(env_node_dict, "stop", "关闭", init_dict, arch_dict)
-                if env_result:
-                    self.log.logger.info("基础服务关闭成功")
+        soft_type_dict=self._divide_service(control_dict, ext_dict)
+        stop_result=True
+        stop_stats_dict={}
+        for soft_type in reversed(soft_type_dict):      # 反序关闭
+            if len(soft_type_dict[soft_type]) != 0:
+                self.log.logger.info(f"***{soft_type}服务停止***")
+                stop_result, stop_stats_dict=self.nodes_control(soft_type_dict[soft_type], "stop", "停止", init_dict, arch_dict, ext_dict)
+                if stop_result:
+                    continue
                 else:
-                    self.log.logger.error(f"基础服务关闭失败, {env_control_stats_dict}")
-                    control_result=False
-            else:
-                self.log.logger.warning("项目关闭失败, 基础服务关闭忽略")
-        control_stats_dict=self._get_control_stats_dict(env_control_stats_dict, program_control_stats_dict)
-        return control_result, control_stats_dict
+                    break
+        return stop_result, stop_stats_dict
 
-    def program_control(self, init_dict, arch_dict, action):
+    def program_control_bak(self, init_dict, arch_dict, action):
         """项目start|stop
         return:
             program_stats_dict={
@@ -758,8 +767,59 @@ class Deploy(object):
         return backup_result, backup_stats_dict
 
     '''
+    def _get_soft_py(self, softname):
+        """根据软件名称获取对应的py文件名称
+        """
+        if softname.lower().startswith("program"):
+            soft_py="program.py"
+        if softname.lower().startswith("sql"):
+            soft_py="sql.py"
+        if softname.lower().startswith("frontend"):
+            soft_py="frontend.py"
+        elif softname.lower()=="init":
+            soft_py="init.py"
+        elif softname.lower()=="elasticsearch":
+            soft_py="elasticsearch.py"
+        elif softname.lower()=="erlang":
+            soft_py="erlang.py"
+        elif softname.lower()=="ffmpeg":
+            soft_py="ffmpeg.py"
+        elif softname.lower()=="glusterfs":
+            soft_py="glusterfs.py"
+        elif softname.lower()=="jdk":
+            soft_py="jdk.py"
+        elif softname.lower()=="mysql":
+            soft_py="mysql.py"
+        elif softname.lower()=="nginx":
+            soft_py="nginx.py"
+        elif softname.lower()=="rabbitmq":
+            soft_py="rabbitmq.py"
+        elif softname.lower()=="redis":
+            soft_py="redis.py"
+        elif softname.lower()=="rocketmq":
+            soft_py="rocketmq.py"
+        elif softname.lower()=="tomcat":
+            soft_py="tomcat.py"
+        elif softname.lower()=="autocheck":
+            soft_py="autocheck.py"
+        elif softname.lower()=="set_hosts":
+            soft_py="set_hosts.py"
+        elif softname.lower()=="nacos":
+            soft_py="nacos.py"
+        elif softname.lower()=="gateway":
+            soft_py="gateway.py"
+        else:
+            soft_py=softname
+        return soft_py
+    '''
+
     def _get_soft_port_list(self, arch_dict, node, softname):
         """获取单个软件的端口列表
+            return:
+                port_list:
+                    [11, 22]    - 软件端口列表
+                    [0]         - glusterfs-client, autocheck等无端口有服务软件
+                    [1]         - 工具类无端口软件
         """
         port_list=[]
         if softname=="elasticsearch":
@@ -788,45 +848,63 @@ class Deploy(object):
             for port_name in arch_dict[node]["tomcat_info"]["port"]:
                 port_list.append(arch_dict[node]["tomcat_info"]["port"][port_name])
         elif softname.startswith("program"):
-            port_list.append(arch_dict[node][f"{softname}_info"]["port"])
-
+            jvm_port=arch_dict[node][f"{softname}_info"].get("port")
+            if jvm_port is None:
+                port_list.append(tool_service_code)
+            else:
+                port_list.append(jvm_port)
+        elif softname=="nacos":
+            port_list.append(arch_dict[node]["nacos_info"]["web_port"])
+            if arch_dict[node]["nacos_info"].get("cluster_info") is not None:
+                port_list.append(arch_dict[node]["nacos_info"]["cluster_info"]["raft_port"])
+        elif softname=="autocheck" or softname=="glusterfs-client":
+            port_list.append(portless_service_code)
+        else:
+            port_list.append(tool_service_code)
         return port_list
-    '''
 
-    def get_soft_status(self, init_dict, arch_dict):
+    def get_soft_status(self, init_dict, arch_dict, ext_dict):
         """获取软件状态
-
         return:
             {
             "node1": {
-                "softname1": activated_code|stopped_code|abnormal_code,     # 启动, 未启动, 启动但不正常
+                "softname1": activated_code|stopped_code|abnormal_code|error_code,     # 启动, 未启动, 启动但不正常, 代码错误
                 "softname2": activated_code|stopped_code|abnormal_code,     # 启动, 未启动, 启动但不正常
             }
             }
         """
         soft_stats_dict={}
-        #for node in arch_dict:
-        #    soft_stats_dict[node]={}
-        #    for softname in arch_dict[node]["software"]:
-        #        port_status=[]
-        #        port_list=self._get_soft_port_list(arch_dict, node, softname)
-        #        self.log.logger.debug(f"{node}, {softname=}, {port_list=}")
-        #        if len(port_list) != 0:
-        #            for port in port_list:
-        #                port_status.append(port_connect(node, int(port)))
-        #            if True not in port_status:
-        #                softname_status=1
-        #            elif False not in port_status:
-        #                softname_status=0
-        #            else:
-        #                softname_status=2
-        #            soft_status_dict[node][softname]=softname_status
-        soft_dict={}
         for node in arch_dict:
-            soft_dict[node]=arch_dict[node]["software"]
-
-        monitor_result, soft_stats_dict=self.nodes_control(soft_dict, "monitor", "状态", init_dict, arch_dict)
-        return monitor_result, soft_stats_dict
+            soft_stats_dict[node]={}
+            for softname in arch_dict[node]["software"]:
+                port_status=[]
+                port_list=self._get_soft_port_list(arch_dict, node, softname)
+                self.log.logger.debug(f"{node}, {softname=}, {port_list=}")
+                if port_list[0]==portless_service_code:
+                    portless_dict={
+                            node: [softname]
+                            }
+                    monitor_result, portless_service_stats_dict=self.nodes_control(portless_dict, "monitor", "状态", init_dict, arch_dict, ext_dict)
+                    if monitor_result:
+                        soft_stats_dict[node][softname]=portless_service_stats_dict[node][softname]
+                    else:
+                        soft_stats_dict[node][softname]=error_code
+                elif port_list[0]==tool_service_code:
+                    pass
+                else:
+                    try:
+                        for port in port_list:
+                            port_status.append(port_connect(node, int(port)))
+                        if True not in port_status:
+                            softname_status=stopped_code
+                        elif False not in port_status:
+                            softname_status=activated_code
+                        else:
+                            softname_status=abnormal_code
+                        soft_stats_dict[node][softname]=softname_status
+                    except Exception:
+                        soft_stats_dict[node][softname]=error_code
+        return soft_stats_dict
 
     def update_extract(self, tarfile_, dir_, config_file_list):
         """项目包/更新包解压
@@ -1067,21 +1145,21 @@ class graphics_deploy(Deploy):
     from dialog import Dialog
     os.environ["DIALOGRC"]="./libs/dialogrc"       # 指定dialog的颜色配置文件
 
-    def __init__(self, project_pkg):
-        """判断是否存在-f, 并检测dialog, 初始化dialog
+    def __init__(self):
+        """检测dialog安装, 初始化dialog
         """
         super(graphics_deploy, self).__init__()
         self.log=Logger({"file": log_file_level}, log_file=log_file)
         self.log.logger.info("文本图形化")
 
-        if project_pkg is not None:
-            if not os.path.exists(project_pkg):
-                print(f"Error: {project_pkg}文件不存在, 请确认")
-                sys.exit(error_code)
-            self.init_flag=True
-            self.project_pkg=project_pkg
-        else:
-            self.init_flag=False
+        #if project_pkg is not None:
+        #    if not os.path.exists(project_pkg):
+        #        print(f"Error: {project_pkg}文件不存在, 请确认")
+        #        sys.exit(error_code)
+        #    self.init_flag=True
+        #    self.project_pkg=project_pkg
+        #else:
+        #    self.init_flag=False
 
         # 安装dialog
         if not self._install_dialog():
@@ -1922,7 +2000,7 @@ class graphics_deploy(Deploy):
         else:
             init_dict={}
 
-        # 填写init.json并校验
+        # 填写init.json并校验, 选填check.json
         while True:
             code, init_dict=self.config_init(title, init_dict)
             if code==self.d.OK:             # 初始化按钮
@@ -1971,16 +2049,22 @@ class graphics_deploy(Deploy):
                             self.log.logger.error(f"{node}:\t{connect_test_result[node]['err_msg']}")
                     os._exit(error_code)
 
-                if self.init_flag:
-                    result=self.update_extract(self.project_pkg, program_unzip_dir, ["project.json", "arch.json", "update.json", "start.json"])
-                    if not result:
-                        os._exit(error_code)
+                #if self.init_flag:
+                #    result=self.update_extract(self.project_pkg, program_unzip_dir, ["project.json", "arch.json", "update.json", "start.json"])
+                #    if not result:
+                #        os._exit(error_code)
 
-                local_python3_file=local_pkg_name_dict["python3"]
-                status, dict_=super(graphics_deploy, self).init(init_dict, f"{ext_dir}/{local_python3_file}")
+                #local_python3_file=local_pkg_name_dict["python3"]
+                result, config_list=self.read_config(["ext"])
+                if result:
+                    ext_dict=config_list[0]
+                else:
+                    self.log.logger.error(f"初始化失败: {config_list}")
+                    os._exit(error_code)
+                status, dict_=super(graphics_deploy, self).init(init_dict, ext_dict)
                 if status is True:
                     self.log.logger.info("初始化完成\n")
-                    self.log.logger.info("获取主机信息...")
+                    self.log.logger.info("获取主机信息中, 请稍后...")
                     all_host_info=self.get_host_msg(init_dict)
                     self.log.logger.debug(f"主机信息: {all_host_info}")
                     all_host_dict=self.json_to_init_dict(all_host_info)
@@ -1991,7 +2075,7 @@ class graphics_deploy(Deploy):
                     else:
                         self.log.logger.info("主机信息已获取, 请查看")
                 else:
-                    self.log.logger.error(f"初始化失败: {status}")
+                    self.log.logger.error(f"初始化失败: {dict_}")
                     os._exit(error_code)
             os._exit(normal_code)
         os.close(write_fd)
@@ -2006,13 +2090,18 @@ class graphics_deploy(Deploy):
             self.d.msgbox("发生莫名错误, 请返回菜单重试", width=40, height=5)
             self.show_menu()
 
-        flag=True
+        flag=True           # 初始化结果值
         if exit_code==normal_code:
             time.tzset()    # 主机信息获取过程中会重置时区, 程序内重新获取时区信息
+
+            # 显示主机资源信息
             _, config_list=self.read_config(["host"])
             host_info_dict=config_list[0]
             code=self.show_hosts_info(host_info_dict)
-            if code==self.d.OK:      # 开始部署
+
+            # 补充arch_dict和project_dict
+            if code==self.d.OK:    # 开始部署按钮
+                # 将check_dict信息写入arch_dict和project_dict
                 result, config_list=self.read_config(["arch", "project"])
                 if result:
                     arch_dict, project_dict=config_list
@@ -2024,6 +2113,7 @@ class graphics_deploy(Deploy):
                             self.log.logger.error(msg)
                             self.d.msgbox(msg, title="错误")
                             return False
+                    # 资源校验适配
                     result, dict_=self.resource_verifi(arch_dict, host_info_dict)
                     if result:
                         self.log.logger.debug(f"写入arch配置")
@@ -2035,7 +2125,7 @@ class graphics_deploy(Deploy):
                     self.log.logger.error(config_list)
                     self.d.msgbox(config_list, title="警告", width=80, height=6)
                     flag=False
-            else:                           # 终止部署
+            else:                           # 终止部署按钮
                 flag=False
         else:
             flag=False
@@ -2209,10 +2299,10 @@ class graphics_deploy(Deploy):
         """图形: 安装
         """
         self.log.logger.info("集群安装...")
-        result, config_list=self.read_config(["init", "arch"])
+        result, config_list=self.read_config(["init", "arch", "ext"])
         if result:
-            init_dict, arch_dict=config_list
-            result, dict_=super(graphics_deploy, self).install(init_dict, arch_dict)
+            init_dict, arch_dict, ext_dict=config_list
+            result, dict_=super(graphics_deploy, self).install(init_dict, arch_dict, ext_dict)
             if result:
                 self.log.logger.info("集群安装完成")
             else:
@@ -2226,10 +2316,10 @@ class graphics_deploy(Deploy):
         """图形: 运行
         """
         self.log.logger.info("集群启动...")
-        result, config_list=self.read_config(["init", "arch"])
+        result, config_list=self.read_config(["init", "arch", "ext"])
         if result:
-            init_dict, arch_dict=config_list
-            result, dict_=super(graphics_deploy, self).run(init_dict, arch_dict)
+            init_dict, arch_dict, ext_dict=config_list
+            result, dict_=super(graphics_deploy, self).run(init_dict, arch_dict, ext_dict)
             if result:
                 self.log.logger.info("集群启动完成")
             else:
@@ -2239,7 +2329,7 @@ class graphics_deploy(Deploy):
             dict_={}
         return result, dict_
 
-    def program_update(self):
+    def program_update_bak(self):
         """图形: deploy中项目更新
         """
         self.log.logger.info("开始项目部署...")
@@ -2256,7 +2346,7 @@ class graphics_deploy(Deploy):
             dict_={}
         return result, dict_
 
-    def program_start(self):
+    def program_start_bak(self):
         """图形: 项目启动
         """
         result, config_list=self.read_config(["init", "arch"])
@@ -2276,7 +2366,6 @@ class graphics_deploy(Deploy):
     def generate_deploy_file(self):
         """生成部署信息文件
         """
-
         result, config_list=self.read_config(["init", "arch", "host", "project"])
         if not result:
             return False, config_list
@@ -2295,16 +2384,17 @@ class graphics_deploy(Deploy):
         result, msg=self.write_config(deploy_dict, deploy_file)
         if result:
             self.log.logger.info(f"请将文件'{os.path.abspath(deploy_file)}'上传至平台 !")
-            return True, {}
+            return True, {"Sucessful": True}
         else:
             return False, msg
 
     def deploy(self, title):
-        """图形: install, run, program_update, program_start, generate_deploy_file
+        """图形: init, install, run, start, generate_deploy_file
+        图形: init, install, run, program_update, program_start, generate_deploy_file
         """
 
-        if not self.init(title):
-            return
+        #if not self.init(title):
+        #    return
 
         result, config_list=self.read_config(["arch"])
         if not result:
@@ -2317,12 +2407,15 @@ class graphics_deploy(Deploy):
         if code != self.d.OK:
             return
 
-        stage_all=["install", "run", "program_update", "program_start", "generate_deploy_file"]
+        #stage_all=["install", "run", "program_update", "program_start", "generate_deploy_file"]
+        #stage_all=["install", "run", "start", "generate_deploy_file"]
+        stage_all=["install", "run", "generate_deploy_file"]
         stage_method={
                 "install": self.install, 
                 "run": self.run, 
-                "program_update": self.program_update, 
-                "program_start": self.program_start, 
+                #"program_update": self.program_update, 
+                #"start": self.start, 
+                #"program_start": self.program_start, 
                 "generate_deploy_file": self.generate_deploy_file
                 }
         read_fd, write_fd = os.pipe()
@@ -2336,18 +2429,17 @@ class graphics_deploy(Deploy):
                     result, dict_ = stage_method[stage]()
                     self.log.logger.debug(f"'{stage}': {result}, {dict_}")
                     if result:
-                        self.log.logger.info("-----------")
                         continue
                     else:
                         self.log.logger.error(f"'{stage}'阶段执行失败: {dict_}")
-                        os._exit(1)
+                        os._exit(error_code)
                 else:   # 生成program.json文件
                     _, config_list=self.read_config(["update"])
                     result, msg=self.write_config(config_list[0], program_file)
                     if not result:
                         self.log.logger.error(msg)
-                        os._exit(1)
-            os._exit(0)
+                        os._exit(error_code)
+            os._exit(normal_code)
         os.close(write_fd)
         self.d.programbox(fd=read_fd, title=title, height=30, width=180)
         exit_info = os.waitpid(child_pid, 0)[1]
@@ -2522,15 +2614,15 @@ class graphics_deploy(Deploy):
         return check_dict
 
     def _set_check_info(self, arch_dict, project_dict, check_dict):
-        """获取check_dict
-        return: 
-            check_dict={
-                "project_name": "", 
-                "timing": "18:30", 
-                "sender": "", 
-                "mail_list": [], 
-                "sms_list": []
-            }
+        """ 根据check_dict补充arch_dict, project_dict
+        check_dict={
+            "project_name": "", 
+            "timing": "18:30", 
+            "sender": "", 
+            "mail_list": [], 
+            "sms_list": []
+        }
+        return: True, msg
         """
         project_name=check_dict["project_name"]
         timing=check_dict["timing"]
@@ -2538,12 +2630,14 @@ class graphics_deploy(Deploy):
         mail_list=check_dict["mail_list"]
         sms_list=check_dict["sms_list"] 
 
+        # 补充project.json
         project_dict["project_name"]=project_name
         self.log.logger.debug(f"写入{project_file}")
         result, msg=self.write_config(project_dict, project_file)
         if not result:
             return result, msg
 
+        # 补充arch_dict
         for node in arch_dict:
             if len(mail_list)!=0:
                 arch_dict[node]["autocheck_info"]["inspection_info"]={}
@@ -2571,7 +2665,6 @@ class graphics_deploy(Deploy):
         result, msg=self.write_config(arch_dict, arch_file)
         if not result:
             return result, msg
-
         return True, ""
 
     def config_check_bak(self, title):
@@ -2718,16 +2811,16 @@ class graphics_deploy(Deploy):
     def monitor(self, title):
         """显示软件状态
         """
-        result, config_list=self.read_config(["init", "arch"])
+        result, config_list=self.read_config(["init", "arch", "ext"])
         if result:
-            init_dict, arch_dict=config_list
+            init_dict, arch_dict, ext_dict=config_list
         else:
             self.log.logger.error(config_list)
             self.d.msgbox(config_list)
             return
 
-        result, soft_status_dict=self.get_soft_status(init_dict, arch_dict)
-        self.log.logger.debug(f"软件状态值: {soft_status_dict}")
+        soft_stats_dict=self.get_soft_status(init_dict, arch_dict, ext_dict)
+        self.log.logger.debug(f"软件状态值: {soft_stats_dict}")
 
         HIDDEN = 0x1
         READ_ONLY = 0x2
@@ -2739,16 +2832,17 @@ class graphics_deploy(Deploy):
         status_value_msg_dict={
                 activated_code: "正常", 
                 stopped_code: "未启动", 
-                abnormal_code:  "异常"
+                abnormal_code:  "异常", 
+                error_code:  "错误"
                 }
         n=0
-        for node in soft_status_dict:
+        for node in soft_stats_dict:
             n=n+1
             info=[
                     (f"{node}: ", n, 1, "", n, xi, field_length, 0, HIDDEN), 
                     ]
-            for softname in soft_status_dict[node]:
-                status_value=soft_status_dict[node][softname]
+            for softname in soft_stats_dict[node]:
+                status_value=soft_stats_dict[node][softname]
                 info.extend(
                         [
                             (f"{softname}: ", n+1, tab, status_value_msg_dict[status_value], n+1, xi, field_length, 0, READ_ONLY), 
@@ -2801,9 +2895,9 @@ class graphics_deploy(Deploy):
     def status_management(self, title, action):
         """图形: 管理界面start|stop
         """
-        result, config_list=self.read_config(["init", "arch"])
+        result, config_list=self.read_config(["init", "arch", "ext"])
         if result:
-            init_dict, arch_dict=config_list
+            init_dict, arch_dict, ext_dict=config_list
         else:
             self.log.logger.error(f"{config_list}")
             self.d.msgbox(f"{config_list}")
@@ -2811,17 +2905,23 @@ class graphics_deploy(Deploy):
 
         control_dict={}         # start/stop dict
 
-        node_list=[]
-        for node in arch_dict:
-            node_list.append((node, ""))
-        
         if action=="start":
             help_msg="启动"
         elif action=="stop":
             help_msg="停止"
 
+        node_list=[]            # 节点列表
+        service_soft_dict={}    # 可以启停的服务列表(排除工具类软件)
+        for node in arch_dict:
+            node_list.append((node, ""))
+            service_soft_dict[node]=[]
+            for softname in arch_dict[node]["software"]:
+                port_list=self._get_soft_port_list(arch_dict, node, softname)
+                if port_list[0] != tool_service_code:
+                    service_soft_dict[node].append(softname)
+
         while True:
-            code,node=self.d.menu(f"选择节点", 
+            code, node=self.d.menu(f"选择节点", 
                     choices=node_list, 
                     title=title, 
                     width=48, 
@@ -2834,9 +2934,10 @@ class graphics_deploy(Deploy):
                 self.log.logger.debug(f"{code=}, {node=}")
                 self.log.logger.info(f"选择{node}")
 
-                node_soft_list=[]
-                for softname in arch_dict[node]["software"]:
-                    if control_dict.get(node) is not None:
+                node_soft_list=[]       # 选择软件列表
+                #for softname in arch_dict[node]["software"]:
+                for softname in service_soft_dict[node]:
+                    if control_dict.get(node) is not None:      # 已操作的软件依旧显示
                         if softname in control_dict[node]:
                             node_soft_list.append((softname, "", 1))
                         else:
@@ -2851,19 +2952,20 @@ class graphics_deploy(Deploy):
                         control_dict[node]=choices_soft_list
                 elif code==self.d.CANCEL:
                     continue
-            elif code==self.d.HELP:         # 查看选择
+            elif code==self.d.HELP:         # start|stop按钮
                 if len(control_dict)==0:            # 默认全选
-                    for node in arch_dict:
-                        control_dict[node]=arch_dict[node]["software"]
+                    #for node in arch_dict:
+                    for node in service_soft_dict:
+                        control_dict[node]=service_soft_dict[node]
 
                 code=self.show_choices_soft(title, action, control_dict)
                 if code==self.d.OK:
-                    self.status_management_exec(title, action, control_dict)
+                    self.status_management_exec(title, action, control_dict, init_dict, arch_dict, ext_dict)
                     return
             else:
                 return
 
-    def status_management_exec(self, title, action, control_dict):
+    def status_management_exec(self, title, action, control_dict, init_dict, arch_dict, ext_dict):
         """图形: start|stop
         """
         read_fd, write_fd = os.pipe()
@@ -2874,17 +2976,17 @@ class graphics_deploy(Deploy):
             with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
                 self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)   
 
-                _, config_list=self.read_config(["init", "arch"])
-                init_dict, arch_dict=config_list
+                #_, config_list=self.read_config(["init", "arch"])
+                #init_dict, arch_dict=config_list
                 if action=="start":
-                    result, dict_=self.start(init_dict, arch_dict, control_dict)
+                    result, dict_=self.start(control_dict, init_dict, arch_dict, ext_dict)
                 elif action=="stop":
-                    result, dict_=self.stop(init_dict, arch_dict, control_dict)
+                    result, dict_=self.stop(control_dict, init_dict, arch_dict, ext_dict)
                 self.log.logger.debug(f"{action}: {result}, {dict_}")
                 if not result:
                     self.log.logger.error(f"'{action}'执行失败: {dict_}")
-                    os._exit(1)
-            os._exit(0)
+                    os._exit(error_code)
+            os._exit(normal_code)
         os.close(write_fd)
         self.d.programbox(fd=read_fd, title=title, height=20, width=80)
         exit_info = os.waitpid(child_pid, 0)[1]
@@ -2942,8 +3044,8 @@ class graphics_deploy(Deploy):
                         self.log.logger.info(f"请获取巡检报告文件: '{os.path.abspath(tarfile_)}'")
                 else:
                     self.log.logger.error("巡检失败")
-                    os._exit(1)
-            os._exit(0)
+                    os._exit(error_code)
+            os._exit(normal_code)
         os.close(write_fd)
         self.d.programbox(fd=read_fd, title=title, height=30, width=180)
         exit_info = os.waitpid(child_pid, 0)[1]

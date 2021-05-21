@@ -8,6 +8,8 @@ from libs.common import Logger, exec_command
 from libs.env import log_remote_level, normal_code, error_code
 
 def main():
+    """设置主机名, 填写hosts
+    """
     log=Logger({"remote": log_remote_level}, logger_name="set_hosts")
     softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)

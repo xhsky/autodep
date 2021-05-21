@@ -4,7 +4,7 @@
 
 import sys, os, json
 from libs import common
-from libs.env import log_remote_level, redis_src, redis_dst, redis_pkg_dir, redis_version, \
+from libs.env import log_remote_level, redis_src, redis_dst, redis_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def main():

@@ -5,7 +5,7 @@
 import sys, os, json
 import shutil
 from libs import common
-from libs.env import log_remote_level, tomcat_src, tomcat_dst, tomcat_pkg_dir, tomcat_version, \
+from libs.env import log_remote_level, tomcat_src, tomcat_dst, tomcat_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def main():

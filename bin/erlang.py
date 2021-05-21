@@ -4,7 +4,7 @@
 
 import sys, json
 from libs import common
-from libs.env import log_remote_level, erl_src, erl_dst, erl_pkg_dir, erl_version, \
+from libs.env import log_remote_level, erl_src, erl_dst, erl_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def install():

@@ -5,7 +5,8 @@
 
 import sys, os, json
 from libs import common
-from libs.env import log_remote_level, rabbitmq_src, rabbitmq_dst, rabbitmq_pkg_dir, rabbitmq_version, erl_dst
+from libs.env import log_remote_level, rabbitmq_src, rabbitmq_dst, rabbitmq_pkg_dir, erl_dst, \
+        normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 '''
 def main():
@@ -283,10 +284,12 @@ def run():
             return_value=error_code
         else:
             # 设置账号, vhost及权限
-            vhosts_list=conf_dict["rabbitmq_info"].get("vhosts")
-            users_list=conf_dict["rabbitmq_info"].get("users")
-            passwords_list=conf_dict["rabbitmq_info"].get("passwords")
-            if vhosts_list is not None and users_list is not None and passwords_list is not None:
+            account_dict=conf_dict["rabbitmq_info"].get("account")
+            if account_dict is not None:
+                vhosts_list=account_dict.get("vhosts")
+                users_list=account_dict.get("users")
+                passwords_list=account_dict.get("passwords")
+                #if vhosts_list is not None and users_list is not None and passwords_list is not None:
                 log.logger.debug("添加账号权限")
                 for vhost, user, password in zip(vhosts_list, users_list, passwords_list):
                     account_command=f"rabbitmqctl add_user {user} {password} && rabbitmqctl add_vhost {vhost} && rabbitmqctl set_permissions -p {vhost} {user} '.*' '.*' '.*'"

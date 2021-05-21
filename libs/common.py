@@ -2,7 +2,7 @@
 # *-* coding:utf8 *-*
 # sky
 
-import tarfile, psutil
+import tarfile, psutil, shutil
 import os, time, socket, sys
 from subprocess import run, call
 import textwrap
@@ -72,6 +72,8 @@ def format_size(byte, integer=False):
         return f"{kb:.2f}k"
 
 def port_exist(port_list, seconds=120, exist_or_not=True):
+    """查看端口是否存在
+    """
     result=[]
     for port in port_list:
         N=0
@@ -126,23 +128,28 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
 
     try:
         # 解压
-        log.logger.debug(f"{soft_file=}解压")
-        t=tarfile.open(soft_file)
-        t.extractall(path=located)
+        if link_src == "jar":     # jar包直接移动
+            log.logger.debug(f"mv {soft_file} {located}")
+            shutil.move(soft_file, located)
+        else:
+            log.logger.debug(f"{soft_file=}解压")
+            t=tarfile.open(soft_file)
+            t.extractall(path=located)
 
         # 建立软连接
-        for i in os.listdir(located):
-            if i.startswith(link_src):
-                src=f"{located}/{i}"
-                break
-        if link_dst.startswith("/"):
-            dst=link_dst
-        else:
-            dst=f"{located}/{link_dst}"
-        if os.path.exists(dst) and os.path.islink(dst):
-            os.remove(dst)
-        log.logger.debug(f"建立软连接: {src=} ==> {dst=}")
-        os.symlink(src, dst)
+        if link_dst is not None:
+            for i in os.listdir(located):
+                if i.startswith(link_src):
+                    src=f"{located}/{i}"
+                    break
+            if link_dst.startswith("/"):
+                dst=link_dst
+            else:
+                dst=f"{located}/{link_dst}"
+            if os.path.exists(dst) and os.path.islink(dst):
+                os.remove(dst)
+            log.logger.debug(f"建立软连接: {src=} ==> {dst=}")
+            os.symlink(src, dst)
 
         # 安装依赖
         if pkg_dir is not None:

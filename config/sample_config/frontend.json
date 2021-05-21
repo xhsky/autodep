@@ -1,0 +1,13 @@
+{
+  "web1":{
+    "software": ["nginx", "frontend_dsfa", "frontend_dsf5"], 
+    "located": "/data/", 
+    "frontend_dsfa_info":{
+      "code_dir": "/path/dir"
+    }, 
+    "frontend_dsf5_info":{
+      "code_dir": "/path/dir"
+    }
+  }
+}
+

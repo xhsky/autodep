@@ -8,7 +8,7 @@
       "replica_role": "master",	
       "port":{
         "namesrv_port": 9876,  
-        "fast_remote_port": 10909, 
+        "fast_remote_port": 10909,    // 根据remote_port端口-2获取, 无法自定义
         "remote_port": 10911, 
         "ha_port": 10912
       }, 

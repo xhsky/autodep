@@ -3,8 +3,9 @@
 # sky
 
 import sys, json
-from libs.common import Logger, install
-from libs.env import log_remote_level, ffmpeg_src, ffmpeg_dst, ffmpeg_pkg_dir, ffmpeg_version, \
+#from libs.common import Logger, install
+from libs import common
+from libs.env import log_remote_level, ffmpeg_src, ffmpeg_dst, ffmpeg_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 '''
@@ -38,7 +39,7 @@ def install():
     """
     located=conf_dict["located"]
     pkg_file=conf_dict["pkg_file"]
-    value, msg=install(pkg_file, ffmpeg_src, ffmpeg_dst, ffmpeg_pkg_dir, located)
+    value, msg=common.install(pkg_file, ffmpeg_src, ffmpeg_dst, ffmpeg_pkg_dir, located)
     if not value:
         log.logger.error(msg)
         return error_code

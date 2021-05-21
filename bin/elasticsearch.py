@@ -5,7 +5,7 @@
 
 import sys, json
 from libs import common
-from libs.env import log_remote_level, elasticsearch_src, elasticsearch_dst, elasticsearch_pkg_dir, elasticsearch_version, \
+from libs.env import log_remote_level, elasticsearch_src, elasticsearch_dst, elasticsearch_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 
@@ -300,7 +300,7 @@ def stop():
     result, msg=common.exec_command(command)
     if result:
         log.logger.debug(f"检测端口: {port_list=}")
-        if common.port_exist(port_list, exist_or_not=False):
+        if not common.port_exist(port_list, exist_or_not=False):
             return_value=error_code
     else:
         log.logger.error(msg)

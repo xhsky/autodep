@@ -25,6 +25,7 @@ stop_file="./config/stop.json"
 check_file="./config/check.json"
 deploy_file="./config/deploy.json"
 program_file="./config/program.json"
+ext_file="./config/ext.json"
 
 # ext路径
 ext_dir="../ext"
@@ -39,10 +40,10 @@ report_dir="./report" # 巡检汇总目录
 report_file_list=["check.info", "slow_analysis.log"]
 
 # 项目软件, 列表顺序即为启动顺序(autocheck须为最后一个, 避免备份)
-program_soft=["tomcat", "program", "nginx", "autocheck"]
+#program_soft=["tomcat", "program", "nginx", "autocheck"]
 
 # 数据库软件
-env_soft=["mysql"]
+#env_soft=["mysql"]
 
 # 更新
 #code_saved_remote_dir="/tmp"
@@ -56,11 +57,11 @@ update_stats_file=f"{logs_dir}/update.json"
 update_config_file_name="update.json"
 
 # 程序运行返回值
-normal_code=0
-error_code=127
-activated_code=1
-stopped_code=2
-abnormal_code=3
+normal_code=0           # 正常
+error_code=127          # 错误
+activated_code=10       # 已运行
+stopped_code=20         # 已停止
+abnormal_code=30        # 异常
 
 # 文本图形化安装时的最小窗口尺寸
 g_term_rows=20
@@ -70,6 +71,9 @@ g_term_cols=80
 test_mode=True
 # 检测时是否开启资源校验
 resource_verify_mode=False
+
+portless_service_code=0
+tool_service_code=1
 
 # 目录配置
 #fixed_dir="/opt"
@@ -83,7 +87,7 @@ remote_pkgs_dir=f"{remote_python_dir}/pkgs"
 
 update_package_dir=remote_pkgs_dir
 
-program_unzip_dir="./program_pkg"
+#program_unzip_dir="./program_pkg"
 
 interface={
         "mail": ["smtp.dreamdt.cn", 25, None],                              # 邮件接口
@@ -93,6 +97,7 @@ interface={
         "platform_check": ["125.69.82.54", 14206, "/project/deploy/uploadXjText"],  # 公司平台巡检文件接口
         }
 
+"""
 local_pkg_name_dict={
         "python3": "python3.tar.gz",
         "nginx": "nginx-1.17.9-bin.tar.gz", 
@@ -109,7 +114,6 @@ local_pkg_name_dict={
         "autocheck": "autocheck-1.3.4.tar.gz"
         } 
 
-"""
 # 各软件权重比
 soft_weights_dict={
         "elasticsearch": 1, 
@@ -141,66 +145,59 @@ host_weights_unit_dict={
 ffmpeg_src="ffmpeg"
 ffmpeg_dst="ffmpeg"
 ffmpeg_pkg_dir="deps"
-ffmpeg_version="4.2.2"
 
 elasticsearch_src="elasticsearch"
 elasticsearch_dst="elasticsearch"
 elasticsearch_pkg_dir=None
-elasticsearch_version="7.8.1"
 
 tomcat_src="apache-tomcat-"
 tomcat_dst="tomcat"
 tomcat_pkg_dir=None
-tomcat_version="8.5.51"
 
 glusterfs_src="glusterfs-"
 glusterfs_dst="glusterfs"
 glusterfs_all_pkg_dir="glusterfs_all"
 glusterfs_client_pkg_dir="glusterfs_client"
 glusterfs_volume_name="g_data"
-glusterfs_version="7.5"
 
 jdk_src="jdk"
 jdk_dst="jdk"
 jdk_pkg_dir=None
-jdk_version="8u251"
 
 erl_src="erlang"
 erl_dst="erlang"
 erl_pkg_dir=None
-erl_version="23.2"
 
 mysql_src="mysql-"
 mysql_dst="mysql"
 mysql_pkg_dir="pkg"
-mysql_version="8.0.19"
 mysql_user="mysql"
 
 nginx_src="nginx-"
 nginx_dst="nginx"
 nginx_pkg_dir=None
-nginx_version="1.17.9"
 
 rabbitmq_src="rabbitmq_server-"
 rabbitmq_dst="rabbitmq"
 rabbitmq_pkg_dir=None
-rabbitmq_version="3.8.9"
 
 rocketmq_src="rocketmq-all-"
 rocketmq_dst="rocketmq"
 rocketmq_pkg_dir=None
-rocketmq_version="4.8.0"
 
 redis_src="redis-"
 redis_dst="redis"
 redis_pkg_dir=None
-redis_version="5.0.7"
 
 autocheck_src="autocheck-"
 autocheck_dst="autocheck"
 autocheck_pkg_dir=None
-autocheck_version="1.3.2"
 
+nacos_src="nacos"
+nacos_dst=None
+nacos_pkg_dir=None
+
+'''
 ## nginx配置/代码模块转发配置
 nginx_server_config="""
 server {
@@ -257,4 +254,5 @@ nginx_module_dict={
                   }
             }
         """
-        }
+  '     }
+'''

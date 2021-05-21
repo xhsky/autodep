@@ -4,7 +4,8 @@
 
 import sys, json
 from libs import common
-from libs.env import log_remote_level, mysql_user, mysql_src, mysql_dst, mysql_pkg_dir, mysql_version
+from libs.env import log_remote_level, mysql_user, mysql_src, mysql_dst, mysql_pkg_dir, \
+        normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def init(db_info_dict, mysql_dir, init_password, cluster_info_dict, role, log):
     root_password=db_info_dict.get("root_password")

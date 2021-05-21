@@ -6,7 +6,7 @@ import sys, os, json
 from libs import common
 from libs.env import log_remote_level, glusterfs_src, glusterfs_dst, \
         glusterfs_all_pkg_dir, glusterfs_client_pkg_dir, \
-        glusterfs_volume_name, glusterfs_version
+        glusterfs_volume_name, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def install():

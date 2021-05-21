@@ -5,7 +5,7 @@
 import sys, os, json
 import configparser
 from libs import common
-from libs.env import log_remote_level, autocheck_src, autocheck_dst, autocheck_pkg_dir, autocheck_version, \
+from libs.env import log_remote_level, autocheck_src, autocheck_dst, autocheck_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def main():

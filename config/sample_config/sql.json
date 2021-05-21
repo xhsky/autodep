@@ -1,0 +1,20 @@
+{
+  "web1":{
+    "software": ["mysql", "nacos_mysql_sql", "program_graduate_sql"],   // sql文件必须和数据库在同一台机器
+    "located": "/data/", 
+    "mysql_info": {
+    }, 
+    "nacos_mysql_sql_info": {
+      "db_type": "mysql", 
+      "db_name": "db1", 
+      "db_port": 3306, 
+      "root_password": "xxxxx"
+    }, 
+    "program_graduate_sql_info": {
+      "db_type": "mysql", 
+      "db_name": "db2", 
+      "db_port": 3306, 
+      "root_password": "xxxxx"
+    }
+  }
+}
