@@ -2277,7 +2277,7 @@ class graphics_deploy(Deploy):
             n=n+3
             m=0
             soft_nums=len(arch_dict[node]["software"])
-            soft_nums_rows=4
+            soft_nums_rows=1
             rows=math.ceil(soft_nums/soft_nums_rows)
             for i in range(rows):
                 if i == 0:
@@ -2825,7 +2825,7 @@ class graphics_deploy(Deploy):
         HIDDEN = 0x1
         READ_ONLY = 0x2
         tab=3           # 
-        xi=20
+        xi=30
         field_length=10
         elements=[]
 
@@ -2853,7 +2853,7 @@ class graphics_deploy(Deploy):
 
         elements.append(("", n+1, 1, "", n+1, xi, field_length, 0, HIDDEN))
         self.log.logger.debug(f"软件状态显示: {elements=}")
-        code, _=self.d.mixedform(f"服务状态:", elements=elements, no_cancel=True, width=40)
+        code, _=self.d.mixedform(f"服务状态:", elements=elements, no_cancel=True, width=55)
         return code
 
     def show_choices_soft(self, title,  action, choices_soft_dict):
@@ -2868,7 +2868,7 @@ class graphics_deploy(Deploy):
         HIDDEN = 0x1
         READ_ONLY = 0x2
         tab=3           # 
-        xi=20
+        xi=40
         field_length=10
         elements=[]
 

@@ -88,6 +88,8 @@ remote_pkgs_dir=f"{remote_python_dir}/pkgs"
 update_package_dir=remote_pkgs_dir
 
 #program_unzip_dir="./program_pkg"
+# program控制脚本名称
+program_sh_name="program.sh"
 
 interface={
         "mail": ["smtp.dreamdt.cn", 25, None],                              # 邮件接口

@@ -119,18 +119,15 @@ def port_connect(host, port):
         return False
 
 def install(soft_file, link_src, link_dst, pkg_dir, located):
+    """软件安装: 建立目录, 解压等
+    """
     log=Logger({"remote": "debug"}, logger_name="remote install")
     os.makedirs(located, exist_ok=1)
-    if located == located_dir_link or os.path.islink(located_dir_link):
-        pass
-    else:
-        os.symlink(located, located_dir_link)
 
-    try:
-        # 解压
+    try: # 解压
         if link_src == "jar":     # jar包直接移动
             log.logger.debug(f"mv {soft_file} {located}")
-            shutil.move(soft_file, located)
+            shutil.move(soft_file, f"{located}/{soft_file.split('/')[-1]}")
         else:
             log.logger.debug(f"{soft_file=}解压")
             t=tarfile.open(soft_file)
