@@ -1,12 +1,9 @@
 {
   "web1":{
-    "software": ["nginx", "frontend_dsfa", "frontend_dsf5"], 
+    "software": ["nginx", "program_graduate_frontend"], 
     "located": "/data/", 
-    "frontend_dsfa_info":{
-      "code_dir": "/path/dir"
-    }, 
-    "frontend_dsf5_info":{
-      "code_dir": "/path/dir"
+    "program_graduate_frontend_info":{
+      "frontend_dir": "/path/dir"
     }
   }
 }

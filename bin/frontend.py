@@ -4,15 +4,16 @@
 
 import sys, json
 from libs import common
-from libs.env import log_remote_level, frontend_src, frontend_dst, frontend_pkg_dir, \
+from libs.env import log_remote_level, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def install():
     """安装
     """
     return_value=0
+    frontend_dir=conf_dict[f"{softname}_info"]["frontend_dir"]
     pkg_file=conf_dict["pkg_file"]
-    value, msg=common.install(pkg_file, frontend_src, frontend_dst, frontend_pkg_dir, code_dir)
+    value, msg=common.install(pkg_file, "frontend", None, None, frontend_dir)
     if not value:
         log.logger.error(msg)
         return error_code
@@ -45,7 +46,6 @@ if __name__ == "__main__":
     softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
     log=common.Logger({"remote": log_remote_level}, loggger_name="frontend")
-    frontend_dir=conf_dict[f"{softname}_info"]["code_dir"]
 
     if action=="install":
         sys.exit(install())

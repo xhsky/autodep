@@ -4,7 +4,7 @@
     "located": "/data/", 
     "nginx_info":{                    
       "worker_processes": 2, 
-      "vhost_info":{
+      "vhosts_info":{
         "80":{
           "/": {
             "mode": "proxy",
@@ -15,11 +15,11 @@
         "8080":{
           "/dsfa": {
             "mode": "location",
-            "code_dir": "/dream/dsfa"
+            "frontend_dir": "/dream/dsfa"
           },
           "/dsf5": {
             "mode": "location",
-            "code_dir": "/dream/pages"
+            "frontend_dir": "/dream/pages"
           }
         }
       }

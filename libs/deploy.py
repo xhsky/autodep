@@ -240,7 +240,9 @@ class Deploy(object):
         elif softname=="nacos":
             mem=arch_dict[node]["nacos_info"]["jvm_mem"]
         elif softname.startswith("program"):
-            mem=arch_dict[node][softname]["jvm_mem"]
+            mem=arch_dict[node][f"{softname}_info"].get("jvm_mem")
+            if mem is None:     # sql文件
+                mem="0G"
         else:
             mem="0G"
         cpu=1
@@ -828,7 +830,7 @@ class Deploy(object):
         elif softname=="mysql":
             port_list.append(arch_dict[node]["mysql_info"]["db_info"]["mysql_port"])
         elif softname=="nginx":
-            for port in arch_dict[node]["nginx_info"]["vhost_info"]:
+            for port in arch_dict[node]["nginx_info"]["vhosts_info"]:
                 port_list.append(int(port))
         elif softname=="rabbitmq":
             for port_name in arch_dict[node]["rabbitmq_info"]["port"]:
@@ -2393,8 +2395,8 @@ class graphics_deploy(Deploy):
         图形: init, install, run, program_update, program_start, generate_deploy_file
         """
 
-        #if not self.init(title):
-        #    return
+        if not self.init(title):
+            return
 
         result, config_list=self.read_config(["arch"])
         if not result:

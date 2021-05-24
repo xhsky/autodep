@@ -1,0 +1,68 @@
+{
+  "web1":{
+    "software": ["jdk", "program_platform_gateway"],
+    "located": "/data/",
+    "program_platform_gateway_info": {
+			"program_dir": "/dream/program_gateway",
+			"port": 81,
+			"jvm_mem": "1G", 
+      "db_type": "mysql",
+      "nacos_config": {
+        "nacos_host": "nacos1", 
+        "nacos_port": 8848, 
+        "nacos_namespace": "aaa", 
+        "nacos_group": "bbb", 
+        "active": "dev", 
+        "service_name": "basics", 
+        "file-extension": "yaml" 
+      }, 
+      "mysql_config":{
+        "db_host":"db", 
+        "db_port":3306, 
+        "db_name":"db1", 
+        "db_user":"xxx", 
+        "db_password":"xxx"
+      }, 
+      "redis_config":{
+        "redis_host": "redis", 
+        "redis_port": 6379, 
+        "redis_db": 1, 
+        "redis_password": "xxxxxxxx"
+      }, 
+      "routers": [
+        {
+          "id": "schedule", 
+          "uri": "lb://teaching/",      // teaching为服务名称
+          "predicates": [
+              "Path=/schedule/**"
+            ], 
+          "filters": [
+            "StripPrefix=0",
+            "RouteVersion"
+          ]
+        }, 
+        {
+          "id": "SuffixRoute",
+          "uri": "http://web:81/",    // web:81 为前端nginx地址
+          "predicates": [
+            "Suffix=all"
+          ], 
+          "filters": [
+            "RouteVersion" 
+          ]
+        }, 
+        {
+          "id": "core_service", 
+          "uri": "lb://graduate/",    // graduate 为服务名称
+          "predicates": [
+            "Path=/**"
+          ],
+          "filters": [
+            "StripPrefix=0"
+          ]
+        }
+      ]
+    }
+  }
+}
+

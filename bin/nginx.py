@@ -28,26 +28,25 @@ def install():
         server_config_list=[]
         for port in vhosts_info_dict:
             nginx_server_config=f"""\
-            server {{
-                    listen       {int(port)};
-                    server_name  localhost;
+                    server {{
+                        listen       {int(port)};
+                        server_name  localhost;
 
-                    #charset koi8-r;
+                        #charset koi8-r;
 
-                    access_log  logs/{port}.access.log  main;
+                        access_log  logs/{port}.access.log  main;
 
-                    error_page   500 502 503 504  /50x.html;
-                    location = /50x.html {
-                        root   html;
-                    }
+                        error_page   500 502 503 504  /50x.html;
+                        location = /50x.html {{
+                            root   html;
+                        }}
 
-                    location = /favicon.ico {{
-                        return 200;     		# 忽略浏览器的title前面的图标
+                        location = /favicon.ico {{
+                            return 200;     		# 忽略浏览器的title前面的图标
                     }}
-            }}
             """
             for name in vhosts_info_dict[port]:
-                mode=vhosts_info_dict[port][name]
+                mode=vhosts_info_dict[port][name]["mode"]
                 if mode=="proxy":
                     # 配置upstream
                     proxy_name=vhosts_info_dict[port][name]["proxy_name"]
@@ -61,13 +60,13 @@ def install():
                     name_config=f"""\
                             location {name} {{
                                 proxy_pass http://{proxy_name};
-                                }}
+                    }}
                     """
                 elif mode=="location":
                     name_config=f"""\
                             location {name} {{
-                                alias {vhosts_info_dict[port][name]['code_dir']};
-                                }}
+                                root {vhosts_info_dict[port][name]['frontend_dir']};
+                    }}
                     """
                 nginx_server_config=f"{nginx_server_config}\n{name_config}"
             else:
@@ -227,8 +226,8 @@ if __name__ == "__main__":
     located=conf_dict["located"]
     nginx_dir=f"{located}/{nginx_dst}"
     nginx_info_dict=conf_dict["nginx_info"]
-    vhosts_info_dict=nginx_info_dict["vhost_info"]
-    port_list=[int(port) for port in vhosts_info_dict.keys()]
+    vhosts_info_dict=nginx_info_dict["vhosts_info"]
+    port_list=[int(port) for port in vhosts_info_dict]
 
     if action=="install":
         sys.exit(install())

@@ -119,7 +119,7 @@
         "type": "program"
       }, 
       "frontend": {
-        "file": "graduate.tar.gz", 
+        "file": "dsfa-graduate-frontend-1.0.0.tar.gz", 
         "version": "1.0.0", 
         "py": "frontend.py", 
         "type": "frontend"
@@ -131,11 +131,13 @@
         "type": "sql"
       }
     }, 
-    "gateway": {
-      "file": "dream-dsfa-teas-gateway-1.0.tar.gz", 
-      "version": "1.0", 
-      "py": "gateway.py", 
-      "type": "program"
+    "platform": {
+      "gateway": {
+        "file": "dsfa-platform-service-gateway-1.0.0-SNAPSHOT.jar", 
+        "version": "1.0", 
+        "py": "gateway.py", 
+        "type": "program"
+      }
     } 
   }
 } 
