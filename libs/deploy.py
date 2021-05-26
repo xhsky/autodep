@@ -813,6 +813,20 @@ class Deploy(object):
         else:
             soft_py=softname
         return soft_py
+    def update_extract(self, tarfile_, dir_, config_file_list):
+        """项目包/更新包解压
+        """
+        self.log.logger.info("项目包文件解压中, 请稍后...")
+        try:
+            with tarfile.open(tarfile_, "r", encoding="utf8") as tar:
+                tar.extractall(dir_)
+            self.log.logger.info("更新配置文件...")
+            for config_file in config_file_list:
+                shutil.copyfile(f"{dir_}/config/{config_file}", f"./config/{config_file}") 
+            return True
+        except Exception as e:
+            self.log.logger.error(f"项目包解压失败: {str(e)}")
+            return False
     '''
 
     def _get_soft_port_list(self, arch_dict, node, softname):
@@ -907,21 +921,6 @@ class Deploy(object):
                     except Exception:
                         soft_stats_dict[node][softname]=error_code
         return soft_stats_dict
-
-    def update_extract(self, tarfile_, dir_, config_file_list):
-        """项目包/更新包解压
-        """
-        self.log.logger.info("项目包文件解压中, 请稍后...")
-        try:
-            with tarfile.open(tarfile_, "r", encoding="utf8") as tar:
-                tar.extractall(dir_)
-            self.log.logger.info("更新配置文件...")
-            for config_file in config_file_list:
-                shutil.copyfile(f"{dir_}/config/{config_file}", f"./config/{config_file}") 
-            return True
-        except Exception as e:
-            self.log.logger.error(f"项目包解压失败: {str(e)}")
-            return False
 
     def update(self, update_dict, program_dir, delete_flag, init_dict, arch_dict):
         """项目部署/更新
@@ -3128,9 +3127,9 @@ class platform_deploy(Deploy):
                 }
         init_result=True
         self.log.logger.info("监测主机配置, 请稍后...\n")
-        code, result=self.read_config(["init"])
+        code, config_list=self.read_config(["init", "ext"])
         if code:
-            init_dict=result[0]
+            init_dict, ext_dict=config_list
             result, connect_test_result=self.connect_test(init_dict)
             if not result:
                 self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
@@ -3139,11 +3138,11 @@ class platform_deploy(Deploy):
                         self.log.logger.error(f"{node}:\t{connect_test_result[node]['err_msg']}")
                 init_result=False
             else:
-                local_python3_file=local_pkg_name_dict.get("python3")
-                status, dict_=super(platform_deploy, self).init(init_dict, f"{ext_dir}/{local_python3_file}")
+                #local_python3_file=local_pkg_name_dict.get("python3")
+                status, dict_=super(platform_deploy, self).init(init_dict, ext_dict)
                 if status:
                     self.log.logger.info("初始化完成\n")
-                    self.log.logger.info("获取主机信息...")
+                    self.log.logger.info("获取主机信息中, 请稍后...")
                     all_host_info=self.get_host_msg(init_dict)
                     init_stats_dict["host_info"]=self.json_to_init_dict(all_host_info)
                 else:
@@ -3151,13 +3150,13 @@ class platform_deploy(Deploy):
                     self.log.logger.error(f"初始化失败: {status}")
                 init_stats_dict["stats"]=dict_
         else:
-            self.log.logger.error(f"配置文件读取失败: {result}")
+            self.log.logger.error(f"配置文件读取失败: {config_list}")
             init_result=False
             
         init_stats_dict["result"]=init_result
         return init_stats_dict
 
-    def install(self, program_pkg):
+    def install(self):
         """
         平台: 安装
         """
@@ -3168,23 +3167,20 @@ class platform_deploy(Deploy):
                 "stats": None, 
                 }
         install_result=True
-        result=self.update_extract(program_pkg, program_unzip_dir, ["project.json", "arch.json", "update.json", "start.json"])
+        #result=self.update_extract(program_pkg, program_unzip_dir, ["project.json", "arch.json", "update.json", "start.json"])
+        result, config_list=self.read_config(["init", "arch", "ext"])
         if result:
-            code, result=self.read_config(["init", "arch"])
-            if code:
-                init_dict, arch_dict=result
-                self.log.logger.info("集群安装...")
-                result, dict_=super(platform_deploy, self).install(init_dict, arch_dict)
-                if result:
-                    self.log.logger.info("集群安装完成")
-                else:
-                    self.log.logger.error("集群安装失败")
-                    install_result=False
-                install_stats_dict["stats"]=dict_
+            init_dict, arch_dict, ext_dict=config_list
+            self.log.logger.info("集群安装...")
+            result, dict_=super(platform_deploy, self).install(init_dict, arch_dict, ext_dict)
+            if result:
+                self.log.logger.info("集群安装完成")
             else:
-                self.log.logger.error(f"配置文件读取失败: {result}")
+                self.log.logger.error("集群安装失败")
                 install_result=False
+            install_stats_dict["stats"]=dict_
         else:
+            self.log.logger.error(f"配置文件读取失败: {config_list}")
             install_result=False
         install_stats_dict["result"]=install_result
         return install_stats_dict
@@ -3200,11 +3196,11 @@ class platform_deploy(Deploy):
                 "stats": None, 
                 }
         run_result=True
-        code, result=self.read_config(["init", "arch"])
-        if code:
-            init_dict, arch_dict=result
+        result, config_list=self.read_config(["init", "arch", "ext"])
+        if result:
+            init_dict, arch_dict, ext_dict=config_list
             self.log.logger.info("集群启动...")
-            result, dict_=super(platform_deploy, self).run(init_dict, arch_dict)
+            result, dict_=super(platform_deploy, self).run(init_dict, arch_dict, ext_dict)
             if result:
                 self.log.logger.info("集群启动完成")
             else:
@@ -3228,17 +3224,17 @@ class platform_deploy(Deploy):
                 "stats": None, 
                 }
         start_result=True
-        code, result=self.read_config(["init", "arch", "start"])
+        result, config_list=self.read_config(["init", "arch", "ext", "start"])
         if code:
-            init_dict, arch_dict, start_dict=result
-            result, dict_=super(platform_deploy, self).start(init_dict, arch_dict, start_dict)
+            init_dict, arch_dict, ext_dict, start_dict=config_list
+            result, dict_=super(platform_deploy, self).start(start_dict, init_dict, arch_dict, ext_dict)
             if result:
                 self.log.logger.info("启动完成")
             else:
                 self.log.logger.error("启动失败")
             start_stats_dict["stats"]=dict_
         else:
-            self.log.logger.error(f"配置文件读取失败: {result}")
+            self.log.logger.error(f"配置文件读取失败: {config_list}")
             start_result=False
         start_stats_dict["result"]=start_result
         return start_stats_dict
@@ -3254,22 +3250,22 @@ class platform_deploy(Deploy):
                 "stats": None, 
                 }
         stop_result=True
-        code, result=self.read_config(["init", "arch", "stop"])
-        if code:
-            init_dict, arch_dict, stop_dict=result
-            result, dict_=super(platform_deploy, self).stop(init_dict, arch_dict, stop_dict)
+        result, config_list=self.read_config(["init", "arch", "ext", "stop"])
+        if result:
+            init_dict, arch_dict, ext_dict, stop_dict=result
+            result, dict_=super(platform_deploy, self).stop(stop_dict, init_dict, arch_dict, ext_dict)
             if result:
                 self.log.logger.info("停止完成")
             else:
                 self.log.logger.error("停止失败")
             stop_stats_dict["stats"]=dict_
         else:
-            self.log.logger.error(f"配置文件读取失败: {result}")
+            self.log.logger.error(f"配置文件读取失败: {config_list}")
             stop_result=False
         stop_stats_dict["result"]=stop_result
         return stop_stats_dict
 
-    def update(self, update_pkg=None):
+    def update(self):
         """
         平台: 更新
         """
@@ -3309,9 +3305,9 @@ class platform_deploy(Deploy):
         update_stats_dict["result"]=update_result
         return update_stats_dict
 
-    def deploy(self, program_pkg):
+    def deploy(self):
         """
-        平台: install, run, update, start
+        平台: install, run 
         """
         deploy_stats_dict={
                 "project_id": self.project_id,
@@ -3319,30 +3315,22 @@ class platform_deploy(Deploy):
                 "result": None,
                 "stats": {}
                 }
+
         deploy_result=True
-
-        install_dict=self.install(program_pkg)
-        deploy_stats_dict["stats"]["install"]=install_dict
-        if install_dict["result"]:
-            stage_all=["run", "update", "start"]
-            stage_method={
-                    "run": self.run, 
-                    "update": self.update, 
-                    "start": self.start
-                    }
-            for stage in stage_all:
-                result_dict=stage_method[stage]()
-                deploy_stats_dict["stats"][stage]=result_dict
-                if result_dict["result"]:
-                    continue
-                else:
-                    self.log.logger.error(f"'{stage}'阶段执行失败")
-                    deploy_result=False
-                    break
-        else:
-            self.log.logger.error(f"install'阶段执行失败")
-            deploy_result=False
-
+        stage_all=["install", "run"]
+        stage_method={
+                "install": self.install, 
+                "run": self.run, 
+                }
+        for stage in stage_all:
+            result_dict=stage_method[stage]()
+            deploy_stats_dict["stats"][stage]=result_dict
+            if result_dict["result"]:
+                continue
+            else:
+                self.log.logger.error(f"'{stage}'阶段执行失败")
+                deploy_result=False
+                break
         deploy_stats_dict["result"]=deploy_result
         return deploy_stats_dict
 
@@ -3358,10 +3346,10 @@ class platform_deploy(Deploy):
                 }
         monitor_result=True
 
-        result, config_list=self.read_config(["arch"])
+        result, config_list=self.read_config(["init", "arch", "ext"])
         if result:
-            arch_dict=config_list[0]
-            soft_status_dict=self.get_soft_status(arch_dict)
+            init_dict, arch_dict, ext_dict=config_list
+            soft_status_dict=self.get_soft_status(init_dict, arch_dict, ext_dict)
             monitor_stats_dict["stats"]=soft_status_dict
             self.log.logger.debug(f"软件状态值: {soft_status_dict}")
         else:
@@ -3382,8 +3370,8 @@ class platform_deploy(Deploy):
                 "stats": None, 
                 }
         check_result=True
-        code, config_list=self.read_config(["check", "init", "arch"])
-        if code:
+        result, config_list=self.read_config(["check", "init", "arch"])
+        if result:
             check_dict, init_dict, arch_dict=config_list
             self.log.logger.info("开始巡检...\n")
             result, dict_, tarfile_=super(platform_deploy, self).check(check_dict, init_dict, arch_dict)

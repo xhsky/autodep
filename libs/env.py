@@ -39,12 +39,6 @@ rollback_dir=f"{located_dir_link}/rollback"
 report_dir="./report" # 巡检汇总目录
 report_file_list=["check.info", "slow_analysis.log"]
 
-# 项目软件, 列表顺序即为启动顺序(autocheck须为最后一个, 避免备份)
-#program_soft=["tomcat", "program", "nginx", "autocheck"]
-
-# 数据库软件
-#env_soft=["mysql"]
-
 # 更新
 #code_saved_remote_dir="/tmp"
 
@@ -72,8 +66,8 @@ test_mode=True
 # 检测时是否开启资源校验
 resource_verify_mode=False
 
-portless_service_code=0
-tool_service_code=1
+portless_service_code=0     # 无端口有服务软件代码, 用于获取软件端口时的识别
+tool_service_code=1         # 工具类软件代码
 
 # 目录配置
 #fixed_dir="/opt"
