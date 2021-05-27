@@ -1,0 +1,19 @@
+{
+  "web1":{
+    "software": ["glusterfs-client"], 
+    "located": "/data1", 
+    "glusterfs-client_info":{
+      "mounted_host": "data1",             // 指定挂载的服务端主机名
+      "mounted_dir": "/data_mount"        // 指定客户端挂载目录
+    }
+  }, 
+  "web2":{
+    "software": ["glusterfs-client"], 
+    "located": "/data1", 
+    "glusterfs-client_info":{
+      "mounted_host": "data2",             // 指定挂载的服务端主机名
+      "mounted_dir": "/data_mount"        // 指定客户端挂载目录
+    }
+  } 
+}
+

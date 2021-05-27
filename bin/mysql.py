@@ -29,22 +29,21 @@ def init(db_info_dict, mysql_dir, init_password, cluster_info_dict, role, log):
             init_commands=f'export MYSQL_PWD="{root_password}" ; echo "{init_sql}" | {mysql_dir}/bin/mysql -uroot'
             log.logger.debug(f"{init_commands=}")
             result, msg=common.exec_command(init_commands)
+            if not result:
+                log.logger.error(msg)
+                return error_code
+        if role != "stand-alone":
+            log.logger.debug("开始主从配置")
+            if role == "master":
+                sync_sql=f"create user 'repl'@'%' identified with mysql_native_password by 'DreamSoft_123456'; grant replication slave on *.* to 'repl'@'%';"
+            elif role == "slave":
+                sync_host, sync_port=cluster_info_dict.get("sync_host").split(":")
+                sync_sql=f"change master to master_host='{sync_host}', master_port={sync_port}, master_user='repl', master_password='DreamSoft_123456', master_auto_position=1; start slave;"
+            cluster_commands=f'export MYSQL_PWD="{root_password}" ; echo "{sync_sql}" | {mysql_dir}/bin/mysql -uroot'
+            log.logger.debug(f"{cluster_commands=}")
+            result, msg=common.exec_command(cluster_commands)
             if result:
-                if role != "stand-alone":
-                    log.logger.debug("开始主从配置")
-                    if role == "master":
-                        sync_sql=f"create user 'repl'@'%' identified with mysql_native_password by 'DreamSoft_123456'; grant replication slave on *.* to 'repl'@'%';"
-                    elif role == "slave":
-                        sync_host, sync_port=cluster_info_dict.get("sync_host").split(":")
-                        sync_sql=f"change master to master_host='{sync_host}', master_port={sync_port}, master_user='repl', master_password='DreamSoft_123456', master_auto_position=1; start slave;"
-                    cluster_commands=f'export MYSQL_PWD="{root_password}" ; echo "{sync_sql}" | {mysql_dir}/bin/mysql -uroot'
-                    log.logger.debug(f"{cluster_commands=}")
-                    result, msg=common.exec_command(cluster_commands)
-                    if result:
-                        return normal_code
-                    else:
-                        log.logger.error(msg)
-                        return error_code
+                return normal_code
             else:
                 log.logger.error(msg)
                 return error_code

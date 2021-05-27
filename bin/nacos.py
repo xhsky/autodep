@@ -91,7 +91,7 @@ def install():
 
     if cluster_flag:
         cluster_info_text="\n".join(cluster_info_dict["members"])
-        nacos_conf_file=f"{nacos_dir}/conf/cluster.conf"
+        cluster_conf_file=f"{nacos_dir}/conf/cluster.conf"
         config_dict["cluster_conf"]={
                 "config_file": cluster_conf_file, 
                 "config_context": cluster_info_text, 

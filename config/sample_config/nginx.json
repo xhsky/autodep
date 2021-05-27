@@ -1,28 +1,35 @@
-{  
-  "web":{
-    "software": ["nginx"], 
-    "located": "/data/", 
-    "nginx_info":{                    
-      "worker_processes": 2, 
-      "vhosts_info":{
-        "80":{
-          "/": {
-            "mode": "proxy",
-            "proxy_name": "gateway",
-            "proxy_hosts": ["gateway1:8080", "gateway2:8080"]
-          }
-        }, 
-        "8080":{
-          "/dsfa": {
-            "mode": "location",
-            "frontend_dir": "/dream/dsfa"
-          },
-          "/dsf5": {
-            "mode": "location",
-            "frontend_dir": "/dream/pages"
-          }
-        }
-      }
-    }
-  }
+{
+	"web": {
+		"software": ["nginx"],
+		"located": "/data/",
+		"nginx_info": {
+			"worker_processes": 2,
+			"vhosts_info": {
+				"80": {
+					"/": {
+						"mode": "proxy",
+						"proxy_name": "gateway",
+						"proxy_hosts": ["gateway1:8080", "gateway2:8080"]
+					}
+				},
+				"8080": {
+					"/dsfa": {
+						"mode": "location",
+						"frontend_dir": "/dream/dsfa"
+					},
+					"/dsf5": {
+						"mode": "location",
+						"frontend_dir": "/dream/pages"
+					}
+				},
+				"8848": {
+					"/nacos": {
+						"mode": "proxy",
+						"proxy_name": "nacos",
+						"proxy_hosts": ["node1:8848", "node2:8848", "node3:8848"]
+					}
+				}
+			}
+		}
+	}
 }

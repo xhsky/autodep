@@ -537,7 +537,7 @@ def stop():
         return_value=error_code
 
     if sentinel_flag:
-        sentinel_start_command=f"cd {redis_dir} && bin/redis-cli -a {password} -p {sentinel_port}"
+        sentinel_stop_command=f"cd {redis_dir} && bin/redis-cli -a {password} -p {sentinel_port} shutdown"
         log.logger.debug(f"sentinel停止: {sentinel_stop_command=}")
         result, msg=common.exec_command(sentinel_stop_command)
         if result:

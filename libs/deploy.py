@@ -75,7 +75,7 @@ class Deploy(object):
                     config_json=json.load(f)
                     config_dict_list.append(config_json)
             except Exception as e:
-                return False, str(e)
+                return False, f"{config_file}: {str(e)}"
         else:
             return True, config_dict_list
 
@@ -853,10 +853,10 @@ class Deploy(object):
             port_list.append(arch_dict[node]["redis_info"]["db_info"]["redis_port"])
             if arch_dict[node]["redis_info"].get("sentinel_info"):
                 port_list.append(arch_dict[node]["redis_info"]["sentinel_info"]["sentinel_port"])
-        elif softname=="glusterfs":
-            if arch_dict[node]["glusterfs_info"].get("server_info"):
-                for port_name in arch_dict[node]["glusterfs_info"]["server_info"]["port"]:
-                    port_list.append(arch_dict[node]["glusterfs_info"]["server_info"]["port"][port_name])
+        elif softname=="glusterfs-server":
+            #for port_name in arch_dict[node]["glusterfs-server_info"]["port"]:
+            #    port_list.append(arch_dict[node]["glusterfs-server_info"]["port"][port_name])
+            port_list.append(arch_dict[node]["glusterfs-server_info"]["port"]["volume_port"])
         elif softname=="rocketmq":
             for port_name in arch_dict[node]["rocketmq_info"]["port"]:
                 port_list.append(arch_dict[node]["rocketmq_info"]["port"][port_name])
