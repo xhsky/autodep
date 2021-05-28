@@ -2137,16 +2137,14 @@ class graphics_deploy(Deploy):
         """
         while True:
             menu={
-                    "1": "项目更新", 
-                    "2": "架构更新", 
-                    "3": "项目回滚", 
+                    "1": "项目", 
+                    "2": "回滚", 
                     }
 
             code,tag=self.d.menu(f"", 
                     choices=[
                         ("1", menu["1"]), 
-                        ("2", menu["2"]),
-                        ("3", menu["3"]),
+                        ("2", menu["2"])
                         ], 
                     title=title, 
                     width=48, 
@@ -2158,86 +2156,13 @@ class graphics_deploy(Deploy):
                 if tag=="1":
                     self.update(menu[tag], False)
                 if tag=="2":
-                    self.update(menu[tag], False)
-                if tag=="3":
                     self.rollback(menu[tag])
             else:
                 break
 
-    def program_update(self, title, delete_flag):
-        """图形: 代码更新, 只更新代码, 不涉及配置文件等
-        delete_flag: bool         # True: 更新前删除原数据, False: 更新前保留原数据(覆盖)
-        """
-        code=self.d.yesno("此过程将会重启项目服务, \n是否确认继续?", title="提醒") 
-        if code != self.d.OK:
-            return
-
-        read_fd, write_fd = os.pipe()
-        child_pid = os.fork()
-
-        if child_pid == 0:          # 进入子进程
-            os.close(read_fd)
-            with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
-                self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)
-                if self.init_flag:
-                    result=self.update_extract(self.project_pkg, program_unzip_dir, ["update.json"])
-                    if not result:
-                        os._exit(error_code)
-                else:
-                    self.log.logger.error("\n\nError: 请使用-f参数指定更新文件")
-                    os._exit(error_code)
-                code, result=self.read_config(["init", "arch", "program", "update"])
-                if code:
-                    init_dict, arch_dict, program_dict, update_dict=result
-                else:
-                    self.log.logger.error(f"配置文件读取失败: {result}")
-                    os._exit(error_code)
-                self.log.logger.info("项目服务关闭...")
-                result, dict_=super(graphics_deploy, self).program_control(init_dict, arch_dict, "stop")
-                if result:
-                    self.log.logger.info("项目服务关闭完成")
-                    self.log.logger.info("开始项目备份...")
-                    backup_version=time.strftime('%Y%m%d%H%M', time.localtime())
-                    rollback_version_dir=f"{rollback_dir}/{backup_version}"
-                    result, dict_=self.program_backup(init_dict, arch_dict, program_dict, backup_version, rollback_version_dir)
-                    if result:
-                        self.log.logger.info(f"项目备份完成, 备份版本号为{backup_version}")
-                        self.log.logger.info("开始项目更新...")
-                        result, dict_=super(graphics_deploy, self).update(update_dict, program_dir, delete_flag, init_arch, arch_dict)
-                        if result:
-                            self.log.logger.info("项目更新完成")
-                            self.log.logger.info("项目服务启动...")
-                            result, dict_=super(graphics_deploy, self).program_control(init_dict, arch_dict, "start")
-                            if result:
-                                self.log.logger.info("项目启动完成")
-                            else:
-                                self.log.logger.error(f"项目启动失败, {dict_}")
-                                os._exit(error_code)
-                        else:
-                            self.log.logger.error(f"项目更新失败, {dict_}")
-                            os._exit(error_code)
-                    else:
-                        self.log.logger.error(f"项目备份失败, {dict_}")
-                        os._exit(error_code)
-                else:
-                    self.log.logger.error(f"项目服务关闭失败, {dict_}")
-                    os._exit(error_code)
-
-            os._exit(normal_code)
-        os.close(write_fd)
-        self.d.programbox(fd=read_fd, title=title, height=25, width=170)
-        exit_info = os.waitpid(child_pid, 0)[1]
-        if os.WIFEXITED(exit_info):
-            exit_code = os.WEXITSTATUS(exit_info)
-        elif os.WIFSIGNALED(exit_info):
-            self.d.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单", width=40, height=5)
-            self.show_menu()
-        else:
-            self.d.msgbox("发生莫名错误, 请返回菜单重试", width=40, height=5)
-            self.show_menu()
-
-    def arch_update(self, title, delete_flag):
-        """图形: 更新
+    #def update(self, title, delete_flag):
+    def update(self, title):
+        """图形: 
         delete_flag: bool         # True: 更新前删除原数据, False: 更新前保留原数据(覆盖)
         """
         code=self.d.yesno("此过程将会重启项目服务, \n是否确认继续?", title="提醒") 
