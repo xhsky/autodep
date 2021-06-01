@@ -2,9 +2,9 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, json, os, requests, yaml
+import sys, json, os, requests, yaml, tarfile
 from libs import common
-from libs.env import log_remote_level, program_sh_name, \
+from libs.env import log_remote_level, program_sh_name, backup_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def main():
@@ -200,6 +200,10 @@ def install():
               nacos_config_file_extension={config_file_type}
               nacos_application_name={service_name}         # 须同jar_name配套
               nacos_profiles_active={config_active}         # 须同jar_name配套
+              accept_count=1000
+              threads=500
+              max_connections=8192
+
 
               log_file={log_file}
 
@@ -212,6 +216,10 @@ def install():
                 --spring.cloud.nacos.discovery.enabled=True \\
                 --spring.application.name=$nacos_application_name \\
                 --spring.profiles.active=$nacos_profiles_active \\
+                --server.tomcat.accept-count=$accept_count \\
+                --server.tomcat.min-spare-threads=$thread \\
+                --server.tomcat.max-threads=$thread \\
+                --server.tomcat.max-connections=$max_connections \\
                 &> $log_file &
               echo "$jar_name启动中, 详细请查看日志文件($log_file)."
               exit {normal_code}
@@ -366,6 +374,20 @@ def heapdump():
         return_value=error_code
     return return_value
 
+def backup():
+    """program备份
+    """
+    backup_version=conf_dict["backup_version"]
+    backup_file_name=f"{backup_version}_{softname}.tar.gz"
+    try:
+        os.makedirs(backup_dir, exist_ok=1)
+        with tarfile.open(f"{backup_dir}/{backup_file_name}", "w:gz", encoding="utf8") as tar:
+            tar.add(program_dir)
+        return normal_code
+    except Exception as e:
+        log.logger.error(str(e))
+        return error_code
+
 if __name__ == "__main__":
     softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
@@ -419,5 +441,7 @@ if __name__ == "__main__":
                 sys.exit(error_code)
     elif action=="monitor":
         sys.exit(monitor())
+    elif action=="backup":
+        sys.exit(backup())
     else:
         sys.exit(error_code)

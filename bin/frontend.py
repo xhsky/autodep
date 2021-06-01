@@ -2,16 +2,15 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, json
+import sys, json, os, tarfile
 from libs import common
-from libs.env import log_remote_level, \
+from libs.env import log_remote_level, backup_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def install():
     """安装
     """
     return_value=0
-    frontend_dir=conf_dict[f"{softname}_info"]["frontend_dir"]
     pkg_file=conf_dict["pkg_file"]
     value, msg=common.install(pkg_file, "frontend", None, None, frontend_dir)
     if not value:
@@ -42,10 +41,25 @@ def monitor():
     return_value=normal_code
     return return_value
 
+def backup():
+    """备份
+    """
+    backup_version=conf_dict["backup_version"]
+    backup_file_name=f"{backup_version}_{softname}.tar.gz"
+    try:
+        os.makedirs(backup_dir, exist_ok=1)
+        with tarfile.open(f"{backup_dir}/{backup_file_name}", "w:gz", encoding="utf8") as tar:
+            tar.add(frontend_dir)
+        return normal_code
+    except Exception as e:
+        log.logger.error(str(e))
+        return error_code
+
 if __name__ == "__main__":
     softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
     log=common.Logger({"remote": log_remote_level}, loggger_name="frontend")
+    frontend_dir=conf_dict[f"{softname}_info"]["frontend_dir"]
 
     if action=="install":
         sys.exit(install())
@@ -75,6 +89,8 @@ if __name__ == "__main__":
                 sys.exit(error_code)
     elif action=="monitor":
         sys.exit(monitor())
+    elif action=="backup":
+        sys.exit(backup())
     else:
         sys.exit(error_code)
 
