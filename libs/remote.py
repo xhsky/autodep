@@ -62,6 +62,10 @@ class soft(object):
         status=self.remote_exec(py_file, softname, "monitor", args_dict)
         return status
 
+    def backup(self, py_file, softname, args_dict):
+        status=self.remote_exec(py_file, softname, "backup", args_dict)
+        return status
+
 class ssh(object):
     def __init__(self):
         self.ssh=paramiko.SSHClient()

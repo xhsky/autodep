@@ -34,6 +34,7 @@ ext_dir="../ext"
 located_dir_name="dream"
 located_dir_link="/dream"
 
+backup_dir=f"{located_dir_link}/backup"
 rollback_dir=f"{located_dir_link}/rollback"
 
 report_dir="./report" # 巡检汇总目录
