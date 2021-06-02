@@ -14,18 +14,21 @@ log_platform_level="debug"
 log_update_level="debug"
 
 # 配置文件
-host_info_file=f"./config/host_info.json"
 #conf_file="./config/conf.json"
+#program_file="./config/program.json"
 init_file="./config/init.json"
 arch_file="./config/arch.json"
-update_file="./config/update.json"
+update_arch_file="./config/update_arch.json"
+update_init_file="./config/update_init.json"
 project_file="./config/project.json"
 start_file="./config/start.json"
 stop_file="./config/stop.json"
 check_file="./config/check.json"
-deploy_file="./config/deploy.json"
-program_file="./config/program.json"
 ext_file="./config/ext.json"
+# 数据文件
+data_dir="./data"
+host_info_file=f"{data_dir}/host_info.json"
+deploy_file=f"{data_dir}/deploy.json"
 
 # ext路径
 ext_dir="../ext"
@@ -37,19 +40,23 @@ located_dir_link="/dream"
 backup_dir=f"{located_dir_link}/backup"
 rollback_dir=f"{located_dir_link}/rollback"
 
-report_dir="./report" # 巡检汇总目录
+# 巡检汇总目录
+report_dir="./report" 
 report_file_list=["check.info", "slow_analysis.log"]
+
+# 目录
+autodep_dir=[logs_dir, data_dir, report_dir]
 
 # 更新
 #code_saved_remote_dir="/tmp"
 
 # 部署各阶段状态文件
-init_stats_file=f"{logs_dir}/init.json"
-install_stats_file=f"{logs_dir}/install.json"
-start_stats_file=f"{logs_dir}/start.json"
-run_stats_file=f"{logs_dir}/run.json"
-update_stats_file=f"{logs_dir}/update.json"
-update_config_file_name="update.json"
+init_stats_file=f"{logs_dir}/init_stats.json"
+install_stats_file=f"{logs_dir}/install_stats.json"
+start_stats_file=f"{logs_dir}/start_stats.json"
+run_stats_file=f"{logs_dir}/run_stats.json"
+update_stats_file=f"{logs_dir}/update_stats.json"
+#update_config_file_name="update.json"
 
 # 程序运行返回值
 normal_code=0           # 正常
