@@ -214,11 +214,13 @@ def install():
                 --spring.cloud.nacos.config.file-extension=$nacos_config_file_extension \\
                 --spring.cloud.nacos.config.enabled=True \\
                 --spring.cloud.nacos.discovery.enabled=True \\
+                --spring.cloud.nacos.discovery.namespace=$nacos_namespace \\
+                --spring.cloud.nacos.discovery.group=$nacos_group \\
                 --spring.application.name=$nacos_application_name \\
                 --spring.profiles.active=$nacos_profiles_active \\
                 --server.tomcat.accept-count=$accept_count \\
-                --server.tomcat.min-spare-threads=$thread \\
-                --server.tomcat.max-threads=$thread \\
+                --server.tomcat.min-spare-threads=$threads \\
+                --server.tomcat.max-threads=$threads \\
                 --server.tomcat.max-connections=$max_connections \\
                 &> $log_file &
               echo "$jar_name启动中, 详细请查看日志文件($log_file)."
@@ -276,25 +278,29 @@ def run():
     # 创建namespace
     namespace_path="/nacos/v1/console/namespaces"
     get_namespace_url=f"{nacos_addr_url}{namespace_path}"
-    result=requests.get(get_namespace_url)
-    if result.status_code==200:
-        for namespace_dict in result.json()["data"]:
-            if namespace_dict["namespace"] == namespace_name:
-                break
-        else:
-            namespace_data={
-                    "customNamespaceId": namespace_name, 
-                    "namespaceName": namespace_name
-                    }
-            create_namespace_url=f"{nacos_addr_url}{namespace_path}"
-            result=requests.post(create_namespace_url, data=namespace_data)
-            if result.status_code == 200:
-                log.logger.info(f"创建namespace: {namespace_name}")
+    try: 
+        result=requests.get(get_namespace_url)
+        if result.status_code==200:
+            for namespace_dict in result.json()["data"]:
+                if namespace_dict["namespace"] == namespace_name:
+                    break
             else:
-                log.logger.error(f"创建namespace失败: {result.status_code}")
-                return error_code
-    else:
-        log.logger.error(f"无法查询namespace: {result.status_code}")
+                namespace_data={
+                        "customNamespaceId": namespace_name, 
+                        "namespaceName": namespace_name
+                        }
+                create_namespace_url=f"{nacos_addr_url}{namespace_path}"
+                result=requests.post(create_namespace_url, data=namespace_data)
+                if result.status_code == 200:
+                    log.logger.info(f"创建namespace: {namespace_name}")
+                else:
+                    log.logger.error(f"创建namespace失败: {result.status_code}")
+                    return error_code
+        else:
+            log.logger.error(f"无法查询namespace: {result.status_code}")
+            return error_code
+    except Exception as e:
+        log.logger.error(f"无法连接nacos: {str(e)}")
         return error_code
 
     # 发布配置
@@ -309,11 +315,15 @@ def run():
             "type": config_file_type
             }
     create_configs_url=f"{nacos_addr_url}{configs_path}"
-    result=requests.post(create_configs_url, data=config_data)
-    if result.status_code==200:
-        log.logger.info(f"配置发布成功: {data_id}")
-    else:
-        log.logger.error(f"配置发布失败: {result.status_code}")
+    try:
+        result=requests.post(create_configs_url, data=config_data)
+        if result.status_code==200:
+            log.logger.info(f"配置发布成功: {data_id}")
+        else:
+            log.logger.error(f"配置发布失败: {result.status_code}")
+            return error_code
+    except Exception as e:
+        log.logger.error(f"无法连接nacos: {str(e)}")
         return error_code
 
     # 启动
