@@ -892,7 +892,9 @@ class Deploy(object):
                 for softname in update_arch_dict[node]["software"]:
                     if softname not in arch_dict[node]["software"]:
                         arch_dict[node]["software"].append(softname)
-                    arch_dict[node][f"{softname}_info"]=update_arch_dict[node][f"{softname}_info"]
+                    softname_info_dict=arch_dict[node].get(f"{softname}_info")
+                    if  softname_info_dict is not None:
+                        arch_dict[node][f"{softname}_info"]=update_arch_dict[node].get(f"{softname}_info")
         merge_dict={}
         merge_result=True
         for config_list in [
