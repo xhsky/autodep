@@ -4,7 +4,7 @@
 
 import sys, json, os, tarfile
 from libs import common
-from libs.env import log_remote_level, backup_dir, \
+from libs.env import log_remote_level, backup_dir, backup_abs_file_format, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def install():
@@ -59,7 +59,8 @@ def backup():
     """备份
     """
     backup_version=conf_dict["backup_version"]
-    backup_file_name=f"{backup_version}_{softname}.tar.gz"
+    #backup_file_name=f"{backup_version}_{softname}.tar.gz"
+    backup_abs_file=backup_abs_file_format.format(backup_dir=backup_dir, backup_version=backup_version, softname=softname)
     try:
         if db_type.lower()=="mysql":
             db_name=sql_info_dict["db_name"]
@@ -72,7 +73,7 @@ def backup():
             result, msg=common.exec_command(dump_db_command, timeout=3600)
             if result:
                 os.makedirs(backup_dir, exist_ok=1)
-                with tarfile.open(f"{backup_dir}/{backup_file_name}", "w:gz", encoding="utf8") as tar:
+                with tarfile.open(backup_abs_file, "w:gz", encoding="utf8") as tar:
                     tar.add(sql_dir)
                 if os.path.exists(db_abs_file):
                     log.logger.info("清理数据包...")

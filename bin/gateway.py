@@ -4,7 +4,7 @@
 
 import sys, json, os, requests, yaml, tarfile
 from libs import common
-from libs.env import log_remote_level, program_sh_name, backup_dir, \
+from libs.env import log_remote_level, program_sh_name, backup_dir, backup_abs_file_format, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def install():
@@ -273,10 +273,11 @@ def backup():
     """program备份
     """
     backup_version=conf_dict["backup_version"]
-    backup_file_name=f"{backup_version}_{softname}.tar.gz"
+    #backup_file_name=f"{backup_version}_{softname}.tar.gz"
+    backup_abs_file=backup_abs_file_format.format(backup_dir=backup_dir, backup_version=backup_version, softname=softname)
     try:
         os.makedirs(backup_dir, exist_ok=1)
-        with tarfile.open(f"{backup_dir}/{backup_file_name}", "w:gz", encoding="utf8") as tar:
+        with tarfile.open(backup_abs_file, "w:gz", encoding="utf8") as tar:
             tar.add(program_dir)
         return normal_code
     except Exception as e:

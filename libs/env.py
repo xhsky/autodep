@@ -37,8 +37,13 @@ ext_dir="../ext"
 located_dir_name="dream"
 located_dir_link="/dream"
 
+# 备份/回滚目录
 backup_dir=f"{located_dir_link}/backup"
 rollback_dir=f"{located_dir_link}/rollback"
+# 备份文件名称格式
+backup_abs_file_format="{backup_dir}/{backup_version}_{softname}.tar.gz"
+rollback_abs_file_format="{rollback_dir}/{backup_version}/{backup_version}_{softname}.tar.gz"
+
 
 # 巡检汇总目录
 report_dir="./report" 
