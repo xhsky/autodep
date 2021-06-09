@@ -6,8 +6,8 @@
 import locale, json, os, time, sys, tarfile, math, shutil
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, log_graphics_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
-        remote_code_dir, remote_pkgs_dir, ext_dir, autodep_dir, \
-        interface, test_mode, resource_verify_mode, \
+        remote_code_dir, remote_pkgs_dir, ext_dir, autodep_dir, backup_dir, \
+        interface, test_mode, resource_verify_mode, backup_abs_file_format, rollback_abs_file_format, \
         host_info_file, init_stats_file, install_stats_file, start_stats_file, update_stats_file, run_stats_file, \
         rollback_dir, \
         g_term_rows, g_term_cols, \
@@ -23,7 +23,7 @@ for dir_ in autodep_dir:
 from textwrap import dedent
 from libs.common import Logger, post_info, format_size, port_connect, exec_command
 from libs.remote import ssh, soft
-from libs import update
+#from libs import update
 
 if test_mode:                       # 是否启用测试模式: 代码文件在install, run, start, stop, update阶段重复传输
     trans_files_dict={
@@ -263,6 +263,14 @@ class Deploy(object):
             max_disk_dict[ip]=disk_sorted[-1][0]
         return max_disk_dict
 
+    def _get_backup_file(self, ip, port, backup_version, softname):
+        """获取备份文件
+        """
+        src_file=backup_abs_file_format.format(backup_dir=backup_dir, backup_version=backup_version, softname=softname)
+        dst_file=rollback_abs_file_format.format(rollback_dir=rollback_dir, backup_version=backup_version, softname=softname)
+        result, msg=self.ssh_client.get(ip, port, "root", src_file, dst_file)
+        return result, msg
+
     def get_soft_info(self, softname, ext_dict, info_type):
         """根据软件名称获取对应软件的信息
         softname: 
@@ -449,7 +457,6 @@ class Deploy(object):
                                 "pkg_file": [pkg_file, remote_pkg_file]
                                 }
                             )
-
                 status=self.remote_exec(ip, port, softname, remote_py_file, action, control_trans_files_dict, arch_dict[node])
                 for line in status[1]:
                     self.log.logger.info(line.strip())
@@ -805,25 +812,71 @@ class Deploy(object):
             control_dict[node]=arch_dict[node]["software"]
         soft_type_dict=self._divide_service(control_dict, ext_dict)
 
-        backup_result=True
-        backup_stats_dict={}
         backup_soft_type=["frontend", "program", "sql"]
-
+        backup_type_node_dict={}
         for soft_type in reversed(soft_type_dict):      # sql最后再备份
             if soft_type in backup_soft_type:
+                if soft_type not in backup_type_node_dict:
+                    backup_type_node_dict[soft_type]={}
                 for node in soft_type_dict[soft_type]:
-                    arch_dict[node]["backup_version"]=backup_version
-                self.log.logger.info(f"{soft_type}服务备份")
-                backup_result, type_stats_dict=self.nodes_control(soft_type_dict[soft_type], "backup", "备份", init_dict, arch_dict, ext_dict)
-                backup_stats_dict[soft_type]=type_stats_dict
-                if backup_result:
-                    self.log.logger.info(f"{soft_type}服务备份完成")
-                    continue
-                else:
-                    self.log.logger.error(f"{soft_type}服务备份失败, {type_stats_dict}")
-                    break
+                    if node not in backup_type_node_dict[soft_type]:
+                        backup_type_node_dict[soft_type][node]=[]
+                    for softname in soft_type_dict[soft_type][node]:
+                        for backup_node in backup_type_node_dict[soft_type]:
+                            if softname in backup_type_node_dict[soft_type][backup_node]:
+                                break
+                        else:
+                            backup_type_node_dict[soft_type][node].append(softname)
+
+        # 删除空的soft_type和node
+        for soft_type in list(backup_type_node_dict.keys()):
+            if len(backup_type_node_dict[soft_type])==0:
+                backup_type_node_dict.pop(soft_type)
+            else:
+                for node in list(backup_type_node_dict[soft_type]):
+                    if len(backup_type_node_dict[soft_type][node])==0:
+                        backup_type_node_dict[soft_type].pop(node)
+        self.log.logger.debug(f"{backup_type_node_dict=}")
+
+        backup_result=True
+        backup_stats_dict={}
+        for soft_type in backup_type_node_dict:
+            for node in backup_type_node_dict[soft_type]:
+                arch_dict[node]["backup_version"]=backup_version
+            self.log.logger.info(f"{soft_type}服务备份")
+            result, type_stats_dict=self.nodes_control(backup_type_node_dict[soft_type], "backup", "备份", init_dict, arch_dict, ext_dict)
+            backup_stats_dict[soft_type]=type_stats_dict
+            if result:
+                self.log.logger.info(f"{soft_type}服务备份完成")
+                continue
+            else:
+                self.log.logger.error(f"{soft_type}服务备份失败, {type_stats_dict}")
+                backup_result=False
+                break
         else:
-            self.log.logger.info(f"备份完成")
+            self.log.logger.info(f"本地备份完成")
+            for soft_type in backup_type_node_dict:
+                self.log.logger.info(f"{soft_type}服务远程备份...")
+                backup_stats_dict[soft_type]={}
+                for node in backup_type_node_dict[soft_type]:
+                    backup_stats_dict[soft_type][node]={}
+                    port=init_dict[arch_dict[node]["ip"]]["port"]
+                    for softname in backup_type_node_dict[soft_type][node]:
+                        result, msg=self._get_backup_file(node, port, backup_version, softname)
+                        backup_stats_dict[soft_type][node][softname]=msg
+                        if result:
+                            self.log.logger.info(f"{node}: {softname}服务远程备份完成")
+                            continue
+                        else:
+                            self.log.logger.error(f"{node}: {softname}服务远程备份失败")
+                            break
+                            backup_result=False
+                else:
+                    continue
+                break
+            else:
+                self.log.logger.info(f"全部备份完成")
+
         return backup_result, backup_stats_dict
 
     def config_merge(self, init_dict, arch_dict, update_init_dict, update_arch_dict):
@@ -1969,7 +2022,6 @@ class graphics_deploy(Deploy):
         check_dict["sms_list"]=sms_list
 
         return check_dict
-
     '''
 
     def edit_added_host_account_info(self, title, init_list, add_init_list):
@@ -2529,13 +2581,13 @@ class graphics_deploy(Deploy):
         exit_info = os.waitpid(child_pid, 0)[1]
         if os.WIFEXITED(exit_info):
             exit_code = os.WEXITSTATUS(exit_info)
-            return True
+            return True, exit_code
         elif os.WIFSIGNALED(exit_info):
             self.d.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单", width=40, height=5)
-            return False
+            return False, error_code
         else:
             self.d.msgbox("发生莫名错误, 请返回菜单重试", width=40, height=5)
-            return False
+            return False, error_code
 
     def adaptation_config(self, check_dict, arch_dict, project_dict, host_info_dict):
         """适应配置文件, 并校验资源
@@ -2577,26 +2629,29 @@ class graphics_deploy(Deploy):
             self.d.msgbox(config_list, title="警告", width=80, height=6)
             return False
 
-        result=self.init_stream_show(title, init_dict, ext_dict)
+        result, exit_code=self.init_stream_show(title, init_dict, ext_dict)
         if not result:
             return False
         else:
-            time.tzset()    # 主机信息获取过程中会重置时区, 程序内重新获取时区信息
-            _, config_list=self.read_config(["host"])
-            host_info_dict=config_list[0]
-            code=self.show_hosts_info(host_info_dict)
-            if code==self.d.OK:             # 开始部署按钮
-                result, arch_dict, project_dict=self.adaptation_config(check_dict, arch_dict, project_dict, host_info_dict)
-                if result:
-                    for config in [(arch_dict, arch_file), (project_dict, project_file)]:
-                        result, msg=self.write_config(config[0], config[1])
-                        if not result:
-                            self.log.logger.error(msg)
-                            self.d.msgbox(msg)
-                            return False
-                else:
-                    self._show_non_resource(arch_dict)
-            else:                           # 终止部署按钮
+            if exit_code==normal_code:
+                time.tzset()    # 主机信息获取过程中会重置时区, 程序内重新获取时区信息
+                _, config_list=self.read_config(["host"])
+                host_info_dict=config_list[0]
+                code=self.show_hosts_info(host_info_dict)
+                if code==self.d.OK:             # 开始部署按钮
+                    result, arch_dict, project_dict=self.adaptation_config(check_dict, arch_dict, project_dict, host_info_dict)
+                    if result:
+                        for config in [(arch_dict, arch_file), (project_dict, project_file)]:
+                            result, msg=self.write_config(config[0], config[1])
+                            if not result:
+                                self.log.logger.error(msg)
+                                self.d.msgbox(msg)
+                                return False
+                    else:
+                        self._show_non_resource(arch_dict)
+                else:                           # 终止部署按钮
+                    return False
+            else:
                 return False
 
     def update_management(self, title):
@@ -2659,25 +2714,28 @@ class graphics_deploy(Deploy):
                     self.d.msgbox(msg)
                     return False
 
-                result=self.init_stream_show(title, add_init_dict, ext_dict)
+                result, exit_code=self.init_stream_show(title, add_init_dict, ext_dict)
                 if not result:
                     return False
                 else:
-                    _, config_list=self.read_config(["host"])
-                    host_info_dict=config_list[0]
-                    code=self.show_hosts_info(host_info_dict)
-                    if code==self.d.OK:             # 开始部署按钮
-                        result, update_arch_dict, project_dict=self.adaptation_config(check_dict, update_arch_dict, project_dict, host_info_dict)
-                        if result:
-                            for config in [(update_arch_dict, update_arch_file), (project_dict, project_file)]:
-                                result, msg=self.write_config(config[0], config[1])
-                                if not result:
-                                    self.log.logger.error(msg)
-                                    self.d.msgbox(msg)
-                                    return False
-                        else:
-                            self._show_non_resource(update_arch_dict)
-                    else:                           # 终止部署按钮
+                    if exit_code==normal_code:
+                        _, config_list=self.read_config(["host"])
+                        host_info_dict=config_list[0]
+                        code=self.show_hosts_info(host_info_dict)
+                        if code==self.d.OK:             # 开始部署按钮
+                            result, update_arch_dict, project_dict=self.adaptation_config(check_dict, update_arch_dict, project_dict, host_info_dict)
+                            if result:
+                                for config in [(update_arch_dict, update_arch_file), (project_dict, project_file)]:
+                                    result, msg=self.write_config(config[0], config[1])
+                                    if not result:
+                                        self.log.logger.error(msg)
+                                        self.d.msgbox(msg)
+                                        return False
+                            else:
+                                self._show_non_resource(update_arch_dict)
+                        else:                           # 终止部署按钮
+                            return False
+                    else:
                         return False
             result, msg=self.write_config(add_init_dict, update_init_file)
             if not result:
