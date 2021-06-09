@@ -157,9 +157,9 @@ class ssh(object):
             sftp=self.ssh.open_sftp()
             sftp.get(remote_file, local_file)
             sftp.close()
-            return True
+            return True, ""
         except Exception as e:
-            return str(e)
+            return False, str(e)
 
     def __del__(self):
         self.ssh.close()
