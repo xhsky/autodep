@@ -29,6 +29,7 @@ ext_file="./config/ext.json"
 data_dir="./data"
 host_info_file=f"{data_dir}/host_info.json"
 deploy_file=f"{data_dir}/deploy.json"
+backup_version_file=f"{data_dir}/backup_version.json"
 
 # ext路径
 ext_dir="../ext"

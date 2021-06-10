@@ -80,16 +80,20 @@ def main():
 
         sys.exit(flag)
 
-def install():
-    """安装
+
+def dict_to_yaml_file(config_dict, config_file):
+    """生成将dict转为yaml文件
     """
-    pkg_file=conf_dict["pkg_file"]
-    value, msg=common.install(pkg_file, "jar", None, None, program_dir)
-    if not value:
-        log.logger.error(msg)
-        return error_code
-    
-    # 在本地生成一份配置文件
+    try: 
+        with open(config_file, "w", encoding="utf8") as f:
+            yaml.safe_dump(config_dict, f)
+        return True, config_file
+    except Exception as e:
+        return False, str(e)
+
+def generate_local_config():
+    """在本地生成一份配置文件
+    """
     db_type=program_info_dict["db_type"].lower()
     db_host=program_info_dict[f"{db_type}_config"]["db_host"]
     db_port=program_info_dict[f"{db_type}_config"]["db_port"]
@@ -169,15 +173,17 @@ def install():
                 }
             }
 
-    try: 
-        with open(config_file, "w", encoding="utf8") as f:
-            yaml.safe_dump(config_dict, f)
-        log.logger.debug(f"生成可读配置文件: {config_file}")
-    except Exception as e:
-        log.logger.error(f"无法生成可读配置文件: {str(e)}")
-        return error_code
+    result, msg=dict_to_yaml_file(config_dict, config_file)
+    if result:
+        return True
+        log.logger.debug(f"生成可读配置文件: {msg}")
+    else:
+        log.logger.error(f"无法生成可读配置文件: {msg}")
+        return False
 
-    # 生成启动脚本
+def generate_sh():
+    """生成控制脚本
+    """
     nacos_addr=f"{nacos_host}:{nacos_port}"
     jvm_mem=program_info_dict["jvm_mem"]
     jar_file=f"{program_dir}/{pkg_file.split('/')[-1]}"
@@ -264,17 +270,51 @@ def install():
             }
     log.logger.debug(f"写入配置文件: {program_sh_file}")
     result, msg=common.config(config_dict)
-    if result:
-        return normal_code
-    else:
+    if not result:
         log.logger.error(msg)
+        return False
+    return True
+
+def install():
+    """安装
+    """
+    pkg_file=conf_dict["pkg_file"]
+    if pkg_file.endswith(".tar.gz"):
+        value, msg=common.install(pkg_file, "tar.gz", None, None, program_dir)
+        if not value:
+            log.logger.error(msg)
+            return error_code
+        if os.path.exists(config_file):
+            log.logger.warning(f"已存在可读配置文件: {config_file}")
+        else:
+            result=generate_local_config()
+            if not result:
+                return error_code
+        if os.path.exists(program_sh_file):
+            log.logger.warning(f"已存在可读配置文件: {config_file}")
+        else:
+            result=generate_local_config()
+            if not result:
+                return error_code
+    elif pkg_file.endswith(".jar"):
+        value, msg=common.install(pkg_file, "jar", None, None, program_dir)
+        if not value:
+            log.logger.error(msg)
+            return error_code
+        result=generate_local_config()
+        if not result:
+            return error_code
+        result=generate_sh()
+        if not result:
+            return error_code
+    else:
+        log.logger.error(f"未知文件后缀: {pkg_file}")
         return error_code
+    return normal_code
 
 def run():
     """运行
     """
-    nacos_addr_url=f"http://{nacos_host}:{nacos_port}"
-
     # 创建namespace
     namespace_path="/nacos/v1/console/namespaces"
     get_namespace_url=f"{nacos_addr_url}{namespace_path}"
@@ -304,7 +344,6 @@ def run():
         return error_code
 
     # 发布配置
-    configs_path="/nacos/v1/cs/configs"
     with open(config_file, "r", encoding="utf8") as f:
         config_yaml_str=f.read()
     config_data={
@@ -387,8 +426,39 @@ def heapdump():
 def backup():
     """program备份
     """
+    # 获取最新配置并写入文件
+    log.logger.info("备份配置文件...")
+    config_data={
+            "tenant": namespace_name, 
+            "dataId": data_id, 
+            "group": group_name
+            }
+    get_configs_url=f"{nacos_addr_url}{configs_path}"
+    try:
+        result=requests.get(get_configs_url, params=config_data)
+        if result.status_code==200:
+            log.logger.debug(f"配置获取成功: {data_id}")
+            config_dict={
+                    "config_sh": {
+                        "config_file": config_file, 
+                        "config_context": result.text, 
+                        "mode": "w"
+                        }
+                    }
+            log.logger.debug(f"写入配置文件: {config_file}")
+            result, msg=common.config(config_dict)
+            if not result:
+                log.logger.error(msg)
+                return error_code
+        else:
+            log.logger.error(f"配置获取失败: {result.status_code}: {result.text}")
+            return error_code
+    except Exception as e:
+        log.logger.error(f"无法连接nacos: {str(e)}")
+        return error_code
+
+    log.logger.info("备份代码...")
     backup_version=conf_dict["backup_version"]
-    #backup_file_name=f"{backup_version}_{softname}.tar.gz"
     backup_abs_file=backup_abs_file_format.format(backup_dir=backup_dir, backup_version=backup_version, softname=softname)
     try:
         os.makedirs(backup_dir, exist_ok=1)
@@ -423,6 +493,8 @@ if __name__ == "__main__":
         data_id=f"{service_name}-{config_active}.{config_file_type}"
     config_file=f"{program_dir}/{data_id}"
 
+    nacos_addr_url=f"http://{nacos_host}:{nacos_port}"
+    configs_path="/nacos/v1/cs/configs"
     program_sh_file=f"{program_dir}/{program_sh_name}"
     if action=="install":
         sys.exit(install())

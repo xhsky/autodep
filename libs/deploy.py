@@ -13,7 +13,7 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         g_term_rows, g_term_cols, \
         tool_service_code, portless_service_code, \
         located_dir_name, located_dir_link, autocheck_dst, report_dir, report_file_list, \
-        init_file, arch_file, update_init_file, update_arch_file, start_file, stop_file, check_file, project_file, deploy_file, ext_file, \
+        init_file, arch_file, update_init_file, update_arch_file, start_file, stop_file, check_file, project_file, deploy_file, ext_file, backup_version_file, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 for dir_ in autodep_dir:
@@ -67,6 +67,8 @@ class Deploy(object):
                 config_file=check_file
             elif config=="project":
                 config_file=project_file
+            elif config=="backup_version":
+                config_file=backup_version_file
             #elif config=="program":
             #    config_file=program_file
             elif config=="ext":
@@ -797,15 +799,37 @@ class Deploy(object):
                     break
         return stop_result, stop_stats_dict
 
-    def program_backup(self, init_dict, arch_dict, ext_dict):
-        """项目备份, 用于回滚
-        program_dict: update_dict
+    def create_backup_version(self):
+        """创建备份版本号
+        return: 202110100202
         """
-        # 创建回滚/备份目录
         backup_version=time.strftime('%Y%m%d%H%M', time.localtime())
+        return backup_version
+
+    def trans_backup_version_to_date(self, backup_version_list):
+        """将备份版本号列表转为时间格式显示
+        """
+        rollback_date_list=[]
+        for backup_version in backup_version_list:
+            rollback_version=time.strftime('%Y-%m-%d %H:%M',time.strptime(backup_version,'%Y%m%d%H%M'))
+            rollback_date_list.append(rollback_version)
+        return rollback_date_list
+
+    def program_backup(self, init_dict, arch_dict, ext_dict, backup_version):
+        """项目备份, 用于回滚
+        """
+        backup_result=True
+        backup_stats_dict={}
+
+        # 创建回滚/备份目录
         rollback_version_dir=f"{rollback_dir}/{backup_version}"
-        if not os.path.exists(rollback_version_dir):
+        try:
+            self.log.logger.info(f"建立备份目录: {rollback_version_dir}")
             os.makedirs(rollback_version_dir, exist_ok=1)
+            dst_file=f"{rollback_version_dir}/{arch_file.split('/')[-1]}"
+            shutil.copyfile(arch_file, dst_file)
+        except Exception as e:
+            return False, {"Error": str(e)}
 
         control_dict={}
         for node in arch_dict:
@@ -838,8 +862,6 @@ class Deploy(object):
                         backup_type_node_dict[soft_type].pop(node)
         self.log.logger.debug(f"{backup_type_node_dict=}")
 
-        backup_result=True
-        backup_stats_dict={}
         for soft_type in backup_type_node_dict:
             for node in backup_type_node_dict[soft_type]:
                 arch_dict[node]["backup_version"]=backup_version
@@ -876,7 +898,6 @@ class Deploy(object):
                 break
             else:
                 self.log.logger.info(f"全部备份完成")
-
         return backup_result, backup_stats_dict
 
     def config_merge(self, init_dict, arch_dict, update_init_dict, update_arch_dict):
@@ -1155,14 +1176,22 @@ class Deploy(object):
         tarfile_=self.tar_report(init_dict, arch_dict, check_stats_dict)
         return check_result, check_stats_dict, tarfile_
 
-    def get_rollback_list(self):
+    def get_backup_version_list(self):
+        """获取备份列表
+        """
+        backup_version_list=[]
+        if os.path.exists(backup_version_file):
+            result, config_list=self.read_config(["backup_version"])
+            if result:
+                backup_version_list=config_list[0]
+        return backup_version_list
+
+    def get_rollback_version_list(self):
         """获取回滚列表
         """
-        if os.path.exists(rollback_dir):
-            rollback_list=os.listdir(rollback_dir)
-        else:
-            rollback_list=[]
-        return rollback_list
+        backup_version_list=self.get_backup_version_list()
+        rollback_version_list=self.trans_backup_version_to_date(backup_version_list)
+        return rollback_version_list
 
 class text_deploy(Deploy):
     '''文本安装'''
@@ -2224,6 +2253,44 @@ class graphics_deploy(Deploy):
         code, _=self.d.mixedform(f"请确认集群主机信息:", elements=elements, ok_label="开始部署", cancel_label="终止部署")
         return code
 
+    def show_arch_summary(self, title, arch_dict):
+        """显示arch_dict
+        """
+        HIDDEN = 0x1
+        READ_ONLY = 0x2
+        tab=3           # 
+        xi=15
+        field_length=45
+        n=0
+        elements=[]
+        for node in arch_dict:
+            n=n+1
+            info=[
+                    (f"{node}: ", n, 1, "", n, xi, field_length, 0, HIDDEN), 
+                    (f"IP: ", n+1, tab, arch_dict[node]["ip"], n+1, xi, field_length, 0, READ_ONLY), 
+                    ("安装目录: ", n+2, tab, arch_dict[node]["located"], n+2, xi, field_length, 0, READ_ONLY)
+                    ]
+            n=n+3
+            m=0
+            soft_nums=len(arch_dict[node]["software"])
+            soft_nums_rows=1
+            rows=math.ceil(soft_nums/soft_nums_rows)
+            for i in range(rows):
+                if i == 0:
+                    element_name="安装软件: "
+                else:
+                    element_name=""
+                info.append(
+                        (element_name, n+i, tab, ", ".join(arch_dict[node]["software"][m:m+soft_nums_rows]), n+i, xi, field_length, 0, READ_ONLY), 
+                        )
+                m=m+soft_nums_rows
+            n=n+i
+            elements.extend(info)
+        elements.append(("", n+1, 1, "", n+1, xi, field_length, 0, HIDDEN))
+        self.log.logger.debug(f"arch summary: {elements=}")
+        code, fields=self.d.mixedform(f"架构摘要:", elements=elements, title=title, ok_label="确认", cancel_label="终止部署")
+        return code
+
     def _show_non_resource(self, non_resouce_dict):
         """显示资源不足的信息
         """
@@ -2773,7 +2840,7 @@ class graphics_deploy(Deploy):
         result, config_list=self.read_config(["init", "arch", "ext"])
         if result:
             init_dict, arch_dict, ext_dict=config_list
-            result, dict_=super(graphics_deploy, self).program_backup(init_dict, arch_dict, ext_dict)
+            result, dict_=super(graphics_deploy, self).program_backup(init_dict, arch_dict, ext_dict, global_backup_version)
             if result:
                 self.log.logger.info("项目备份完成")
             else:
@@ -2845,7 +2912,23 @@ class graphics_deploy(Deploy):
     def update(self, title):
         """图形: update_init, program_stop, program_backup, program_update, program_run, 
         """
-        code=self.d.yesno("此过程将会重启项目服务, \n是否确认继续?", title="提醒") 
+        # 显示更新架构
+        result, config_list=self.read_config(["update_arch"])
+        if result:
+            update_arch_dict=config_list[0]
+            code=self.show_arch_summary(title, update_arch_dict)
+            if code != self.d.OK:
+                return
+        else:
+            msg=config_list
+            self.log.logger.error(msg)
+            self.d.msgbox(msg)
+            return
+
+        global global_backup_version
+        global_backup_version=self.create_backup_version()
+        rollback_version=self.trans_backup_version_to_date([global_backup_version])[0]
+        code=self.d.yesno(f"此过程将会重启项目服务并备份数据.\n备份版本号: '{rollback_version}'.\n是否确认继续?", title="提醒") 
         if code != self.d.OK:
             return
 
@@ -2869,7 +2952,6 @@ class graphics_deploy(Deploy):
             with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
                 self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)
                 for stage in stage_method:
-                    #result, dict_=stage_method[stage](config_list)
                     result, dict_=stage_method[stage]()
                     self.log.logger.debug(f"{stage}: {result}, {dict_}")
                     if result:
@@ -2878,7 +2960,15 @@ class graphics_deploy(Deploy):
                         self.log.logger.error(f"'{stage}'阶段执行失败: {dict_}")
                         os._exit(error_code)
                 else:
-                    self.log.logger.info(f"项目更新完成")
+                    backup_version_list=self.get_backup_version_list()
+                    backup_version_list.append(global_backup_version)
+                    result, msg=self.write_config(backup_version_list, backup_version_file)
+                    if result:
+                        self.log.logger.debug(f"记录备份版本: {global_backup_version}")
+                        self.log.logger.info("项目更新完成")
+                    else:
+                        self.log.logger.error(msg)
+                        os._exit(error_code)
             os._exit(normal_code)
         os.close(write_fd)
         self.d.programbox(fd=read_fd, title=title, height=25, width=170)
@@ -2895,14 +2985,13 @@ class graphics_deploy(Deploy):
     def rollback(self, title):
         """图形: 回滚
         """
-        rollback_list=self.get_rollback_list()
-        if len(rollback_list)==0:
+        rollback_version_list=self.get_rollback_version_list()
+        if len(rollback_version_list)==0:
             self.d.msgbox("尚未有回滚备份", title="提示")
             return
         else:
             choices=[]
-            for rollback_version in reversed(rollback_list):
-                rollback_version=time.strftime('%Y-%m-%d %H:%M',time.strptime(rollback_version,'%Y%m%d%H%M'))
+            for rollback_version in rollback_version_list:
                 choices.append((rollback_version, ""))
 
             code,tag=self.d.menu(f"请选择回滚版本(备份时间)", 
@@ -2913,48 +3002,9 @@ class graphics_deploy(Deploy):
                     )
             if code==self.d.OK:
                 self.log.logger.debug(f"{code=}, {tag=}")
-                rollback_version=time.strftime('%Y%m%d%H%M',time.strptime(tag,'%Y-%m-%d %H:%M'))
                 self.update(title, True)
             else:
                 return
-
-    def show_arch_summary(self, title, arch_dict):
-        """显示arch_dict
-        """
-        HIDDEN = 0x1
-        READ_ONLY = 0x2
-        tab=3           # 
-        xi=15
-        field_length=45
-        n=0
-        elements=[]
-        for node in arch_dict:
-            n=n+1
-            info=[
-                    (f"{node}: ", n, 1, "", n, xi, field_length, 0, HIDDEN), 
-                    (f"IP: ", n+1, tab, arch_dict[node]["ip"], n+1, xi, field_length, 0, READ_ONLY), 
-                    ("安装目录: ", n+2, tab, arch_dict[node]["located"], n+2, xi, field_length, 0, READ_ONLY)
-                    ]
-            n=n+3
-            m=0
-            soft_nums=len(arch_dict[node]["software"])
-            soft_nums_rows=1
-            rows=math.ceil(soft_nums/soft_nums_rows)
-            for i in range(rows):
-                if i == 0:
-                    element_name="安装软件: "
-                else:
-                    element_name=""
-                info.append(
-                        (element_name, n+i, tab, ", ".join(arch_dict[node]["software"][m:m+soft_nums_rows]), n+i, xi, field_length, 0, READ_ONLY), 
-                        )
-                m=m+soft_nums_rows
-            n=n+i
-            elements.extend(info)
-        elements.append(("", n+1, 1, "", n+1, xi, field_length, 0, HIDDEN))
-        self.log.logger.debug(f"arch summary: {elements=}")
-        code, fields=self.d.mixedform(f"部署架构摘要:", elements=elements, title=title, ok_label="确认", cancel_label="终止部署")
-        return code
 
     def install(self):
         """图形: 安装
