@@ -2998,11 +2998,11 @@ class graphics_deploy(Deploy):
                     choices=choices, 
                     title=title, 
                     width=48, 
-                    height=6
+                    height=8
                     )
             if code==self.d.OK:
                 self.log.logger.debug(f"{code=}, {tag=}")
-                self.update(title, True)
+                self.update(title)
             else:
                 return
 
