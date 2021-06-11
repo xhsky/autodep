@@ -142,7 +142,7 @@
       "gateway": {
         "file": "dsfa-platform-service-gateway-1.0.0-SNAPSHOT.jar", 
         "version": "1.0", 
-        "py": "gateway.py", 
+        "py": "program.py", 
         "type": "program"
       }
     } 

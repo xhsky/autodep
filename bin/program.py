@@ -4,7 +4,7 @@
 
 import sys, json, os, requests, yaml, tarfile
 from libs import common
-from libs.env import log_remote_level, program_sh_name, backup_dir, backup_abs_file_format, \
+from libs.env import log_remote_level, program_sh_name, backup_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 def main():
@@ -80,7 +80,6 @@ def main():
 
         sys.exit(flag)
 
-
 def dict_to_yaml_file(config_dict, config_file):
     """生成将dict转为yaml文件
     """
@@ -143,20 +142,22 @@ def generate_local_config():
                         "max-request-size": "1024MB"
                         }
                     }
-                }, 
-            "dsfa": {
+                }
+            }
+    if softname != "program_platform_gateway":
+        config_dict["dsfa"]={
                 "session": {
                     "rule": {
                         "valiRepeat": False
                         }
                     }
-                }, 
-            "dsf": {
+                }
+        config_dict["dsf"]={
                 "file": {
                     "upload-virtual-path": program_info_dict["upload_path"]
                     }
-                }, 
-            "dubbo": {
+                }
+        config_dict["dubbo"]={
                 "scan": {
                     "base-packages": "com.dsfa"
                     }, 
@@ -171,7 +172,19 @@ def generate_local_config():
                     "subscribed-services": "${spring.application.name}"
                     }
                 }
-            }
+
+    if program_info_dict.get("routes"):
+        config_dict["cloud"]={
+                "gateway": {
+                    "discovery": {
+                        "locator": {
+                            "enabled": True, 
+                            "filters": ["StripPrefix=1"]
+                            }
+                        }, 
+                    "routes": program_info_dict.get("routes")
+                    }
+                }
 
     result, msg=dict_to_yaml_file(config_dict, config_file)
     if result:
@@ -181,12 +194,13 @@ def generate_local_config():
         log.logger.error(f"无法生成可读配置文件: {msg}")
         return False
 
-def generate_sh():
+def generate_sh(jar_file):
     """生成控制脚本
     """
     nacos_addr=f"{nacos_host}:{nacos_port}"
     jvm_mem=program_info_dict["jvm_mem"]
-    jar_file=f"{program_dir}/{pkg_file.split('/')[-1]}"
+    #jar_file=f"{program_dir}/{pkg_file.split('/')[-1]}"
+    jar_file=f"{program_dir}/{jar_file.split('/')[-1]}"
     log_file=f"{program_dir}/{service_name}.log"
     program_sh_text=f"""\
             #!/bin/bash
@@ -285,17 +299,16 @@ def install():
             log.logger.error(msg)
             return error_code
         if os.path.exists(config_file):
-            log.logger.warning(f"已存在可读配置文件: {config_file}")
+            log.logger.debug(f"已存在可读配置文件: {config_file}")
         else:
             result=generate_local_config()
             if not result:
                 return error_code
         if os.path.exists(program_sh_file):
-            log.logger.warning(f"已存在可读配置文件: {config_file}")
+            log.logger.debug(f"已存在可读配置文件: {config_file}")
         else:
-            result=generate_local_config()
-            if not result:
-                return error_code
+            log.logger.error(f"{program_sh_file}不存在")
+            return error_code
     elif pkg_file.endswith(".jar"):
         value, msg=common.install(pkg_file, "jar", None, None, program_dir)
         if not value:
@@ -304,7 +317,7 @@ def install():
         result=generate_local_config()
         if not result:
             return error_code
-        result=generate_sh()
+        result=generate_sh(pkg_file)
         if not result:
             return error_code
     else:
@@ -459,14 +472,17 @@ def backup():
 
     log.logger.info("备份代码...")
     backup_version=conf_dict["backup_version"]
-    backup_abs_file=backup_abs_file_format.format(backup_dir=backup_dir, backup_version=backup_version, softname=softname)
-    try:
-        os.makedirs(backup_dir, exist_ok=1)
-        with tarfile.open(backup_abs_file, "w:gz", encoding="utf8") as tar:
-            tar.add(program_dir)
+    backup_file_list=[]
+    for backup_file in os.listdir(program_dir):
+        if backup_file.endswith(".log") or backup_file.endswith(".bak"):
+            pass
+        else:
+            backup_file_list.append(os.path.basename(backup_file))
+    result, msg=common.tar_backup(backup_version, backup_dir, softname, program_dir, [])
+    if result:
         return normal_code
-    except Exception as e:
-        log.logger.error(str(e))
+    else:
+        log.logger.error(msg)
         return error_code
 
 if __name__ == "__main__":
@@ -474,6 +490,7 @@ if __name__ == "__main__":
     conf_dict=json.loads(conf_json)
     #located=conf_dict.get("located")
     log=common.Logger({"remote": log_remote_level}, loggger_name="jar")
+
 
     program_info_dict=conf_dict[f"{softname}_info"]
     port_list=[program_info_dict["port"]]
@@ -496,6 +513,7 @@ if __name__ == "__main__":
     nacos_addr_url=f"http://{nacos_host}:{nacos_port}"
     configs_path="/nacos/v1/cs/configs"
     program_sh_file=f"{program_dir}/{program_sh_name}"
+
     if action=="install":
         sys.exit(install())
     elif action=="run":

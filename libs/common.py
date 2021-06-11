@@ -9,7 +9,7 @@ import textwrap
 from logging import handlers
 import logging
 import requests, json
-from libs.env import interface, located_dir_link, \
+from libs.env import interface, located_dir_link, backup_abs_file_format, \
         activated_code, stopped_code, abnormal_code
 
 def find_pid(port):
@@ -189,6 +189,24 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
                     return False, msg
         else:
             return True, None
+    except Exception as e:
+        return False, str(e)
+
+def tar_backup(backup_version, backup_dir, softname, tar_dir, tar_file_list):
+    """压缩备份目录
+    """
+    backup_abs_file=backup_abs_file_format.format(backup_dir=backup_dir, backup_version=backup_version, softname=softname)
+    try:
+        os.makedirs(backup_dir, exist_ok=1)
+        with tarfile.open(backup_abs_file, "w:gz", encoding="utf8") as tar:
+            if len(tar_file_list)==0:
+                os.chdir(os.path.dirname(tar_dir))
+                tar.add(os.path.basename(tar_dir))
+            else:
+                os.chdir(tar_dir)
+                for file_ in tar_file_list:
+                    tar.add(file_)
+        return True, ""
     except Exception as e:
         return False, str(e)
 
