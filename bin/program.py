@@ -305,7 +305,7 @@ def install():
             if not result:
                 return error_code
         if os.path.exists(program_sh_file):
-            log.logger.debug(f"已存在可读配置文件: {config_file}")
+            log.logger.debug(f"已存在控制脚本: {program_sh_file}")
         else:
             log.logger.error(f"{program_sh_file}不存在")
             return error_code
