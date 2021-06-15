@@ -3,7 +3,7 @@
 # 2020-10-21 17:37:47
 # sky
 
-import locale, json, os, time, sys, tarfile, math, shutil
+import locale, json, os, time, sys, tarfile, math, shutil, copy
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, log_graphics_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, ext_dir, autodep_dir, backup_dir, \
@@ -23,7 +23,6 @@ for dir_ in autodep_dir:
 from textwrap import dedent
 from libs.common import Logger, post_info, format_size, port_connect, exec_command
 from libs.remote import ssh, soft
-#from libs import update
 
 if test_mode:                       # 是否启用测试模式: 代码文件在install, run, start, stop, update阶段重复传输
     trans_files_dict={
@@ -287,7 +286,10 @@ class Deploy(object):
             type_name, product_name, module_name=softname.split("_")
             if info_type=="file":
                 file_name=ext_dict[type_name][product_name][module_name]["file"]
-                soft_file=f"{ext_dir}/{product_name}/{file_name}"
+                if file_name.startswith("/"):
+                    soft_file=file_name
+                else:
+                    soft_file=f"{ext_dir}/{product_name}/{file_name}"
                 soft_info_str=soft_file
             elif info_type=="py":
                 py_name=ext_dict[type_name][product_name][module_name]["py"]
@@ -300,7 +302,10 @@ class Deploy(object):
             if info_type=="file":
                 file_name=ext_dict[softname].get("file")
                 if file_name is not None:
-                    soft_file=f"{ext_dir}/{file_name}"
+                    if file_name.startswith("/"):
+                        soft_file=file_name
+                    else:
+                        soft_file=f"{ext_dir}/{file_name}"
                 else:
                     soft_file=file_name
                 soft_info_str=soft_file
@@ -312,6 +317,32 @@ class Deploy(object):
                 soft_type=ext_dict[softname]["type"]
                 soft_info_str=soft_type
         return soft_info_str
+
+    def set_ext_softname(self, ext_dict, softname, filename):
+        """设置ext内软件的安装包名称
+        """
+        if softname.lower().startswith("program"):
+            type_name, product_name, module_name=softname.split("_")
+            ext_dict[type_name][product_name][module_name]["file"]=filename
+        else:
+            ext_dict[softname]["file"]=filename
+        return ext_dict
+
+    def rollback_config_file(self, rollback_version):
+        """将版本备份的文件回滚至config目录
+        """
+        backup_version=self.trans_date_to_backup_version(rollback_version)
+        config_dict={
+                f"{rollback_dir}/{backup_version}/{update_arch_file.split('/')[-1]}": update_arch_file, 
+                f"{rollback_dir}/{backup_version}/{ext_file.split('/')[-1]}": ext_file
+                }
+        try:
+            for src_file in config_dict:
+                self.log.logger.debug(f"cp {src_file} {config_dict[src_file]}")
+                shutil.copyfile(src_file, config_dict[src_file])
+            return True, ""
+        except Exception as e:
+            return False, str(e)
 
     def resource_verifi(self, arch_dict, host_info_dict):
         """根据模板中各节点安装软件的权重和 对应 集群中各节点权重和(排序对应), 并将将ip/located赋值给node配置
@@ -353,6 +384,7 @@ class Deploy(object):
             else:
                 located_dir=f"{max_disk_dir}/{located_dir_name}"
             arch_dict[_]["located"]=located_dir
+            self.log.logger.debug(f"{_} <--> {located_dir}")
 
         ## 资源大小验证
         non_resouce_dict={}
@@ -442,7 +474,8 @@ class Deploy(object):
             for softname in control_dict[node]:
                 self.log.logger.info(f"{softname}{action_msg}...")
 
-                control_trans_files_dict=trans_files_dict.copy()
+                #control_trans_files_dict=trans_files_dict.copy()
+                control_trans_files_dict=copy.deepcopy(trans_files_dict)
                 py_file=self.get_soft_info(softname, ext_dict, "py")
                 remote_py_file=f"{remote_code_dir}/{py_file.split('/')[-1]}"
                 if test_mode or action=="install":
@@ -485,13 +518,14 @@ class Deploy(object):
             * nproc nofile
         """
         if self.ssh_client.gen_keys():
-            self.log.logger.info("本机生成密钥对\n")
+            self.log.logger.info("本机生成密钥对")
         else:
-            self.log.logger.info("本机已存在密钥对\n")
+            self.log.logger.info("本机已存在密钥对")
 
         # 初始化
         init_result=True
         init_stats_dict={}
+        self.log.logger.info(f"初始化主机: {list(init_dict.keys())}")
         for node in init_dict:
             self.log.logger.info(f"***主机{node}环境初始化***")
             stats_value=True
@@ -815,19 +849,34 @@ class Deploy(object):
             rollback_date_list.append(rollback_version)
         return rollback_date_list
 
+    def trans_date_to_backup_version(self, rollback_date):
+        """将回滚版本时间转为备份版本格式
+        """
+        backup_version=time.strftime('%Y%m%d%H%M',time.strptime(rollback_date, '%Y-%m-%d %H:%M'))
+        return backup_version
+
     def program_backup(self, init_dict, arch_dict, ext_dict, backup_version):
         """项目备份, 用于回滚
         """
         backup_result=True
         backup_stats_dict={}
+        backup_soft_type=["frontend", "program", "sql"]
 
-        # 创建回滚/备份目录
         rollback_version_dir=f"{rollback_dir}/{backup_version}"
         try:
             self.log.logger.info(f"建立备份目录: {rollback_version_dir}")
             os.makedirs(rollback_version_dir, exist_ok=1)
-            dst_file=f"{rollback_version_dir}/{arch_file.split('/')[-1]}"
-            shutil.copyfile(arch_file, dst_file)
+            self.log.logger.debug(f"建立update_arch.json")
+            update_arch_dict=copy.deepcopy(arch_dict)
+            for node in update_arch_dict:
+                for softname in update_arch_dict[node]["software"][:]:
+                    soft_type=self.get_soft_info(softname, ext_dict, "type")
+                    if soft_type not in backup_soft_type:
+                        update_arch_dict[node]["software"].remove(softname)
+            backup_update_update_file=f"{rollback_version_dir}/{update_arch_file.split('/')[-1]}"
+            result, msg=self.write_config(update_arch_dict, backup_update_update_file)
+            if not result:
+                return False, {"Error": str(e)}
         except Exception as e:
             return False, {"Error": str(e)}
 
@@ -836,7 +885,6 @@ class Deploy(object):
             control_dict[node]=arch_dict[node]["software"]
         soft_type_dict=self._divide_service(control_dict, ext_dict)
 
-        backup_soft_type=["frontend", "program", "sql"]
         backup_type_node_dict={}
         for soft_type in reversed(soft_type_dict):      # sql最后再备份
             if soft_type in backup_soft_type:
@@ -887,6 +935,7 @@ class Deploy(object):
                         result, msg=self._get_backup_file(node, port, backup_version, softname)
                         backup_stats_dict[soft_type][node][softname]=msg
                         if result:
+                            ext_dict=self.set_ext_softname(ext_dict, softname, msg)
                             self.log.logger.info(f"{node}: {softname}服务远程备份完成")
                             continue
                         else:
@@ -897,7 +946,12 @@ class Deploy(object):
                     continue
                 break
             else:
-                self.log.logger.info(f"全部备份完成")
+                result, msg=self.write_config(ext_dict, f"{rollback_version_dir}/{ext_file.split('/')[-1]}")
+                if result:
+                    self.log.logger.info(f"全部备份完成")
+                else:
+                    self.log.logger.error(msg)
+                    
         return backup_result, backup_stats_dict
 
     def config_merge(self, init_dict, arch_dict, update_init_dict, update_arch_dict):
@@ -2619,7 +2673,6 @@ class graphics_deploy(Deploy):
             os.close(read_fd)
             with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
                 self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)
-
                 self.log.logger.info("检测主机配置, 请稍后...\n")
                 result, connect_test_result=self.connect_test(init_dict)
                 if not result:
@@ -2720,6 +2773,7 @@ class graphics_deploy(Deploy):
                         self._show_non_resource(arch_dict)
                 else:                           # 终止部署按钮
                     return False
+                return True
             else:
                 return False
 
@@ -2752,7 +2806,7 @@ class graphics_deploy(Deploy):
                 break
 
     def update_init(self, title):
-        """将in update.json and not in arch.josn中的node添加到init.json
+        """将in update_arch.json and not in arch.josn中的node添加到init.json
         """
         result, config_list=self.read_config(["init", "arch", "ext", "update_arch", "project"])
         if result:
@@ -2792,8 +2846,16 @@ class graphics_deploy(Deploy):
                         host_info_dict=config_list[0]
                         code=self.show_hosts_info(host_info_dict)
                         if code==self.d.OK:             # 开始部署按钮
-                            result, update_arch_dict, project_dict=self.adaptation_config(check_dict, update_arch_dict, project_dict, host_info_dict)
+                            update_add_arch_dict={}
+                            for node in update_arch_dict:
+                                if node not in arch_dict:
+                                    update_add_arch_dict[node]=update_arch_dict[node]
+                                else:
+                                    update_arch_dict[node]["ip"]=arch_dict[node]["ip"]
+                                    update_arch_dict[node]["located"]=arch_dict[node]["located"]
+                            result, update_add_arch_dict, project_dict=self.adaptation_config(check_dict, update_add_arch_dict, project_dict, host_info_dict)
                             if result:
+                                update_arch_dict.update(update_add_arch_dict)
                                 for config in [(update_arch_dict, update_arch_file), (project_dict, project_file)]:
                                     result, msg=self.write_config(config[0], config[1])
                                     if not result:
@@ -2912,6 +2974,16 @@ class graphics_deploy(Deploy):
     def update(self, title):
         """图形: update_init, program_stop, program_backup, program_update, program_run, 
         """
+        global global_backup_version
+        global_backup_version=self.create_backup_version()
+        rollback_version=self.trans_backup_version_to_date([global_backup_version])[0]
+        code=self.d.yesno(f"此过程将会重启项目服务并备份数据.\n备份版本号: '{rollback_version}'.\n是否确认继续?", title="提醒") 
+        if code != self.d.OK:
+            return
+
+        if not self.update_init(title):
+            return
+
         # 显示更新架构
         result, config_list=self.read_config(["update_arch"])
         if result:
@@ -2925,17 +2997,6 @@ class graphics_deploy(Deploy):
             self.d.msgbox(msg)
             return
 
-        global global_backup_version
-        global_backup_version=self.create_backup_version()
-        rollback_version=self.trans_backup_version_to_date([global_backup_version])[0]
-        code=self.d.yesno(f"此过程将会重启项目服务并备份数据.\n备份版本号: '{rollback_version}'.\n是否确认继续?", title="提醒") 
-        if code != self.d.OK:
-            return
-
-        if not self.update_init(title):
-            return
-
-        #stage_all=["update_init", "program_stop", "program_backup", "config_merge", "program_update", "program_run"]
         stage_method={
                 "program_stop": self.program_stop, 
                 "program_backup": self.program_backup, 
@@ -2991,7 +3052,7 @@ class graphics_deploy(Deploy):
             return
         else:
             choices=[]
-            for rollback_version in rollback_version_list:
+            for rollback_version in reversed(rollback_version_list):
                 choices.append((rollback_version, ""))
 
             code,tag=self.d.menu(f"请选择回滚版本(备份时间)", 
@@ -3002,7 +3063,15 @@ class graphics_deploy(Deploy):
                     )
             if code==self.d.OK:
                 self.log.logger.debug(f"{code=}, {tag=}")
-                self.update(title)
+                self.log.logger.info(f"开始回滚配置")
+                result, msg=self.rollback_config_file(tag)
+                if result:
+                    self.update(title)
+                else:
+                    error_msg=f"配置回滚失败: {msg}"
+                    self.log.logger.error(msg)
+                    self.d.msgbox(msg)
+                    return
             else:
                 return
 

@@ -157,7 +157,7 @@ class ssh(object):
             sftp=self.ssh.open_sftp()
             sftp.get(remote_file, local_file)
             sftp.close()
-            return True, ""
+            return True, local_file
         except Exception as e:
             return False, str(e)
 
