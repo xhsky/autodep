@@ -68,8 +68,6 @@ class Deploy(object):
                 config_file=project_file
             elif config=="backup_version":
                 config_file=backup_version_file
-            #elif config=="program":
-            #    config_file=program_file
             elif config=="ext":
                 config_file=ext_file
             try: 
@@ -162,7 +160,6 @@ class Deploy(object):
         get_msg_py="./bin/get_host_info.py"
         for node in init_dict:
             port=init_dict[node].get("port")
-
             remote_file=f"{remote_code_dir}/{get_msg_py.split('/')[-1]}"
             self.ssh_client.scp(node, port, "root", get_msg_py, remote_file)
             get_msg_command=f"{remote_python_exec} {remote_file}"
@@ -178,6 +175,23 @@ class Deploy(object):
                 msg=stderr_msg
             all_host_info[node]=[stats_value, msg]
         return all_host_info
+
+    def str_to_title(self, str_, level):
+        """将字符串转为标题字符串
+        """
+        N=3
+        if level==1:
+            character="#"
+        elif level==2:
+            character="*"
+        elif level==3:
+            character="-"
+        else
+            character=""
+
+        characters="character" * N
+        str_=f"{characters}{str_}{characters}"
+        return str_
 
     '''
     def json_ana(init_dict, conf_dict, arch_dict):
@@ -201,6 +215,56 @@ class Deploy(object):
                     exit()
         soft_list=conf_dict.get("software").keys()
         check(arch_dict, soft_list, init_host_list)
+
+    def _get_control_stats_dict_bak(self, env_control_stats_dict, program_control_stats_dict):
+        """合并env和program的stats_dict
+        """
+        control_stats_dict={}
+        if len(env_control_stats_dict) != 0:
+            for node in env_control_stats_dict:
+                control_stats_dict[node]=env_control_stats_dict[node]
+                if program_control_stats_dict.get(node):
+                    control_stats_dict[node].update(program_control_stats_dict[node])
+        if len(program_control_stats_dict) != 0:
+            program_control_stats_dict.update(control_stats_dict)
+            control_stats_dict=program_control_stats_dict
+        return control_stats_dict
+    def program_control(self, init_dict, arch_dict, ext_dict, control_dict,  action):
+        """项目start|stop
+        return:
+            program_stats_dict={
+                "node1":{
+                    "soft1": True|False
+                }
+            }
+        """
+        # 构造需要启动的节点及软件结构
+        control_dict={}
+        for node in arch_dict:
+            control_dict[node]=arch_dict[node]["software"]
+        soft_type_dict=self._divide_service(control_dict, ext_dict)
+
+        if action=="start":
+            msg="启动"
+        elif action=="stop":
+            msg="停止"
+
+        program_result=True
+        program_stats_dict={}
+        for soft_type in reversed(soft_type_dict):
+            if len(soft_type_dict[soft_type]) != 0:
+                self.log.logger.info(self.str_to_title(f"{soft_type}服务{msg}", 2))
+                program_result, type_stats_dict=self.nodes_control(soft_type_dict[soft_type], action, msg, init_dict, arch_dict, ext_dict)
+                program_stats_dict[soft_type]=type_stats_dict
+                if program_result:
+                    if soft_type=="program":
+                        break
+                    else:
+                        continue
+                else:
+                    break
+        return program_result, program_stats_dict
+
     '''
 
     def _format_size(self, size):
@@ -252,7 +316,6 @@ class Deploy(object):
 
     def _get_max_disk_name(self, host_info_dict):
         """获取每个ip剩余空间最大的磁盘目录名称
-
         return { 
             ip: max_disk_name, 
             ip: max_disk_name, 
@@ -266,6 +329,8 @@ class Deploy(object):
 
     def _get_backup_file(self, ip, port, backup_version, softname):
         """获取备份文件
+        return:
+            True, filename|err
         """
         src_file=backup_abs_file_format.format(backup_dir=backup_dir, backup_version=backup_version, softname=softname)
         dst_file=rollback_abs_file_format.format(rollback_dir=rollback_dir, backup_version=backup_version, softname=softname)
@@ -276,11 +341,12 @@ class Deploy(object):
         """根据软件名称获取对应软件的信息
         softname: 
         ext_dict:
-        info_type: file|py
+        info_type: file|py|type
 
         return:
             ../ext/soft-version.tar.gz    # file
             ./bin/soft.py                 # py
+            program                       # type
         """
         if softname.lower().startswith("program"):
             type_name, product_name, module_name=softname.split("_")
@@ -320,6 +386,8 @@ class Deploy(object):
 
     def set_ext_softname(self, ext_dict, softname, filename):
         """设置ext内软件的安装包名称
+        return:
+            ext_dict
         """
         if softname.lower().startswith("program"):
             type_name, product_name, module_name=softname.split("_")
@@ -330,6 +398,8 @@ class Deploy(object):
 
     def rollback_config_file(self, rollback_version):
         """将版本备份的文件回滚至config目录
+        return:
+            True, ""|err
         """
         backup_version=self.trans_date_to_backup_version(rollback_version)
         config_dict={
@@ -346,6 +416,8 @@ class Deploy(object):
 
     def resource_verifi(self, arch_dict, host_info_dict):
         """根据模板中各节点安装软件的权重和 对应 集群中各节点权重和(排序对应), 并将将ip/located赋值给node配置
+        return:
+            True|False, arch_dict|non_resouce_dict
         """
         node_weights_dict={}
         ip_weights_dict={}
@@ -410,10 +482,10 @@ class Deploy(object):
 
     def account_verifi(self, init_dict):
         """init_dict格式校验
-            
-            not_pass_init_dict: {
-                "ip": "str"
-            }
+        return:
+            True: not_pass_init_dict: {
+                    "ip": "str"
+                    }
         """
         for ip in init_dict:
             pass
@@ -466,14 +538,14 @@ class Deploy(object):
         """
         control_result=True
         control_stats_dict={}
+        self.log.logger.info("{action_msg}节点: list(control_dict.keys())")
         for node in control_dict:
-            self.log.logger.info(f"***{node}节点{action_msg}***")
+            self.log.logger.info(self.str_to_title(f"{node}节点{action_msg}", 3))
             control_stats_dict[node]={}
             ip=arch_dict[node]["ip"]
             port=init_dict[arch_dict[node]["ip"]]["port"]
             for softname in control_dict[node]:
                 self.log.logger.info(f"{softname}{action_msg}...")
-
                 #control_trans_files_dict=trans_files_dict.copy()
                 control_trans_files_dict=copy.deepcopy(trans_files_dict)
                 py_file=self.get_soft_info(softname, ext_dict, "py")
@@ -527,10 +599,9 @@ class Deploy(object):
         init_stats_dict={}
         self.log.logger.info(f"初始化主机: {list(init_dict.keys())}")
         for node in init_dict:
-            self.log.logger.info(f"***主机{node}环境初始化***")
+            self.log.logger.info(self.str_to_title(f"主机{node}环境初始化", 3))
             stats_value=True
             stats_message=""
-
             try:
                 port=init_dict[node].get("port")
                 password=init_dict[node].get("root_password")
@@ -641,7 +712,7 @@ class Deploy(object):
         run_stats_dict={}
         for soft_type in soft_type_dict:
             if len(soft_type_dict[soft_type]) != 0:
-                self.log.logger.info(f"***{soft_type}服务运行***")
+                self.log.logger.info(self.str_to_title(f"{soft_type}服务运行", 2))
                 run_result, type_stats_dict=self.nodes_control(soft_type_dict[soft_type], "run", "运行", init_dict, arch_dict, ext_dict)
                 run_stats_dict[soft_type]=type_stats_dict
                 if run_result:
@@ -694,22 +765,7 @@ class Deploy(object):
         #for soft_type in soft_type_dict:
         #    if soft_type_dict[soft_type] == {}:
         #        soft_type_dict.pop(soft_type)
-        self.log.logger.debug(f"{soft_type_dict=}")
         return soft_type_dict
-
-    def _get_control_stats_dict(self, env_control_stats_dict, program_control_stats_dict):
-        """合并env和program的stats_dict
-        """
-        control_stats_dict={}
-        if len(env_control_stats_dict) != 0:
-            for node in env_control_stats_dict:
-                control_stats_dict[node]=env_control_stats_dict[node]
-                if program_control_stats_dict.get(node):
-                    control_stats_dict[node].update(program_control_stats_dict[node])
-        if len(program_control_stats_dict) != 0:
-            program_control_stats_dict.update(control_stats_dict)
-            control_stats_dict=program_control_stats_dict
-        return control_stats_dict
 
     def start(self, control_dict, init_dict, arch_dict, ext_dict):
         """软件start
@@ -729,7 +785,7 @@ class Deploy(object):
         start_stats_dict={}
         for soft_type in soft_type_dict:
             if len(soft_type_dict[soft_type]) != 0:
-                self.log.logger.info(f"***{soft_type}服务启动***")
+                self.log.logger.info(self.str_to_title(f"{soft_type}服务启动", 2))
                 start_result, start_stats_dict=self.nodes_control(soft_type_dict[soft_type], "start", "启动", init_dict, arch_dict, ext_dict)
                 if start_result:
                     continue
@@ -755,49 +811,13 @@ class Deploy(object):
         stop_stats_dict={}
         for soft_type in reversed(soft_type_dict):      # 反序关闭
             if len(soft_type_dict[soft_type]) != 0:
-                self.log.logger.info(f"***{soft_type}服务停止***")
+                self.log.logger.info(self.str_to_title(f"{soft_type}服务停止", 2))
                 stop_result, stop_stats_dict=self.nodes_control(soft_type_dict[soft_type], "stop", "停止", init_dict, arch_dict, ext_dict)
                 if stop_result:
                     continue
                 else:
                     break
         return stop_result, stop_stats_dict
-
-    def program_control(self, init_dict, arch_dict, ext_dict, control_dict,  action):
-        """项目start|stop
-        return:
-            program_stats_dict={
-                "node1":{
-                    "soft1": True|False
-                }
-            }
-        """
-        # 构造需要启动的节点及软件结构
-        control_dict={}
-        for node in arch_dict:
-            control_dict[node]=arch_dict[node]["software"]
-        soft_type_dict=self._divide_service(control_dict, ext_dict)
-
-        if action=="start":
-            msg="启动"
-        elif action=="stop":
-            msg="停止"
-
-        program_result=True
-        program_stats_dict={}
-        for soft_type in reversed(soft_type_dict):
-            if len(soft_type_dict[soft_type]) != 0:
-                self.log.logger.info(f"***{soft_type}服务{msg}***")
-                program_result, type_stats_dict=self.nodes_control(soft_type_dict[soft_type], action, msg, init_dict, arch_dict, ext_dict)
-                program_stats_dict[soft_type]=type_stats_dict
-                if program_result:
-                    if soft_type=="program":
-                        break
-                    else:
-                        continue
-                else:
-                    break
-        return program_result, program_stats_dict
 
     def _get_program_above_type_dict(self, arch_dict, ext_dict):
         """获取program类型以上的软件结构
@@ -824,7 +844,7 @@ class Deploy(object):
         stop_stats_dict={}
         for soft_type in reversed(program_above_type_dict):
             if len(program_above_type_dict[soft_type]) != 0:
-                self.log.logger.info(f"***{soft_type}服务关闭***")
+                self.log.logger.info(self.str_to_title(f"{soft_type}服务关闭", 2))
                 stop_result, type_stats_dict=self.nodes_control(program_above_type_dict[soft_type], "stop", "停止", init_dict, arch_dict, ext_dict)
                 stop_stats_dict[soft_type]=type_stats_dict
                 if stop_result:
@@ -913,7 +933,7 @@ class Deploy(object):
         for soft_type in backup_type_node_dict:
             for node in backup_type_node_dict[soft_type]:
                 arch_dict[node]["backup_version"]=backup_version
-            self.log.logger.info(f"{soft_type}服务备份")
+            self.log.logger.info(self.str_to_title(f"{soft_type}服务备份", 2))
             result, type_stats_dict=self.nodes_control(backup_type_node_dict[soft_type], "backup", "备份", init_dict, arch_dict, ext_dict)
             backup_stats_dict[soft_type]=type_stats_dict
             if result:
@@ -926,7 +946,7 @@ class Deploy(object):
         else:
             self.log.logger.info(f"本地备份完成")
             for soft_type in backup_type_node_dict:
-                self.log.logger.info(f"{soft_type}服务远程备份...")
+                self.log.logger.info(f"{soft_type}服务远程备份(回滚)...")
                 backup_stats_dict[soft_type]={}
                 for node in backup_type_node_dict[soft_type]:
                     backup_stats_dict[soft_type][node]={}
