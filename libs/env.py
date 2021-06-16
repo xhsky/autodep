@@ -30,6 +30,7 @@ data_dir="./data"
 host_info_file=f"{data_dir}/host_info.json"
 deploy_file=f"{data_dir}/deploy.json"
 backup_version_file=f"{data_dir}/backup_version.json"
+rollback_version_file=f"{data_dir}/rollback_version.json"
 
 # ext路径
 ext_dir="../ext"
@@ -76,7 +77,7 @@ g_term_rows=20
 g_term_cols=80
 
 # 测试模式, 正式环境关闭
-test_mode=True
+test_mode=False
 # 检测时是否开启资源校验
 resource_verify_mode=False
 
