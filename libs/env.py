@@ -45,7 +45,8 @@ rollback_dir=f"{located_dir_link}/rollback"
 # 备份文件名称格式
 backup_abs_file_format="{backup_dir}/{backup_version}_{softname}.tar.gz"
 rollback_abs_file_format="{rollback_dir}/{backup_version}/{backup_version}_{softname}.tar.gz"
-
+# 备份的软件类型
+backup_soft_type=["frontend", "program", "sql"]
 
 # 巡检汇总目录
 report_dir="./report" 

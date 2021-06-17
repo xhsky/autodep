@@ -7,7 +7,7 @@ import locale, json, os, time, sys, tarfile, math, shutil, copy
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, log_graphics_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, ext_dir, autodep_dir, backup_dir, \
-        interface, test_mode, resource_verify_mode, backup_abs_file_format, rollback_abs_file_format, \
+        interface, test_mode, resource_verify_mode, backup_abs_file_format, rollback_abs_file_format, backup_soft_type, \
         host_info_file, init_stats_file, install_stats_file, start_stats_file, update_stats_file, run_stats_file, \
         rollback_dir, rollback_version_file, \
         g_term_rows, g_term_cols, \
@@ -72,14 +72,23 @@ class Deploy(object):
                 config_file=rollback_version_file
             elif config=="ext":
                 config_file=ext_file
-            try: 
-                with open(config_file, "r", encoding="utf8") as f:
-                    config_json=json.load(f)
-                    config_dict_list.append(config_json)
-            except Exception as e:
-                return False, f"{config}: {str(e)}"
+            result, config_json=self.read_json(config_file)
+            if result:
+                config_dict_list.append(config_json)
+            else:
+                return False, f"{config}: {config_json[config_file]}"
         else:
             return True, config_dict_list
+
+    def read_json(self, config_file):
+        """从josn中读取文件
+        """
+        try: 
+            with open(config_file, "r", encoding="utf8") as f:
+                config_json=json.load(f)
+            return True, config_json
+        except Exception as e:
+            return False, {config_file: str(e)}
 
     def write_config(self, dict_, file_):
         """将dict以json格式写入文件
@@ -426,14 +435,39 @@ class Deploy(object):
         return ext_dict
 
     def rollback_arch_file(self):
-        """将版本备份的文件(init_file, arch.json)回滚至config目录
+        """将版本备份的文件(arch.json)回滚至config目录: 还原原程序配置, 删除新加的程序软件
         """
-        config_list=[init_file, arch_file]
-        result, msg=self.rollback_file(config_list)
+        result, config_list=self.read_config(["rollback_version", "arch", "ext"])
         if result:
-            return True, {"result": "ok"}
+            rollback_version, arch_dict, ext_dict=config_list
+            backup_version=self.trans_date_to_backup_version(rollback_version)
+            arch_backup_file=f"{rollback_dir}/{backup_version}/{arch_file.split('/')[-1]}"
+            result, arch_backup_dict=self.read_json(arch_backup_file)
+            if result:
+                arch_rollback_dict=copy.deepcopy(arch_dict)
+                for node in arch_dict:
+                    for softname in arch_dict[node]["software"]:
+                        soft_type=self.get_soft_info(softname, ext_dict, "type")
+                        if soft_type in backup_soft_type:
+                            if node in arch_backup_dict:
+                                if softname in arch_backup_dict[node]["software"]:
+                                    arch_rollback_dict[node][f"{softname}_info"]=arch_backup_dict[node].get(f"{softname}_info")
+                                else:
+                                    arch_rollback_dict[node]["software"].remove(softname)
+                                    if arch_dict[node].get(f"{softname}_info") is not None:
+                                        arch_rollback_dict[node].pop(f"{softname}_info")
+                            else:
+                                arch_rollback_dict[node]["software"].remove(softname)
+                result, msg=self.write_config(arch_rollback_dict, arch_file)
+                if result:
+                    self.log.logger.info("arch_file回滚完成")
+                    return True, {"result": "ok"}
+                else:
+                    return False, {"result": msg}
+            else:
+                return False, {"result": arch_backup_dict}
         else:
-            return False, {"result": msg}
+            return False, {"result": config_list}
 
     def rollback_update_file(self):
         """将版本备份的文件(ext.json, update_arch.json, init.json)回滚至config目录
@@ -458,7 +492,7 @@ class Deploy(object):
                     shutil.copyfile(src_file, config_file)
                 return True, ""
             else:
-                return False, config_list
+                return False, config
         except Exception as e:
             return False, str(e)
 
@@ -933,18 +967,14 @@ class Deploy(object):
         """
         backup_result=True
         backup_stats_dict={}
-        backup_soft_type=["frontend", "program", "sql"]
 
         rollback_version_dir=f"{rollback_dir}/{backup_version}"
         try:
             self.log.logger.info(f"建立备份目录: {rollback_version_dir}")
             os.makedirs(rollback_version_dir, exist_ok=1)
             arch_backup_file=f"{rollback_version_dir}/{arch_file.split('/')[-1]}"
-            init_backup_file=f"{rollback_version_dir}/{init_file.split('/')[-1]}"
             self.log.logger.debug(f"cp {arch_file} {arch_backup_file}")
             shutil.copyfile(arch_file, arch_backup_file)
-            self.log.logger.debug(f"cp {init_file} {init_backup_file}")
-            shutil.copyfile(init_file, init_backup_file)
             self.log.logger.debug(f"建立update_arch.json")
             update_arch_dict=copy.deepcopy(arch_dict)
             for node in update_arch_dict:
@@ -3089,6 +3119,7 @@ class graphics_deploy(Deploy):
             return
 
         if rollback_flag:
+            fun_name="回滚"
             self.log.logger.info(f"回滚更新配置")
             result, msg=self.rollback_update_file()
             if not result:
@@ -3096,6 +3127,8 @@ class graphics_deploy(Deploy):
                 self.log.logger.error(msg)
                 self.d.msgbox(msg)
                 return
+        else:
+            fun_name="更新"
 
         if not self.update_init(title):
             return
@@ -3153,7 +3186,7 @@ class graphics_deploy(Deploy):
                         result, msg=self.write_config(backup_version_list, backup_version_file)
                         if result:
                             self.log.logger.debug(f"记录备份版本: {global_backup_version}")
-                            self.log.logger.info("项目更新完成")
+                            self.log.logger.info(f"项目{fun_name}完成")
                         else:
                             self.log.logger.error(msg)
                             os._exit(error_code)
