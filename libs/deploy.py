@@ -426,9 +426,9 @@ class Deploy(object):
         return ext_dict
 
     def rollback_arch_file(self):
-        """将版本备份的文件(arch.json)回滚至config目录
+        """将版本备份的文件(init_file, arch.json)回滚至config目录
         """
-        config_list=[arch_file]
+        config_list=[init_file, arch_file]
         result, msg=self.rollback_file(config_list)
         if result:
             return True, {"result": "ok"}
@@ -436,7 +436,7 @@ class Deploy(object):
             return False, {"result": msg}
 
     def rollback_update_file(self):
-        """将版本备份的文件(ext.json, update_arch.json)回滚至config目录
+        """将版本备份的文件(ext.json, update_arch.json, init.json)回滚至config目录
         return:
             True, ""|err
         """
@@ -447,13 +447,18 @@ class Deploy(object):
     def rollback_file(self, config_list):
         """文件拷贝
         """
-        backup_version=self.trans_date_to_backup_version(rollback_version)
         try:
-            for config_file in config_list:
-                src_file=f"{rollback_dir}/{backup_version}/{config_file.split('/')[-1]}"
-                self.log.logger.debug(f"cp {src_file} {config_file}")
-                shutil.copyfile(src_file, config_file)
-            return True, ""
+            result, config=self.read_config(["rollback_version"])
+            if result:
+                rollback_version=config[0]
+                backup_version=self.trans_date_to_backup_version(rollback_version)
+                for config_file in config_list:
+                    src_file=f"{rollback_dir}/{backup_version}/{config_file.split('/')[-1]}"
+                    self.log.logger.debug(f"cp {src_file} {config_file}")
+                    shutil.copyfile(src_file, config_file)
+                return True, ""
+            else:
+                return False, config_list
         except Exception as e:
             return False, str(e)
 
@@ -935,8 +940,11 @@ class Deploy(object):
             self.log.logger.info(f"建立备份目录: {rollback_version_dir}")
             os.makedirs(rollback_version_dir, exist_ok=1)
             arch_backup_file=f"{rollback_version_dir}/{arch_file.split('/')[-1]}"
+            init_backup_file=f"{rollback_version_dir}/{init_file.split('/')[-1]}"
             self.log.logger.debug(f"cp {arch_file} {arch_backup_file}")
             shutil.copyfile(arch_file, arch_backup_file)
+            self.log.logger.debug(f"cp {init_file} {init_backup_file}")
+            shutil.copyfile(init_file, init_backup_file)
             self.log.logger.debug(f"建立update_arch.json")
             update_arch_dict=copy.deepcopy(arch_dict)
             for node in update_arch_dict:
@@ -3080,6 +3088,15 @@ class graphics_deploy(Deploy):
         if code != self.d.OK:
             return
 
+        if rollback_flag:
+            self.log.logger.info(f"回滚更新配置")
+            result, msg=self.rollback_update_file()
+            if not result:
+                error_msg=f"更新配置回滚失败: {msg}"
+                self.log.logger.error(msg)
+                self.d.msgbox(msg)
+                return
+
         if not self.update_init(title):
             return
 
@@ -3175,18 +3192,10 @@ class graphics_deploy(Deploy):
                     height=8
                     )
             if code==self.d.OK:
-                self.log.logger.debug(f"{code=}, {tag=}")
-                self.log.logger.info(f"开始回滚配置")
+                self.log.logger.debug(f"{code=}, 写入{tag=}")
                 result, msg=self.write_config(tag, rollback_version_file)
                 if result:
-                    result, msg=self.rollback_update_file()
-                    if result:
-                        self.update(title, rollback_flag=True)
-                    else:
-                        error_msg=f"update配置回滚失败: {msg}"
-                        self.log.logger.error(msg)
-                        self.d.msgbox(msg)
-                        return
+                    self.update(title, rollback_flag=True)
                 else:
                     self.log.logger.error(msg)
                     self.d.msgbox(msg)
