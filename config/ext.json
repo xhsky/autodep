@@ -84,7 +84,7 @@
   "autocheck": {
     "file":"autocheck-1.3.4.tar.gz", 
     "version": "1.3.4", 
-    "py": "rocketmq.py", 
+    "py": "autocheck.py", 
     "type": "check"
   }, 
   "nacos": {
