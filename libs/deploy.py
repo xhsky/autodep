@@ -775,7 +775,7 @@ class Deploy(object):
         return install_result, install_stats_dict
 
     def run(self, init_dict, arch_dict, ext_dict):
-        """启动软件并初始化
+        """按类别, 启动软件并初始化
 
         return:
             run_result: True|False
@@ -851,7 +851,7 @@ class Deploy(object):
         return soft_type_dict
 
     def start(self, control_dict, init_dict, arch_dict, ext_dict):
-        """软件start
+        """按类别, 软件start
             control_dict={
                 "node1":["soft1", "soft2"], 
                 "node2":["soft1", "soft2"]
@@ -877,7 +877,7 @@ class Deploy(object):
         return start_result, start_stats_dict
 
     def stop(self, control_dict, init_dict, arch_dict, ext_dict):
-        """软件stop
+        """按类别, 软件stop
             control_dict={
                 "node1":["soft1", "soft2"], 
                 "node2":["soft1", "soft2"]
@@ -1077,9 +1077,9 @@ class Deploy(object):
                 for softname in update_arch_dict[node]["software"]:
                     if softname not in arch_dict[node]["software"]:
                         arch_dict[node]["software"].append(softname)
-                    softname_info_dict=arch_dict[node].get(f"{softname}_info")
+                    softname_info_dict=update_arch_dict[node].get(f"{softname}_info")
                     if  softname_info_dict is not None:
-                        arch_dict[node][f"{softname}_info"]=update_arch_dict[node].get(f"{softname}_info")
+                        arch_dict[node][f"{softname}_info"]=softname_info_dict
         merge_dict={}
         merge_result=True
         for config_list in [
@@ -1118,41 +1118,62 @@ class Deploy(object):
                 init_dict, arch_dict, ext_dict)
         return update_result, update_stats_dict
 
-    def program_run(self, init_dict, arch_dict, ext_dict, update_arch_dict):
-        """项目运行
+    def updated_soft_run(self, init_dict, update_arch_dict, ext_dict):
+        """更新的软件运行
         """
-        arch_program_above_type_dict=self._get_program_above_type_dict(arch_dict, ext_dict)
-        control_dict={}
-        for node in update_arch_dict:
-            control_dict[node]=update_arch_dict[node]["software"]
-        update_type_dict=self._divide_service(control_dict, ext_dict)
+        run_result, run_stats_dict=super(graphics_deploy, self).run(init_dict, update_arch_dict, ext_dict)
+        return run_result, run_stats_dict
+
+        #arch_program_above_type_dict=self._get_program_above_type_dict(arch_dict, ext_dict)
+        #control_dict={}
+        #for node in update_arch_dict:
+        #    control_dict[node]=update_arch_dict[node]["software"]
+        #update_type_dict=self._divide_service(control_dict, ext_dict)
 
         # 将arch中软件类型:项目 以上的服务加入到update_arch_dict分类服务中以运行
-        for soft_type in arch_program_above_type_dict:
-            if soft_type in update_type_dict:
-                for node in arch_program_above_type_dict[soft_type]:
-                    if node in update_type_dict[soft_type]:
-                        for softname in arch_program_above_type_dict[soft_type][node]:
-                            if softname not in update_type_dict[soft_type][node]:
-                                update_type_dict[soft_type][node].append(softname)
-                    else:
-                        update_type_dict[soft_type][node]=arch_program_above_type_dict[soft_type][node]
-            else:
-                update_type_dict[soft_type]=arch_program_above_type_dict[soft_type]
-        self.log.logger.debug(f"{update_type_dict=}")
+        #for soft_type in arch_program_above_type_dict:
+        #    if soft_type in update_type_dict:
+        #        for node in arch_program_above_type_dict[soft_type]:
+        #            if node in update_type_dict[soft_type]:
+        #                for softname in arch_program_above_type_dict[soft_type][node]:
+        #                    if softname not in update_type_dict[soft_type][node]:
+        #                        update_type_dict[soft_type][node].append(softname)
+        #            else:
+        #                update_type_dict[soft_type][node]=arch_program_above_type_dict[soft_type][node]
+        #    else:
+        #        update_type_dict[soft_type]=arch_program_above_type_dict[soft_type]
+        #self.log.logger.debug(f"{update_type_dict=}")
 
-        run_result=True
-        run_stats_dict={}
-        for soft_type in update_type_dict:
-            if len(update_type_dict[soft_type]) != 0:
-                self.log.logger.info(f"***{soft_type}服务运行***")
-                run_result, run_stats_dict=self.nodes_control(update_type_dict[soft_type], "run", "运行", init_dict, arch_dict, ext_dict)
-                run_stats_dict[soft_type]=run_stats_dict
-                if run_result:
+        #run_result=True
+        #run_stats_dict={}
+        #for soft_type in update_arch_dict:
+        #    if len(update_type_dict[soft_type]) != 0:
+        #        self.log.logger.info(f"***{soft_type}服务运行***")
+        #        run_result, run_stats_dict=self.nodes_control(update_type_dict[soft_type], "run", "运行", init_dict, arch_dict, ext_dict)
+        #        run_stats_dict[soft_type]=run_stats_dict
+        #        if run_result:
+        #            continue
+        #        else:
+        #            break
+        #return run_result, run_stats_dict
+
+    def program_start(self, init_dict, arch_dict, ext_dict):
+        """项目启动
+        """
+        program_above_type_dict=self._get_program_above_type_dict(arch_dict, ext_dict)
+        self.log.logger.debug(f"{program_above_type_dict=}")
+        start_result=True
+        start_stats_dict={}
+        for soft_type in program_above_type_dict:
+            if len(program_above_type_dict[soft_type]) != 0:
+                self.log.logger.info(self.str_to_title(f"{soft_type}服务启动", 2))
+                start_result, type_stats_dict=self.nodes_control(program_above_type_dict[soft_type], "start", "启动", init_dict, arch_dict, ext_dict)
+                start_stats_dict[soft_type]=type_stats_dict
+                if start_result:
                     continue
                 else:
                     break
-        return run_result, run_stats_dict
+        return start_result, start_stats_dict
 
     def _get_soft_port_list(self, arch_dict, node, softname):
         """获取单个软件的端口列表
@@ -2362,22 +2383,6 @@ class graphics_deploy(Deploy):
             self.log.logger.error(f"配置文件读取失败: {config_list}")
             dict_={}
         return result, dict_
-    def program_start_bak(self):
-        """图形: 项目启动
-        """
-        result, config_list=self.read_config(["init", "arch"])
-        if result:
-            init_dict, arch_dict=config_list
-            result, dict_=super(graphics_deploy, self).program_control(init_dict, arch_dict, "start")
-            #result, dict_=self.start(init_dict, arch_dict, start_dict)
-            if result:
-                self.log.logger.info("启动完成")
-            else:
-                self.log.logger.error("启动失败")
-        else:
-            self.log.logger.error(f"配置文件读取失败: {config_list}")
-            dict_={}
-        return result, dict_
     def configuration(self, title):
         """已丢弃
         集群配置: 
@@ -3091,18 +3096,35 @@ class graphics_deploy(Deploy):
             dict_={}
         return result, dict_
 
-    def program_run(self):
+    def updated_soft_run(self):
         """图形: 项目运行
         """
         self.log.logger.info(self.str_to_title("项目运行", 1))
-        result, config_list=self.read_config(["init", "arch", "ext", "update_arch"])
+        result, config_list=self.read_config(["init", "ext", "update_arch"])
         if result:
-            init_dict, arch_dict, ext_dict, update_arch_dict=config_list
-            result, dict_=super(graphics_deploy, self).program_run(init_dict, arch_dict, ext_dict, update_arch_dict)
+            init_dict, ext_dict, update_arch_dict=config_list
+            result, dict_=super(graphics_deploy, self).updated_soft_run(init_dict, update_arch_dict, ext_dict)
             if result:
                 self.log.logger.info("项目运行完成")
             else:
                 self.log.logger.error("项目运行失败")
+        else:
+            self.log.logger.error(f"配置文件读取失败: {config_list}")
+            dict_={}
+        return result, dict_
+
+    def program_start(self):
+        """图形: 项目启动
+        """
+        self.log.logger.info(self.str_to_title("项目启动", 1))
+        result, config_list=self.read_config(["init", "arch", "ext"])
+        if result:
+            init_dict, arch_dict, ext_dict=config_list
+            result, dict_=super(graphics_deploy, self).program_start(init_dict, arch_dict, ext_dict)
+            if result:
+                self.log.logger.info("项目启动完成")
+            else:
+                self.log.logger.error("项目启动失败")
         else:
             self.log.logger.error(f"配置文件读取失败: {config_list}")
             dict_={}
@@ -3153,7 +3175,8 @@ class graphics_deploy(Deploy):
                     "rollback_arch": self.rollback_arch_file, 
                     "program_merge": self.config_merge, 
                     "program_update": self.program_update, 
-                    "program_run": self.program_run
+                    "updated_soft_run": self.updated_soft_run, 
+                    "program_start": self.program_start
                     }
         else:
             stage_method={
@@ -3161,7 +3184,8 @@ class graphics_deploy(Deploy):
                     "program_backup": self.program_backup, 
                     "program_merge": self.config_merge, 
                     "program_update": self.program_update, 
-                    "program_run": self.program_run
+                    "updated_soft_run": self.updated_soft_run, 
+                    "program_start": self.program_start
                     }
 
         read_fd, write_fd = os.pipe()
@@ -3296,8 +3320,7 @@ class graphics_deploy(Deploy):
             return False, msg
 
     def deploy(self, title):
-        """图形: init, install, run, start, generate_deploy_file
-        图形: init, install, run, program_update, program_start, generate_deploy_file
+        """图形: init, install, run, generate_deploy_file
         """
 
         result, config_list=self.read_config(["init"])
