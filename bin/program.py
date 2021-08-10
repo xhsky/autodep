@@ -144,7 +144,7 @@ def generate_local_config():
                     }
                 }
             }
-    if softname.endswith("gateway") and softname.startswith("program"):
+    if not (softname.endswith("gateway") and softname.startswith("program")):
         config_dict["dsfa"]={
                 "session": {
                     "rule": {
