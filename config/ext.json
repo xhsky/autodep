@@ -136,15 +136,13 @@
         "version": "1.0.0", 
         "py": "sql.py", 
         "type": "sql"
-      }
-    }, 
-    "platform": {
+      }, 
       "gateway": {
         "file": "dsfa-platform-service-gateway-1.0.0-SNAPSHOT.jar", 
         "version": "1.0", 
         "py": "program.py", 
         "type": "program"
       }
-    } 
-  }
+    }
+  } 
 } 
