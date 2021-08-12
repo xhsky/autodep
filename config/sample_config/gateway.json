@@ -29,7 +29,7 @@
         "redis_db": 1, 
         "redis_password": "xxxxxxxx"
       }, 
-      "routers": [
+      "routes": [
         {
           "id": "schedule", 
           "uri": "lb://teaching/",      // teaching为服务名称

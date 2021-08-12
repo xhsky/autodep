@@ -174,7 +174,7 @@ def generate_local_config():
                 }
 
     if program_info_dict.get("routes"):
-        config_dict["cloud"]={
+        config_dict["spring"]["cloud"]={
                 "gateway": {
                     "discovery": {
                         "locator": {
