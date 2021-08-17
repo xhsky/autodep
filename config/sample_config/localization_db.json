@@ -1,0 +1,37 @@
+{
+  "db1":{
+    "software": ["dameng", "kingbase", "shentong"], 
+    "located": "/data/", 
+    "dameng_info":{
+      "business_user": ["user1", "user2"],                  // 业务用户
+      "business_password": ["Dreamdb_111", "Dreamdb_222"],  // 相应密码, 需符合复杂度规则. 数据库-用户-密码 一一对应
+      "system_user": "dmdba", 
+      "dba_user": "sysdba", 
+      "dba_password": "DreamSoft_123", 
+      "db_port": 5236, 
+      "start_command": "systemctl start DmServiceDMSERVER", 
+      "stop_command": "systemctl stop DmServiceDMSERVER"
+    }, 
+    "kingbase_info": {
+      "business_user": ["user1", "user2"],                  // 业务用户
+      "business_password": ["Dreamdb_111", "Dreamdb_222"],  // 相应密码, 需符合复杂度规则. 数据库-用户-密码 一一对应
+      "system_user": "kingbase", 
+      "dba_user": "system", 
+      "dba_password": "DreamSoft_123", 
+      "db_port": 54321, 
+      "start_command": "su -l kingbase 'sys_ctl start -D /data/kingbase/data/'", 
+      "stop_command": "su -l kingbase 'sys_ctl stop -D /data/kingbase/data'"
+    }, 
+    "shentong_info": {
+      "business_user": ["user1", "user2"],                  // 业务用户
+      "business_password": ["Dreamdb_111", "Dreamdb_222"],  // 相应密码, 需符合复杂度规则. 数据库-用户-密码 一一对应
+      "system_user": "root", 
+      "dba_user": "sysdba", 
+      "dba_password": "szoscar55", 
+      "db_port": 2003, 
+      "start_command": "/etc/init.d/oscardb_OSRDBd start", 
+      "stop_command": "/etc/init.d/oscardb_OSRDBd stop"
+    }
+
+  }
+}
