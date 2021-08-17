@@ -2557,11 +2557,12 @@ class graphics_deploy(Deploy):
             if node_info_dict.get("error_info") is None:
                 info=[
                         (f"{ip}: ", n, 1, "", n, xi_1, field_length, 0, HIDDEN), 
-                        ("内核版本: ", n+1, tab, node_info_dict["kernel_version"], n+1, xi_2, field_length, 0, READ_ONLY), 
-                        ("发行版本: ", n+2, tab, node_info_dict["os_name"], n+2, xi_2, field_length, 0, READ_ONLY), 
-                        ("CPU个数: ", n+3, tab, f"{node_info_dict['CPU'][0]}", n+3, xi_1, field_length, 0, READ_ONLY), 
-                        ("CPU使用率: ", n+3, xi_2, f"{node_info_dict['CPU'][1]}%", n+3, xi_3, field_length, 0, READ_ONLY), 
-                        ("内存大小: ", n+4, tab, format_size(node_info_dict['Mem'][0]), n+4, xi_1, field_length, 0, READ_ONLY), 
+                        ("内核版本: ", n+1, tab, node_info_dict["kernel_version"], n+1, xi_2-3, field_length, 0, READ_ONLY), 
+                        ("发行版本: ", n+2, tab, node_info_dict["os_name"], n+2, xi_2-3, field_length, 0, READ_ONLY), 
+                        ("CPU架构: ", n+3, tab, f"{node_info_dict['cpu_arch']}", n+3, xi_1-2, field_length, 0, READ_ONLY), 
+                        ("CPU个数: ", n+3, xi_2, f"{node_info_dict['CPU'][0]}", n+3, xi_3, field_length, 0, READ_ONLY), 
+                        ("CPU使用率: ", n+3, xi_4, f"{node_info_dict['CPU'][1]}%", n+3, xi_5, field_length, 0, READ_ONLY), 
+                        ("内存大小: ", n+4, tab, format_size(node_info_dict['Mem'][0]), n+4, xi_1-2, field_length, 0, READ_ONLY), 
                         ("内存使用率: ", n+4, xi_2, f"{node_info_dict['Mem'][1]}%", n+4, xi_3, field_length, 0, READ_ONLY)
                         ]
                 elements.extend(info)

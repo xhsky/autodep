@@ -13,6 +13,9 @@ log_remote_level="debug"
 log_platform_level="debug"
 log_update_level="debug"
 
+# 操作系统支持
+support_os=["centos 7"]
+
 # 配置文件
 #conf_file="./config/conf.json"
 #program_file="./config/program.json"

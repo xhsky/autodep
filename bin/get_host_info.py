@@ -2,42 +2,29 @@
 # *-* coding:utf8 *-*
 # sky
 
-import psutil
-import platform
+import psutil, distro, platform
 import os, sys, json
 import ntplib, time
 import subprocess
 from libs.common import Logger, port_connect, exec_command
-from libs.env import log_remote_level, interface, normal_code, error_code
+from libs.env import log_remote_level, interface, normal_code, error_code, support_os
 
 def main():
     try:
         log=Logger({"remote": log_remote_level}, logger_name="host")
         host_info_dict={}
 
-        os_name, hostname, kernel_version=list(platform.uname())[0:3]
-        result, msg=exec_command("lsb_release -sd")
-        if result:
-            os_name=msg.split()
-        else:
-            redhat_file="/etc/redhat-release"
-            if os.path.exists(redhat_file):
-                with open(redhat_file, "r") as f:
-                    os_name=f.read().strip()
-        """
-        try:
-            result=subprocess.run(["lsb_release", "-sd"], capture_output=True, encoding="utf8")
-            if result.returncode==0:
-                os_name=result.stdout.split()
-        except:
-            redhat_file="/etc/redhat-release"
-            if os.path.exists(redhat_file):
-                with open(redhat_file, "r") as f:
-                    os_name=f.read().strip()
-        """
+        os_name=f"{distro.id().lower()} {distro.version()}"
+        os_support_flag="Supported"
+        if os_name not in support_os:
+            os_support_flag="Unsupported"
+            log.logger.warning(f"当前系统({os_name})不在支持范围({support_os})内")
 
-        host_info_dict["os_name"]=os_name
+        os_name=f"{distro.name(pretty=False)} {distro.version(pretty=True, best=True)}"
+        kernel_version=platform.platform()
+        host_info_dict["os_name"]=f"{os_name}-({os_support_flag})"
         host_info_dict["kernel_version"]=kernel_version
+        host_info_dict["cpu_arch"]=platform.machine()
 
         # disk
         host_info_dict["Disk"]={}
