@@ -111,7 +111,7 @@
     "py": "localizatoin_db.py", 
     "type": "env"
   }, 
-  "program": {
+  "abcprogram": {
     "graduate": {
       "basics": {
         "file": "dsfa-graduate-basics-starter-1.0.0-SNAPSHOT.jar", 
@@ -151,6 +151,52 @@
       }, 
       "gateway": {
         "file": "dsfa-platform-service-gateway-1.0.0-SNAPSHOT.jar", 
+        "version": "1.0", 
+        "py": "program.py", 
+        "type": "program"
+      }
+    }
+  }, 
+  "program": {
+    "graduate": {
+      "basics": {
+        "file": "basics.tar.gz", 
+        "version": "1.0.0", 
+        "py": "program.py", 
+        "type": "program"
+      }, 
+      "main": {
+        "file": "main.tar.gz", 
+        "version": "1.0.0", 
+        "py": "program.py", 
+        "type": "program"
+      }, 
+      "recruit": {
+        "file": "recruit.tar.gz", 
+        "version": "1.0.0", 
+        "py": "program.py", 
+        "type": "program"
+      }, 
+      "teaching": {
+        "file": "teaching.tar.gz", 
+        "version": "1.0.0", 
+        "py": "program.py", 
+        "type": "program"
+      }, 
+      "static": {
+        "file": "dsfa-graduate-frontend-1.0.0.tar.gz", 
+        "version": "1.0.0", 
+        "py": "frontend.py", 
+        "type": "frontend"
+      }, 
+      "sql": {
+        "file": "dsfa_graduate_sql-1.0.0.tar.gz", 
+        "version": "1.0.0", 
+        "py": "sql.py", 
+        "type": "sql"
+      }, 
+      "gateway": {
+        "file": "gateway.tar.gz", 
         "version": "1.0", 
         "py": "program.py", 
         "type": "program"

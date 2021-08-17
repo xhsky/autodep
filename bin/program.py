@@ -7,6 +7,7 @@ from libs import common
 from libs.env import log_remote_level, program_sh_name, backup_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
+"""
 def main():
     softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
@@ -79,6 +80,7 @@ def main():
             flag=1
 
         sys.exit(flag)
+"""
 
 def dict_to_yaml_file(config_dict, config_file):
     """生成将dict转为yaml文件
@@ -200,7 +202,7 @@ def generate_sh(jar_file):
     nacos_addr=f"{nacos_host}:{nacos_port}"
     jvm_mem=program_info_dict["jvm_mem"]
     #jar_file=f"{program_dir}/{pkg_file.split('/')[-1]}"
-    jar_file=f"{program_dir}/{jar_file.split('/')[-1]}"
+    jar_file=f"{program_dir}/{jar_file}"
     log_file=f"{program_dir}/{service_name}.log"
     program_sh_text=f"""\
             #!/bin/bash
@@ -298,28 +300,41 @@ def install():
         if not value:
             log.logger.error(msg)
             return error_code
+        for file_ in os.listdir(program_dir):
+            if file_.endswith(".jar"):
+                jar_file=file_
+                break
+        else:
+            log.logger.error(f"jar文件不存在")
+            return error_code
+
         if os.path.exists(config_file):
             log.logger.debug(f"已存在可读配置文件: {config_file}")
         else:
-            result=generate_local_config()
-            if not result:
-                return error_code
+            #result=generate_local_config()
+            #if not result:
+            #    return error_code
+            log.logger.error(f"{config_file}不存在")
+            return error_code
         if os.path.exists(program_sh_file):
             log.logger.debug(f"已存在控制脚本: {program_sh_file}")
         else:
-            log.logger.error(f"{program_sh_file}不存在")
-            return error_code
-    elif pkg_file.endswith(".jar"):
-        value, msg=common.install(pkg_file, "jar", None, None, program_dir)
-        if not value:
-            log.logger.error(msg)
-            return error_code
-        result=generate_local_config()
-        if not result:
-            return error_code
-        result=generate_sh(pkg_file)
-        if not result:
-            return error_code
+            result=generate_sh(jar_file)
+            if not result:
+                return error_code
+            #log.logger.error(f"{program_sh_file}不存在")
+            #return error_code
+    #elif pkg_file.endswith(".jar"):
+    #    value, msg=common.install(pkg_file, "jar", None, None, program_dir)
+    #    if not value:
+    #        log.logger.error(msg)
+    #        return error_code
+    #    result=generate_local_config()
+    #    if not result:
+    #        return error_code
+    #    result=generate_sh(pkg_file)
+    #    if not result:
+    #        return error_code
     else:
         log.logger.error(f"未知文件后缀: {pkg_file}")
         return error_code
@@ -491,7 +506,6 @@ if __name__ == "__main__":
     #located=conf_dict.get("located")
     log=common.Logger({"remote": log_remote_level}, loggger_name="jar")
 
-
     program_info_dict=conf_dict[f"{softname}_info"]
     port_list=[program_info_dict["port"]]
     program_dir=program_info_dict['program_dir']
@@ -508,7 +522,8 @@ if __name__ == "__main__":
         data_id=f"{service_name}.{config_file_type}"
     else:
         data_id=f"{service_name}-{config_active}.{config_file_type}"
-    config_file=f"{program_dir}/{data_id}"
+    #config_file=f"{program_dir}/{data_id}"
+    config_file=f"{program_dir}/application.{config_file_type}"
 
     nacos_addr_url=f"http://{nacos_host}:{nacos_port}"
     configs_path="/nacos/v1/cs/configs"

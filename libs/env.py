@@ -35,6 +35,13 @@ deploy_file=f"{data_dir}/deploy.json"
 backup_version_file=f"{data_dir}/backup_version.json"
 rollback_version_file=f"{data_dir}/rollback_version.json"
 
+# 国产化数据库端口对应
+localization_db_port={
+        "dameng": 5236, 
+        "shentong": 2003, 
+        "kingbase": 54321
+        }
+
 # ext路径
 ext_dir="../ext"
 
