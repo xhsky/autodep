@@ -13,8 +13,9 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         g_term_rows, g_term_cols, \
         tool_service_code, portless_service_code, \
         located_dir_name, located_dir_link, autocheck_dst, report_dir, report_file_list, \
-        init_file, arch_file, update_init_file, update_arch_file, start_file, stop_file, check_file, project_file, deploy_file, ext_file, backup_version_file, \
-        normal_code, error_code, activated_code, stopped_code, abnormal_code
+        init_file, arch_file, update_init_file, update_arch_file, start_file, stop_file, deploy_file, ext_file, localization_file, backup_version_file, \
+        normal_code, error_code, activated_code, stopped_code, abnormal_code, \
+        localization_soft_port
 
 for dir_ in autodep_dir:
     if not os.path.exists(dir_):
@@ -62,10 +63,12 @@ class Deploy(object):
                 config_file=update_arch_file
             elif config=="update_init":
                 config_file=update_init_file
-            elif config=="check":
-                config_file=check_file
-            elif config=="project":
-                config_file=project_file
+            #elif config=="check":
+            #    config_file=check_file
+            #elif config=="project":
+            #    config_file=project_file
+            elif config=="localization":
+                config_file=localization_file
             elif config=="backup_version":
                 config_file=backup_version_file
             elif config=="rollback_version":
@@ -600,6 +603,8 @@ class Deploy(object):
             status=soft_control.monitor(remote_py_file, softname, args_dict)
         elif action=="backup":
             status=soft_control.backup(remote_py_file, softname, args_dict)
+        elif action=="test":
+            status=soft_control.test(remote_py_file, softname, args_dict)
         return status
 
     def nodes_control(self, control_dict, action, action_msg, init_dict, arch_dict, ext_dict):
@@ -742,6 +747,31 @@ class Deploy(object):
                     "stats_message": stats_message
                     }
         return init_result, init_stats_dict
+
+    def localization_test(self, init_dict, ext_dict, localization_dict):
+        """国产化软件配置测试
+        return 
+            localization_stats_dict={
+                "node1":
+                    "soft1": result_code
+            }
+        """
+        control_dict={}
+        for node in localization_dict:
+            if ["autocheck"] == localization_dict[node]["software"]:
+                continue
+            else:
+                control_dict[node]={}
+                control_dict[node]["software"]=[]
+                for softname in localization_dict[node]["software"]:
+                    if softname!="autocheck":
+                        control_dict[node]["software"].append(softname)
+                        control_dict[node][f"{softname}_info"]=localization_dict[node][f"{softname}_info"]
+
+        localizatoin_result, localization_stats_dict=self.nodes_control(control_dict, "test", "配置测试", \
+                init_dict, control_dict, ext_dict)
+
+        return localization_result, localization_stats_dict
 
     def install(self, init_dict, arch_dict, ext_dict):
         """软件安装
@@ -2472,7 +2502,7 @@ class graphics_deploy(Deploy):
         self.log.logger.debug(f"主机信息: {code=}, {fields=}")
         return code, fields
 
-    def edit_check_config(self, title, check_dict):
+    def edit_check_config_bak(self, title, check_dict):
         """配置巡检信息
 
         check_dict={
@@ -2498,6 +2528,59 @@ class graphics_deploy(Deploy):
         self.log.logger.debug(f"巡检信息: {code=}, {fields=}")
         return code, fields
 
+    def edit_localization_config(self, title, stage, node, softname, soft_manaul_dict):
+        """配置国产化软件(包含autocheck)信息
+        return bool, soft_manaul_dict
+        """
+        first_xi_length=20
+        ip_field_length=15
+        field_length=15
+        password_field_length=15
+        port_field_length=5
+        command_field_length=50
+        elements=[]
+        if softname=="dameng" or softname=="shentong" or softname=="kingbase":
+            elements.append((f"{node}:", 1, 1, softname, 1, 10, 0, 0))
+            elements.append(("服务器IP:", 2, 1, soft_manaul_dict["db_ip"], 2, first_xi_length, ip_field_length, 0))
+            elements.append(("软件安装用户名:", 3, 1, soft_manaul_dict["system_user"], 3, first_xi_length, field_length, 0))
+            elements.append(("dba用户名:", 4, 1, soft_manaul_dict["dba_user"], 4, first_xi_length, field_length, 0))
+            elements.append(("dba密码:", 5, 1, soft_manaul_dict["dba_password"], 5, first_xi_length, password_field_length, 0))
+            elements.append(("端口:", 6, 1, str(soft_manaul_dict["db_port"]), 6, first_xi_length, 0, 0))
+            elements.append((f"{softname}启动命令:", 7, 1, soft_manaul_dict["start_command"], 7, first_xi_length, command_field_length, 0))
+            elements.append((f"{softname}关闭命令:", 8, 1, soft_manaul_dict["stop_command"], 8, first_xi_length, command_field_length, 0))
+            msg=f"填写软件信息:"
+        elif softname=="autocheck":
+            field_length=15
+            receive_length=80
+            elements.append(("项目名称:", 1, 1, soft_manaul_dict.get("project_name"), 1, first_xi_length, field_length, 0))
+            elements.append(("定时巡检时间:", 2, 1, soft_manaul_dict.get("timing"), 2, first_xi_length, 6, 0))
+            elements.append(("巡检发送人:", 3, 1, soft_manaul_dict.get("sender"), 3, first_xi_length, field_length, 0))
+            elements.append(("邮箱地址:", 4, 1, ",".join(soft_manaul_dict.get("mail_list")), 4, first_xi_length, receive_length, 0))
+            elements.append(("手机号:", 5, 1, ",".join(soft_manaul_dict.get("sms_list")), 5, first_xi_length, receive_length, 0))
+            msg=f"配置巡检信息:\n注: 多个邮箱地址或手机号使用','分割"
+        else:
+            pass
+        #code, fields=self.d.form(msg, elements=elements, title=f"{title}: 手动配置({stage})", ok_label="继续", cancel_label="取消", width=100)
+        code, fields=self.d.form(msg, elements=elements, title=f"{title}: 手动配置({stage})", ok_label="继续", cancel_label="取消")
+        self.log.logger.debug(f"主机信息: {code=}, {fields=}")
+        if code==self.d.OK:     # 继续
+            if softname=="dameng" or softname=="shentong" or softname=="kingbase":
+                soft_manaul_dict["db_ip"]=fields[0]
+                soft_manaul_dict["system_user"]=fields[1]
+                soft_manaul_dict["dba_user"]=fields[2]
+                soft_manaul_dict["dba_password"]=fields[3]
+                soft_manaul_dict["start_command"]=fields[4]
+                soft_manaul_dict["stop_command"]=fields[5]
+            elif softname=="autocheck":
+                soft_manaul_dict["project_name"]=fields[0]
+                soft_manaul_dict["timing"]=fields[1]
+                soft_manaul_dict["sender"]=fields[2]
+                soft_manaul_dict["mail_list"]=fields[3]
+                soft_manaul_dict["sms_list"]=fields[4]
+            return True, soft_manaul_dict
+        else:                   # 取消
+            return False, ()
+
     def show_host_account_info(self, title, init_dict):
         """显示并确认主机账号信息
         """
@@ -2517,7 +2600,7 @@ class graphics_deploy(Deploy):
         code, _=self.d.mixedform(f"确认主机信息:", elements=elements, title=title, ok_label="确认", cancel_label="修改")
         return code
 
-    def show_check_config(self, title, check_info_list):
+    def show_check_config_bak(self, title, check_info_list):
         """显示巡检接收信息
         """
         HIDDEN = 0x1
@@ -2535,6 +2618,53 @@ class graphics_deploy(Deploy):
                 ]
         code, _ = self.d.mixedform(f"巡检信息:", elements=elements, title=title, width=80, ok_label="确认", cancel_label="修改")
         return code
+
+    def show_localization_config(self, title, localization_dict):
+        """显示国产化软件配置信息并确认
+        """
+        HIDDEN = 0x1
+        READ_ONLY = 0x2
+        xi=25
+        receive_length=200
+        field_length=15
+        n=0
+        tab=3
+        elements=[]
+        ip_field_length=15
+        password_field_length=15
+        port_field_length=5
+        command_field_length=50
+        for node in localization_dict:
+            n+=1
+            elements.append((f"{node}:", n, 1, "", n, xi, field_length, 0, HIDDEN))
+            for softname in localization_dict[node]["software"]:
+                soft_dict=localization_dict[node][f"{softname}_info"]
+                if softname=="dameng" or softname=="shentong" or softname=="kingbase":
+                    elements.append((f"{softname}:", n+1, tab, "", n+1, xi, field_length, 0, HIDDEN))
+                    elements.append(("服务器IP:", n+2, 2*tab, soft_dict["db_ip"], n+2, xi, ip_field_length, 0, READ_ONLY))
+                    elements.append(("软件安装用户名:", n+3, 2*tab, soft_dict["system_user"], n+3, xi, field_length, 0, READ_ONLY))
+                    elements.append(("dba用户名:", n+4, 2*tab, soft_dict["dba_user"], n+4, xi, field_length, 0, READ_ONLY))
+                    elements.append(("dba密码:", n+5, 2*tab, soft_dict["dba_password"], n+5, xi, password_field_length, 0, READ_ONLY))
+                    elements.append(("端口:", n+6, 2*tab, str(soft_dict["db_port"]), n+6, xi, port_field_length, 0, READ_ONLY))
+                    elements.append((f"{softname}启动命令:", n+7, 2*tab, soft_dict["start_command"], n+7, xi, command_field_length, 0, READ_ONLY))
+                    elements.append((f"{softname}关闭命令:", n+8, 2*tab, soft_dict["stop_command"], n+8, xi, command_field_length, 0, READ_ONLY))
+                    n=n+8
+                elif softname=="autocheck":
+                    elements.append((f"{softname}:", n+1, tab, "", n+1, xi, field_length, 0, HIDDEN))
+                    elements.append(("项目名称:", n+2, 2*tab, soft_dict.get("project_name"), n+2, xi, field_length, 0, READ_ONLY))
+                    elements.append(("定时巡检时间:", n+3, 2*tab, soft_dict.get("timing"), n+3, xi, 6, 0, READ_ONLY)) 
+                    elements.append(("巡检发送人:", n+4, 2*tab, soft_dict.get("sender"), n+4, xi, field_length, 0, READ_ONLY))
+                    elements.append(("邮箱地址:", n+5, 2*tab, ",".join(soft_dict.get("mail_list")), n+5, xi, receive_length, 0, READ_ONLY))
+                    elements.append(("手机号:", n+6, 2*tab, ",".join(soft_dict.get("sms_list")), n+6, xi, receive_length, 0, READ_ONLY))
+                    n=n+6
+                else:
+                    pass
+        elements.append((" ", n+1, 1, "", n+1, xi, field_length, 0, HIDDEN))
+        code, _ = self.d.mixedform(f"配置信息确认:", elements=elements, title=title, width=80, ok_label="初始化", cancel_label="返回")
+        if code==self.d.OK:
+            return True
+        else:
+            return False
 
     def show_hosts_info(self, all_host_info_dict):
         """显示各主机信息
@@ -2774,33 +2904,36 @@ class graphics_deploy(Deploy):
             else:
                 return False, {}
 
-    def config_check(self, title):
+    def config_check_bak(self, title, arch_dict):
         """配置check_dict
         return:
             check_dict          # {}代表不配置
         """
-        check_dict=self._get_check_info()
+        self.log.logger.debug("检测巡检配置:")
+        check_dict=self._get_check_info(arch_dict)
         self.log.logger.debug(f"{check_dict=}")
-        while True:
-            code, check_info_list=self.edit_check_config(title, check_dict)
-            self.log.logger.debug(f"{check_info_list=}")
-            if code==self.d.OK:         # 确认
-                code=self.show_check_config(title, check_info_list)
-                if code==self.d.OK:     # 确认
-                    check_dict={
-                            "project_name": check_info_list[0], 
-                            "timing": check_info_list[1], 
-                            "sender": check_info_list[2], 
-                            "mail_list": [] if check_info_list[3] == "" else check_info_list[3].split(","), 
-                            "sms_list": [] if check_info_list[4] == "" else check_info_list[4].split(",")
-                            }
-                    return check_dict
-                else:                   # 修改
-                    continue
-            else:   # 不配置
-                return {}
+        if len(check_dict)!=0:
+            while True:
+                code, check_info_list=self.edit_check_config(title, check_dict)
+                self.log.logger.debug(f"{check_info_list=}")
+                if code==self.d.OK:         # 确认
+                    code=self.show_check_config(title, check_info_list)
+                    if code==self.d.OK:     # 确认
+                        check_dict={
+                                "project_name": check_info_list[0], 
+                                "timing": check_info_list[1], 
+                                "sender": check_info_list[2], 
+                                "mail_list": [] if check_info_list[3] == "" else check_info_list[3].split(","), 
+                                "sms_list": [] if check_info_list[4] == "" else check_info_list[4].split(",")
+                                }
+                        return check_dict
+                    else:                   # 修改
+                        continue
+                else:   # 不配置
+                    return {}
+        return {}
 
-    def init_stream_show(self, title, init_dict, ext_dict):
+    def init_stream_show(self, title, init_dict, localization_dict, ext_dict):
         """初始化过程显示
         """
         read_fd, write_fd = os.pipe()
@@ -2831,7 +2964,17 @@ class graphics_deploy(Deploy):
                             self.log.logger.error(msg)
                             os._exit(error_code)
                         else:
-                            self.log.logger.info("主机信息已获取, 请查看")
+                            if len(localization_dict)==0:
+                                self.log.logger.info("主机信息已获取, 请查看")
+                            else:
+                                self.log.logger.info("主机信息已获取")
+                                self.log.logger.info("软件配置测试")
+                                status, dict_=super(graphics_deploy, self).localization_test(init_dict, ext_dict, localization_dict)
+                                if status is True:
+                                    self.log.logger.info("软件配置测试完成\n")
+                                else:
+                                    self.log.logger.error(f"软件配置有误: {dict_}")
+                                    os._exit(error_code)
                     else:
                         self.log.logger.error(f"初始化失败: {dict_}")
                         os._exit(error_code)
@@ -2863,61 +3006,166 @@ class graphics_deploy(Deploy):
         result, arch_dict=self.resource_verifi(arch_dict, host_info_dict)
         return result, arch_dict, project_dict
 
-    def init(self, title, init_dict):
+    def init(self, title, init_dict, arch_dict, ext_dict):
         """图形: 初始化
+            1.填写init_dict
+            2.填写localization_dict(国产化软件和check)
         """
-        # 填写init.json并校验, 选填check.json
+        # 填写init_dict, 校验并确认
         result, init_dict=self.config_init(title, init_dict)
         if result:
             result, dict_=self.account_verifi(init_dict)
             if not result:
-                self._show_not_pass_init(not_pass_init_dict)
+                self._show_not_pass_init(dict_)
                 return False
-            else:
-                check_dict=self.config_check(title)
         else:
             return False
 
-        for config in [(init_dict, init_file), (check_dict, check_file)]:
-            result, msg=self.write_config(config[0], config[1])
-            if not result:
-                self.msgbox(msg)
-                return False
-
-        result, config_list=self.read_config(["init", "ext", "arch", "project", "check"])
-        if result:
-            init_dict, ext_dict, arch_dict, project_dict, check_dict=config_list
-        else:
-            self.log.logger.error(config_list)
-            self.d.msgbox(config_list, title="警告", width=80, height=6)
-            return False
-
-        result, exit_code=self.init_stream_show(title, init_dict, ext_dict)
+        # 填写localization_dict并确认
+        result, localization_dict=self.manual_config(title, arch_dict)
         if not result:
             return False
-        else:
-            if exit_code==normal_code:
-                time.tzset()    # 主机信息获取过程中会重置时区, 程序内重新获取时区信息
-                _, config_list=self.read_config(["host"])
-                host_info_dict=config_list[0]
-                code=self.show_hosts_info(host_info_dict)
-                if code==self.d.OK:             # 开始部署按钮
-                    result, arch_dict, project_dict=self.adaptation_config(check_dict, arch_dict, project_dict, host_info_dict)
-                    if result:
-                        for config in [(arch_dict, arch_file), (project_dict, project_file)]:
-                            result, msg=self.write_config(config[0], config[1])
-                            if not result:
-                                self.log.logger.error(msg)
-                                self.d.msgbox(msg)
-                                return False
-                    else:
-                        self._show_non_resource(arch_dict)
-                else:                           # 终止部署按钮
-                    return False
-                return True
-            else:
-                self.log.logger.error(f"{exit_code=}")
+
+        result, exit_code=self.init_stream_show(title, init_dict, localization_dict, ext_dict)
+        if result and exit_code==normal_code:
+            time.tzset()                                    # 主机信息获取过程中会重置时区, 程序内重新获取时区信息
+            _, config_list=self.read_config(["host"])
+            host_info_dict=config_list[0]
+            code=self.show_hosts_info(host_info_dict)
+            if code==self.d.OK:             # 开始部署按钮
+                #result, arch_dict, project_dict=self.adaptation_config(check_dict, arch_dict, project_dict, host_info_dict)
+                result, arch_dict, project_dict=self.adaptation_config(check_dict, arch_dict, host_info_dict)
+                if result:
+                    for config in [(arch_dict, arch_file), (project_dict, project_file)]:
+                        result, msg=self.write_config(config[0], config[1])
+                        if not result:
+                            self.log.logger.error(msg)
+                            self.d.msgbox(msg)
+                            return False
+                else:
+                    self._show_non_resource(arch_dict)
+            else:                           # 终止部署按钮
                 return False
+            return True
+        else:
+            self.log.logger.error(f"{exit_code=}")
+            return False
+
+    def manual_config(self, title, arch_dict):
+        """图形: 国产化软件(未安装软件)配置
+            "localization_dict": {
+                "node":{
+                    "software": ["dameng", "shentong"], 
+                    "dameng_info": {
+                        "db_ip": ip, 
+                        "system_user": user, 
+                        "dba_user": sysdba, 
+                        "dba_password": xxxx, 
+                        "db_port": port, 
+                        "start_command": xxxx, 
+                        "stop_command": xxx
+                    }
+                    "shentong_info": {
+                        "db_ip": ip, 
+                        "system_user": user, 
+                        "dba_user": sysdba, 
+                        "dba_password": xxxx, 
+                        "db_port": port, 
+                        "start_command": xxxx, 
+                        "stop_command": xxx
+                    }
+                }
+            }
+        return bool, {}
+        """
+        self.log.logger.debug("检测手动配置信息:")
+        localization_dict=self._get_localization_info()
+
+        autocheck_flag=False     # 是否已添加autocheck的标志, localization_dict里只存在一份autocheck
+        for node in arch_dict:
+            for softname in arch_dict[node]["software"]:
+                if softname in localization_soft_port:
+                    if softname=="autocheck":
+                        if not autocheck_flag:
+                            soft_default_info={
+                                    "project_name": "", 
+                                    "timing": "18:30", 
+                                    "sender": "", 
+                                    "mail_list": [], 
+                                    "sms_list": []
+                                    }
+                            autocheck_flag=True
+                        else:
+                            continue
+                    elif softname=="dameng":
+                        soft_default_info={
+                                "db_ip": "", 
+                                "system_user": "dmdba", 
+                                "dba_user": "sysdba",
+                                "dba_password": "", 
+                                "db_port": localization_soft_port[softname], 
+                                "start_command": "systemctl start DmService" , 
+                                "stop_command": "systemctl stop DmService"
+                                }
+                    elif softname=="kingbase":
+                        soft_default_info={
+                                "db_ip": "", 
+                                "system_user": "dmdba", 
+                                "dba_user": "kingbase",
+                                "dba_password": "", 
+                                "db_port": localization_soft_port[softname], 
+                                "start_command": "su -l kingbase ''" , 
+                                "stop_command": "su -l kingbase ''"
+                                }
+                    elif softname=="shentong":
+                        soft_default_info={
+                                "db_ip": "", 
+                                "system_user": "root", 
+                                "dba_user": "sysdba",
+                                "dba_password": "szoscar55", 
+                                "db_port": localization_soft_port[softname], 
+                                "start_command": "/etc/init.d/oscardb_OSRDBd start" , 
+                                "stop_command": "/etc/init.d/oscardb_OSRDBd stop"
+                                }
+
+                    if node not in localization_dict:
+                        localization_dict[node]={}
+                        localization_dict[node]["software"]=[]
+                    localization_dict[node]["software"].append(softname)
+                    localization_dict[node]["software"]=list(set(localization_dict[node]["software"]))
+
+                    if localization_dict[node].get(f"{softname}_info") is None:
+                        localization_dict[node][f"{softname}_info"]=soft_default_info
+        self.log.logger.debug(f"{localization_dict=}")
+
+        num=0         # 国产化软件数量序号
+        temp_dict={}
+        for node in localization_dict:
+            for softname in localization_dict[node]["software"]:
+                num+=1
+                temp_dict[num]=[node, softname]
+
+        N=len(temp_dict)        # 国产化软件个数
+        for num in temp_dict:
+            node=temp_dict[num][0]
+            softname=temp_dict[num][1]
+            result, soft_manaul_dict=self.edit_localization_config(title, f"{num}/{N}", node, softname, localization_dict[node][f"{softname}_info"])
+            self.log.logger.debug(f"{node}: {softname}: {soft_manaul_dict}")
+            if result:
+                localization_dict[node][f"{softname}_info"]=soft_manaul_dict
+                # 写入文件, 用于重新开始获取历史输入
+                self.log.logger.debug(f"{localization_dict=}写入{localization_file}")
+                result, msg=self.write_config(localization_dict, localization_file)
+                if result:
+                    continue
+                else:
+                    self.showmsg(msg, "Error")
+                    return False, {}
+            else:                       # 取消
+                return False, {}
+        else:
+            result=self.show_localization_config(title, localization_dict)
+            return result, localization_dict
 
     def update_management(self, title):
         """图形: 更新管理: 更新 回滚
@@ -3324,20 +3572,23 @@ class graphics_deploy(Deploy):
         """图形: init, install, run, generate_deploy_file
         """
 
-        result, config_list=self.read_config(["init"])
+        # get config
+        result, config_list=self.read_config(["ext", "arch"])
         if result:
-            init_dict=config_list[0]
+            ext_dict, arch_dict=config_list
+            result, config_list=self.read_config(["init"])
+            if result:
+                init_dict=config_list[0]
+            else:
+                init_dict={}
         else:
-            init_dict={}
-        if not self.init(title, init_dict):
+            self.log.logger.error(config_list)
+            self.showmsg(config_list, "ERROR")
             return
 
-        result, config_list=self.read_config(["arch"])
-        if not result:
-            self.d.msgbox(config_list)
+        # init
+        if not self.init(title, init_dict, arch_dict, ext_dict):
             return
-        else:
-            arch_dict=config_list[0]
 
         code=self.show_arch_summary(title, arch_dict)
         if code != self.d.OK:
@@ -3433,7 +3684,7 @@ class graphics_deploy(Deploy):
             else:
                 self.cancel()
 
-    def _get_check_info(self):
+    def _get_check_info(self, arch_dict):
         """获取check_dict
         return: 
             check_dict={
@@ -3444,21 +3695,40 @@ class graphics_deploy(Deploy):
                 "sms_list": []
             }
         """
-        check_dict_default={
-                "project_name": "", 
-                "timing": "18:30", 
-                "sender": "", 
-                "mail_list": [], 
-                "sms_list": []
-                }
-        result, config_list=self.read_config(["check"])
-        if result:
-            check_dict=config_list[0]
-            if len(check_dict)==0:
-                check_dict=check_dict_default
+        check_softname="autocheck"      # 巡检软件名
+        for node in arch_dict:
+            if check_softname in arch_dict[node]["software"]:
+                if arch_dict[node]["autocheck_info"].get("warning_info"):
+                    check_dict={
+                            "project_name": arch_dict[node]["autocheck_info"]["project_name"], 
+                            "timing": arch_dict[node]["autocheck_info"]["inspection_info"].get("inspection_time"), 
+                            "sender": arch_dict[node]["autocheck_info"]["warning_info"]["mail_info"]["mail_sender"], 
+                            "mail_list": arch_dict[node]["autocheck_info"]["warning_info"]["mail_info"]["mail_receive"], 
+                            "sms_list": arch_dict[node]["autocheck_info"]["warning_info"]["sms_info"]["sms_receive"]
+                            }
+                else:
+                    check_dict={
+                            "project_name": "", 
+                            "timing": "18:30", 
+                            "sender": "", 
+                            "mail_list": [], 
+                            "sms_list": []
+                            }
         else:
-            check_dict=check_dict_default
+            check_dict={}
         return check_dict
+
+    def _get_localization_info(self):
+        """获取国产化软件信息
+        return:
+            localization_dict={}    # {}表示无信息
+        """
+        result, config_list=self.read_config(["localization"])
+        if result:
+            localization_dict=config_list[0]
+        else:
+            localization_dict={}
+        return localization_dict
 
     def _set_check_info(self, arch_dict, project_dict, check_dict):
         """ 根据check_dict补充arch_dict, project_dict
@@ -3845,6 +4115,9 @@ class graphics_deploy(Deploy):
             self.show_menu()
         else:
             self.cancel()
+
+    def showmsg(self, title, msg, width=80, height=6):
+        self.d.msgbox(msg, title=title, width=width, height=height)
 
 class platform_deploy(Deploy):
     '''平台安装'''

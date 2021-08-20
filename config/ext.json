@@ -195,6 +195,12 @@
         "py": "sql.py", 
         "type": "sql"
       }, 
+      "dmp": {
+        "file": "graduate_dmp.tar.gz", 
+        "version": "1.0.0", 
+        "py": "sql.py", 
+        "type": "sql"
+      }, 
       "gateway": {
         "file": "gateway.tar.gz", 
         "version": "1.0", 

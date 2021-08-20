@@ -21,10 +21,9 @@
 				"inspection_subject": "xx项目邮件预警" // 巡检信息主题
 			},
 			"matching_info": {
-				"program1": { // 项目名称
 					"matching_keys": ["Error"] // 关键字列表
-				}
-			}
+			}, 
+      "project_name": "xxx"
 		}
 	}
 }

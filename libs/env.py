@@ -15,6 +15,13 @@ log_update_level="debug"
 
 # 操作系统支持
 support_os=["centos 7"]
+# 国产化软件及端口
+localization_soft_port={
+        "autocheck": 0, 
+        "dameng": 5236, 
+        "shentong": 2003, 
+        "kingbase": 54321
+        }
 
 # 配置文件
 #conf_file="./config/conf.json"
@@ -23,10 +30,11 @@ init_file="./config/init.json"
 arch_file="./config/arch.json"
 update_arch_file="./config/update_arch.json"
 update_init_file="./config/update_init.json"
-project_file="./config/project.json"
+#project_file="./config/project.json"
 start_file="./config/start.json"
 stop_file="./config/stop.json"
 check_file="./config/check.json"
+localization_file="./config/localization.json"
 ext_file="./config/ext.json"
 # 数据文件
 data_dir="./data"
@@ -34,13 +42,6 @@ host_info_file=f"{data_dir}/host_info.json"
 deploy_file=f"{data_dir}/deploy.json"
 backup_version_file=f"{data_dir}/backup_version.json"
 rollback_version_file=f"{data_dir}/rollback_version.json"
-
-# 国产化数据库端口对应
-localization_db_port={
-        "dameng": 5236, 
-        "shentong": 2003, 
-        "kingbase": 54321
-        }
 
 # ext路径
 ext_dir="../ext"

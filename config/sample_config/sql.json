@@ -19,16 +19,13 @@
       "db_type": "dameng",            //数据库类型
       "from_user": "dream",           //导出用户
       "to_user": "dream1",            //导入用户
-      "db_host": "db1", 
 
       "db_type": "kingbase", 
       "from_user": "dream",          // 导出用户, 该用户必须存在于kingbase_info中的business_user中
-      "db_host": "db1", 
 
       "db_type": "shentong", 
       "from_user": "dream", 
-      "to_user": "dream1", 
-      "db_host": "db1"
+      "to_user": "dream1"
     }
   }
 }
