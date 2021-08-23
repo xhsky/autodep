@@ -499,16 +499,33 @@ class Deploy(object):
         except Exception as e:
             return False, str(e)
 
-    def resource_verifi(self, arch_dict, host_info_dict):
+    def resource_verifi(self, arch_dict, host_info_dict, localization_dict):
         """根据模板中各节点安装软件的权重和 对应 集群中各节点权重和(排序对应), 并将将ip/located赋值给node配置
         return:
             True|False, arch_dict|non_resouce_dict
         """
+        # 获取未使用ip的node和ip, 且绑定指定ip的node
+        arch_no_ip_list=[]
+        host_info_no_ip_list=list(host_info_dict.keys())
+        for node in arch_dict:
+            if localization_dict.get(node) is not None and localization_dict[node].get("ip") is not None:
+                ip=localization_dict[node]["ip"]
+                arch_dict[node]["ip"]=ip
+                host_info_no_ip_list.remove(ip)
+                # softname_info合并到arch_dict
+                for softname in localization_dict[node]["software"]:
+                    if softname != "autocheck":
+                        arch_dict[node][f"{softname}_info"].update(localization_dict[node][f"{softname}_info"])
+                self.log.logger.debug(f"{ip} <--> {node}")
+            else:
+                arch_no_ip_list.append(node)
+        self.log.logger.debug(f"{arch_no_ip_list=}")
+        self.log.logger.debug(f"{host_info_no_ip_list=}")
+
         node_weights_dict={}
         ip_weights_dict={}
-
         # 获取节点权重
-        for node in arch_dict:
+        for node in arch_no_ip_list:
             node_mem_weights=0
             node_cpu_weights=0
             for softname in arch_dict[node]["software"]:
@@ -519,7 +536,7 @@ class Deploy(object):
         self.log.logger.debug(f"{node_weights_dict=}")
 
         # 获取ip权重
-        for ip in host_info_dict:
+        for ip in host_info_no_ip_list:
             ip_weights_dict[ip]=[host_info_dict[ip]["Mem"][0], host_info_dict[ip]["CPU"][0]]
         self.log.logger.debug(f"{ip_weights_dict=}")
 
@@ -534,14 +551,14 @@ class Deploy(object):
 
         # 选择最大磁盘赋值
         max_disk_dict=self._get_max_disk_name(host_info_dict)
-        for _ in arch_dict:
-            max_disk_dir=f"{max_disk_dict[arch_dict[_]['ip']]}"
+        for node in arch_dict:
+            max_disk_dir=f"{max_disk_dict[arch_dict[node]['ip']]}"
             if max_disk_dir.endswith("/"):
                 located_dir=f"{max_disk_dir}{located_dir_name}"
             else:
                 located_dir=f"{max_disk_dir}/{located_dir_name}"
-            arch_dict[_]["located"]=located_dir
-            self.log.logger.debug(f"{_} <--> {located_dir}")
+            arch_dict[node]["located"]=located_dir
+            self.log.logger.debug(f"{node} dir <--> {located_dir}")
 
         ## 资源大小验证
         non_resouce_dict={}
@@ -634,11 +651,10 @@ class Deploy(object):
             self.log.logger.info(f"{action_msg}软件: {control_dict[node]}")
             for softname in control_dict[node]:
                 self.log.logger.info(f"{softname}{action_msg}...")
-                #control_trans_files_dict=trans_files_dict.copy()
                 control_trans_files_dict=copy.deepcopy(trans_files_dict)
                 py_file=self.get_soft_info(softname, ext_dict, "py")
                 remote_py_file=f"{remote_code_dir}/{py_file.split('/')[-1]}"
-                if test_mode or action=="install":
+                if test_mode or action=="install" or action=="test":
                     control_trans_files_dict.update(
                             {
                                 "py_file": [py_file, remote_py_file]
@@ -756,21 +772,19 @@ class Deploy(object):
                     "soft1": result_code
             }
         """
+        # 构建control_dict并去掉autocheck信息
         control_dict={}
+        autocheck_name="autocheck"
         for node in localization_dict:
-            if ["autocheck"] == localization_dict[node]["software"]:
+            if autocheck_name == localization_dict[node]["software"]:
                 continue
             else:
-                control_dict[node]={}
-                control_dict[node]["software"]=[]
-                for softname in localization_dict[node]["software"]:
-                    if softname!="autocheck":
-                        control_dict[node]["software"].append(softname)
-                        control_dict[node][f"{softname}_info"]=localization_dict[node][f"{softname}_info"]
+                if autocheck_name in localization_dict[node]["software"]:
+                    localization_dict[node]["software"].remove(autocheck_name)
+                control_dict[node]=localization_dict[node]["software"]
 
-        localizatoin_result, localization_stats_dict=self.nodes_control(control_dict, "test", "配置测试", \
-                init_dict, control_dict, ext_dict)
-
+        localization_result, localization_stats_dict=self.nodes_control(control_dict, "test", "配置信息检测", \
+                init_dict, localization_dict, ext_dict)
         return localization_result, localization_stats_dict
 
     def install(self, init_dict, arch_dict, ext_dict):
@@ -1251,6 +1265,8 @@ class Deploy(object):
                 port_list.append(arch_dict[node]["nacos_info"]["cluster_info"]["raft_port"])
         elif softname=="autocheck" or softname=="glusterfs-client":
             port_list.append(portless_service_code)
+        elif softname=="dameng" or softname=="shentong" or softname=="kingbase":
+            port_list.append(arch_dict[node][f"{softname}_info"]["db_port"])
         else:
             port_list.append(tool_service_code)
         return port_list
@@ -2540,7 +2556,7 @@ class graphics_deploy(Deploy):
         command_field_length=50
         elements=[]
         if softname=="dameng" or softname=="shentong" or softname=="kingbase":
-            elements.append((f"{node}:", 1, 1, softname, 1, 10, 0, 0))
+            elements.append((f"软件名:", 1, 1, softname, 1, first_xi_length, 0, 0))
             elements.append(("服务器IP:", 2, 1, soft_manaul_dict["db_ip"], 2, first_xi_length, ip_field_length, 0))
             elements.append(("软件安装用户名:", 3, 1, soft_manaul_dict["system_user"], 3, first_xi_length, field_length, 0))
             elements.append(("dba用户名:", 4, 1, soft_manaul_dict["dba_user"], 4, first_xi_length, field_length, 0))
@@ -2548,7 +2564,7 @@ class graphics_deploy(Deploy):
             elements.append(("端口:", 6, 1, str(soft_manaul_dict["db_port"]), 6, first_xi_length, 0, 0))
             elements.append((f"{softname}启动命令:", 7, 1, soft_manaul_dict["start_command"], 7, first_xi_length, command_field_length, 0))
             elements.append((f"{softname}关闭命令:", 8, 1, soft_manaul_dict["stop_command"], 8, first_xi_length, command_field_length, 0))
-            msg=f"填写软件信息:"
+            msg=f"{node}填写软件信息:"
         elif softname=="autocheck":
             field_length=15
             receive_length=80
@@ -2557,12 +2573,11 @@ class graphics_deploy(Deploy):
             elements.append(("巡检发送人:", 3, 1, soft_manaul_dict.get("sender"), 3, first_xi_length, field_length, 0))
             elements.append(("邮箱地址:", 4, 1, ",".join(soft_manaul_dict.get("mail_list")), 4, first_xi_length, receive_length, 0))
             elements.append(("手机号:", 5, 1, ",".join(soft_manaul_dict.get("sms_list")), 5, first_xi_length, receive_length, 0))
-            msg=f"配置巡检信息:\n注: 多个邮箱地址或手机号使用','分割"
+            msg=f"{node}配置巡检信息:\n注: 多个邮箱地址或手机号使用','分割"
         else:
             pass
-        #code, fields=self.d.form(msg, elements=elements, title=f"{title}: 手动配置({stage})", ok_label="继续", cancel_label="取消", width=100)
         code, fields=self.d.form(msg, elements=elements, title=f"{title}: 手动配置({stage})", ok_label="继续", cancel_label="取消")
-        self.log.logger.debug(f"主机信息: {code=}, {fields=}")
+        self.log.logger.debug(f"软件配置信息: {code=}, {fields=}")
         if code==self.d.OK:     # 继续
             if softname=="dameng" or softname=="shentong" or softname=="kingbase":
                 soft_manaul_dict["db_ip"]=fields[0]
@@ -2575,8 +2590,8 @@ class graphics_deploy(Deploy):
                 soft_manaul_dict["project_name"]=fields[0]
                 soft_manaul_dict["timing"]=fields[1]
                 soft_manaul_dict["sender"]=fields[2]
-                soft_manaul_dict["mail_list"]=fields[3]
-                soft_manaul_dict["sms_list"]=fields[4]
+                soft_manaul_dict["mail_list"]=fields[3].split(",")
+                soft_manaul_dict["sms_list"]=fields[4].split(",")
             return True, soft_manaul_dict
         else:                   # 取消
             return False, ()
@@ -2964,14 +2979,19 @@ class graphics_deploy(Deploy):
                             self.log.logger.error(msg)
                             os._exit(error_code)
                         else:
-                            if len(localization_dict)==0:
+                            check_flag=False        # 是否存在国产化软件配置
+                            for node in localization_dict:
+                                if localization_dict[node].get("ip") is not None:
+                                    check_flag=True
+                                    break
+                            if not check_flag:
                                 self.log.logger.info("主机信息已获取, 请查看")
                             else:
                                 self.log.logger.info("主机信息已获取")
-                                self.log.logger.info("软件配置测试")
+                                self.log.logger.info("软件配置信息检测...")
                                 status, dict_=super(graphics_deploy, self).localization_test(init_dict, ext_dict, localization_dict)
                                 if status is True:
-                                    self.log.logger.info("软件配置测试完成\n")
+                                    self.log.logger.info("软件配置信息检测完成\n")
                                 else:
                                     self.log.logger.error(f"软件配置有误: {dict_}")
                                     os._exit(error_code)
@@ -2995,21 +3015,23 @@ class graphics_deploy(Deploy):
             self.d.msgbox("发生莫名错误, 请返回菜单重试", width=40, height=5)
             return False, error_code
 
-    def adaptation_config(self, check_dict, arch_dict, project_dict, host_info_dict):
+    def adaptation_config(self, arch_dict, host_info_dict, localization_dict):
         """适应配置文件, 并校验资源
         """
-        # 将check_dict信息写入arch_dict和project_dict
-        if len(check_dict) != 0:
-            arch_dict, project_dict=self._set_check_info(arch_dict, project_dict, check_dict)
+        # 将巡检信息写入arch_dict
+        arch_dict=self._set_check_info(arch_dict, localization_dict)
 
         # 资源校验适配
-        result, arch_dict=self.resource_verifi(arch_dict, host_info_dict)
-        return result, arch_dict, project_dict
+        result, arch_dict=self.resource_verifi(arch_dict, host_info_dict, localization_dict)
+        return result, arch_dict
 
     def init(self, title, init_dict, arch_dict, ext_dict):
         """图形: 初始化
             1.填写init_dict
             2.填写localization_dict(国产化软件和check)
+
+            return:
+                bool, config_dict={init_dict, arch_dict, localization_dict}
         """
         # 填写init_dict, 校验并确认
         result, init_dict=self.config_init(title, init_dict)
@@ -3017,14 +3039,14 @@ class graphics_deploy(Deploy):
             result, dict_=self.account_verifi(init_dict)
             if not result:
                 self._show_not_pass_init(dict_)
-                return False
+                return False, {}
         else:
-            return False
+            return False, {}
 
         # 填写localization_dict并确认
         result, localization_dict=self.manual_config(title, arch_dict)
         if not result:
-            return False
+            return False, {}
 
         result, exit_code=self.init_stream_show(title, init_dict, localization_dict, ext_dict)
         if result and exit_code==normal_code:
@@ -3033,29 +3055,26 @@ class graphics_deploy(Deploy):
             host_info_dict=config_list[0]
             code=self.show_hosts_info(host_info_dict)
             if code==self.d.OK:             # 开始部署按钮
-                #result, arch_dict, project_dict=self.adaptation_config(check_dict, arch_dict, project_dict, host_info_dict)
-                result, arch_dict, project_dict=self.adaptation_config(check_dict, arch_dict, host_info_dict)
-                if result:
-                    for config in [(arch_dict, arch_file), (project_dict, project_file)]:
-                        result, msg=self.write_config(config[0], config[1])
-                        if not result:
-                            self.log.logger.error(msg)
-                            self.d.msgbox(msg)
-                            return False
-                else:
-                    self._show_non_resource(arch_dict)
+                config_dict={
+                        "host_info_dict": host_info_dict, 
+                        "init_dict": init_dict, 
+                        "arch_dict": arch_dict, 
+                        "localization_dict": localization_dict
+                        }
+                return True, config_dict
             else:                           # 终止部署按钮
-                return False
+                return False, {}
             return True
         else:
             self.log.logger.error(f"{exit_code=}")
-            return False
+            return False, {}
 
     def manual_config(self, title, arch_dict):
         """图形: 国产化软件(未安装软件)配置
             "localization_dict": {
                 "node":{
                     "software": ["dameng", "shentong"], 
+                    "ip": xxx, 
                     "dameng_info": {
                         "db_ip": ip, 
                         "system_user": user, 
@@ -3079,8 +3098,9 @@ class graphics_deploy(Deploy):
         return bool, {}
         """
         self.log.logger.debug("检测手动配置信息:")
-        localization_dict=self._get_localization_info()
+        localization_source_dict=self._get_localization_info()
 
+        localization_dict={}
         autocheck_flag=False     # 是否已添加autocheck的标志, localization_dict里只存在一份autocheck
         for node in arch_dict:
             for softname in arch_dict[node]["software"]:
@@ -3132,10 +3152,11 @@ class graphics_deploy(Deploy):
                         localization_dict[node]={}
                         localization_dict[node]["software"]=[]
                     localization_dict[node]["software"].append(softname)
-                    localization_dict[node]["software"]=list(set(localization_dict[node]["software"]))
 
-                    if localization_dict[node].get(f"{softname}_info") is None:
+                    if localization_source_dict[node].get(f"{softname}_info") is None:
                         localization_dict[node][f"{softname}_info"]=soft_default_info
+                    else:
+                        localization_dict[node][f"{softname}_info"]=localization_source_dict[node][f"{softname}_info"]
         self.log.logger.debug(f"{localization_dict=}")
 
         num=0         # 国产化软件数量序号
@@ -3153,8 +3174,10 @@ class graphics_deploy(Deploy):
             self.log.logger.debug(f"{node}: {softname}: {soft_manaul_dict}")
             if result:
                 localization_dict[node][f"{softname}_info"]=soft_manaul_dict
+                if soft_manaul_dict.get("db_ip") is not None:
+                    localization_dict[node]["ip"]=soft_manaul_dict["db_ip"]
                 # 写入文件, 用于重新开始获取历史输入
-                self.log.logger.debug(f"{localization_dict=}写入{localization_file}")
+                self.log.logger.debug(f"写入{localization_file}")
                 result, msg=self.write_config(localization_dict, localization_file)
                 if result:
                     continue
@@ -3164,7 +3187,10 @@ class graphics_deploy(Deploy):
             else:                       # 取消
                 return False, {}
         else:
-            result=self.show_localization_config(title, localization_dict)
+            if len(localization_dict)==0:
+                result=True
+            else:
+                result=self.show_localization_config(title, localization_dict)
             return result, localization_dict
 
     def update_management(self, title):
@@ -3587,7 +3613,25 @@ class graphics_deploy(Deploy):
             return
 
         # init
-        if not self.init(title, init_dict, arch_dict, ext_dict):
+        result, config_dict=self.init(title, init_dict, arch_dict, ext_dict)
+        if result:
+            self.log.logger.debug(f"{config_dict=}")
+            host_info_dict=config_dict["host_info_dict"]
+            init_dict=config_dict["init_dict"]
+            arch_dict=config_dict["arch_dict"]
+            localization_dict=config_dict["localization_dict"]
+            result, arch_dict=self.adaptation_config(arch_dict, host_info_dict, localization_dict)
+            if result:
+                for config in [(arch_dict, arch_file), (init_dict, init_file)]:
+                    self.log.logger.debug(f"写入{config[1]}")
+                    result, msg=self.write_config(config[0], config[1])
+                    if not result:
+                        self.log.logger.error(msg)
+                        self.showmsg(msg, title="Error")
+                        return False
+            else:
+                self._show_non_resource(arch_dict)
+        else:
             return
 
         code=self.show_arch_summary(title, arch_dict)
@@ -3730,8 +3774,8 @@ class graphics_deploy(Deploy):
             localization_dict={}
         return localization_dict
 
-    def _set_check_info(self, arch_dict, project_dict, check_dict):
-        """ 根据check_dict补充arch_dict, project_dict
+    def _set_check_info(self, arch_dict, localization_dict):
+        """ 根据check信息补充arch_dict
         check_dict={
             "project_name": "", 
             "timing": "18:30", 
@@ -3739,47 +3783,52 @@ class graphics_deploy(Deploy):
             "mail_list": [], 
             "sms_list": []
         }
-        return: True, msg
+        return: arch_dict
         """
-        project_name=check_dict["project_name"]
-        timing=check_dict["timing"]
-        sender=check_dict["sender"]
-        mail_list=check_dict["mail_list"]
-        sms_list=check_dict["sms_list"] 
+        for node in localization_dict:
+            if "autocheck" in localization_dict[node]["software"]:
+                check_flag=True
+                check_dict=localization_dict[node]["autocheck_info"]
+                break
+        else:
+            check_flag=False
 
-        # 补充project.json
-        project_dict["project_name"]=project_name
-
-        # 补充arch_dict
-        for node in arch_dict:
-            if "autocheck" not in arch_dict[node]["software"]:
-                arch_dict[node]["software"].append("autocheck")
-            if len(mail_list)!=0:
-                if arch_dict[node].get("autocheck_info") is None:
-                    arch_dict[node]["autocheck_info"]={}
-                arch_dict[node]["autocheck_info"]["inspection_info"]={}
-                arch_dict[node]["autocheck_info"]["inspection_info"]={
-                        "inspection_time": timing, 
-                        "inspection_sender": sender, 
-                        "inspection_receive": mail_list, 
-                        "inspection_subject": f"{project_name}巡检"
-                        }
-                arch_dict[node]["autocheck_info"]["warning_info"]={}
-                arch_dict[node]["autocheck_info"]["warning_info"]["mail_info"]={
-                        "mail_sender": sender, 
-                        "mail_receive": mail_list, 
-                        "mail_subject": f"{project_name}预警"
-                        }
-            if len(sms_list)!=0:
-                if arch_dict[node].get("autocheck_info") is None:
-                    arch_dict[node]["autocheck_info"]={}
-                if arch_dict[node]["autocheck_info"].get("warning_info") is None:
+        self.log.logger.debug(f"{check_flag=}")
+        if check_flag: # 补充arch_dict
+            project_name=check_dict["project_name"]
+            timing=check_dict["timing"]
+            sender=check_dict["sender"]
+            mail_list=check_dict["mail_list"]
+            sms_list=check_dict["sms_list"] 
+            for node in arch_dict:
+                if "autocheck" not in arch_dict[node]["software"]:
+                    arch_dict[node]["software"].append("autocheck")
+                if len(mail_list)!=0:
+                    if arch_dict[node].get("autocheck_info") is None:
+                        arch_dict[node]["autocheck_info"]={}
+                    arch_dict[node]["autocheck_info"]["inspection_info"]={}
+                    arch_dict[node]["autocheck_info"]["inspection_info"]={
+                            "inspection_time": timing, 
+                            "inspection_sender": sender, 
+                            "inspection_receive": mail_list, 
+                            "inspection_subject": f"{project_name}巡检"
+                            }
                     arch_dict[node]["autocheck_info"]["warning_info"]={}
-                arch_dict[node]["autocheck_info"]["warning_info"]["sms_info"]={
-                        "sms_receive": sms_list, 
-                        "sms_subject": f"{project_name}预警"
-                        }
-        return arch_dict, project_dict
+                    arch_dict[node]["autocheck_info"]["warning_info"]["mail_info"]={
+                            "mail_sender": sender, 
+                            "mail_receive": mail_list, 
+                            "mail_subject": f"{project_name}预警"
+                            }
+                if len(sms_list)!=0:
+                    if arch_dict[node].get("autocheck_info") is None:
+                        arch_dict[node]["autocheck_info"]={}
+                    if arch_dict[node]["autocheck_info"].get("warning_info") is None:
+                        arch_dict[node]["autocheck_info"]["warning_info"]={}
+                    arch_dict[node]["autocheck_info"]["warning_info"]["sms_info"]={
+                            "sms_receive": sms_list, 
+                            "sms_subject": f"{project_name}预警"
+                            }
+        return arch_dict
 
     def management(self, title):
         """集群管理: 监控, 启动, 停止, 巡检
@@ -4117,6 +4166,8 @@ class graphics_deploy(Deploy):
             self.cancel()
 
     def showmsg(self, title, msg, width=80, height=6):
+        """msgbox显示
+        """
         self.d.msgbox(msg, title=title, width=width, height=height)
 
 class platform_deploy(Deploy):

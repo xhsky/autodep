@@ -35,7 +35,7 @@ class soft(object):
 
     def remote_exec(self, py_file, softname, action, args_dict):
         """
-        用于install, run, start, stop, 非init
+        用于install, run, start, stop, test, 非init
         """
         command=f"{remote_python_exec} {py_file} {softname} {action} '{json.dumps(args_dict)}'"
         log.logger.debug(f"{action=}: {command}")
@@ -64,6 +64,10 @@ class soft(object):
 
     def backup(self, py_file, softname, args_dict):
         status=self.remote_exec(py_file, softname, "backup", args_dict)
+        return status
+
+    def test(self, py_file, softname, args_dict):
+        status=self.remote_exec(py_file, softname, "test", args_dict)
         return status
 
 class ssh(object):

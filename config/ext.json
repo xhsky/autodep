@@ -100,15 +100,15 @@
     "type": "sql"
   }, 
   "dameng": {
-    "py": "localizatoin_db.py", 
+    "py": "localization_db.py", 
     "type": "env"
   }, 
   "shentong": {
-    "py": "localizatoin_db.py", 
+    "py": "localization_db.py", 
     "type": "env"
   }, 
   "kingbase": {
-    "py": "localizatoin_db.py", 
+    "py": "localization_db.py", 
     "type": "env"
   }, 
   "abcprogram": {

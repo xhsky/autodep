@@ -111,6 +111,8 @@ update_package_dir=remote_pkgs_dir
 #program_unzip_dir="./program_pkg"
 # program控制脚本名称
 program_sh_name="program.sh"
+# 测试数据库连通的SQL文件. %s为数据库软件名称
+test_sql_file="/tmp/%s_test.sql"
 
 interface={
         "mail": ["smtp.dreamdt.cn", 25, None],                              # 邮件接口
