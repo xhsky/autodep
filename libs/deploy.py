@@ -3703,13 +3703,13 @@ class graphics_deploy(Deploy):
             menu={
                     "1": "部署", 
                     "2": "管理", 
-                    "3": "更新"
+                    #"3": "更新"
                     }
             code,tag=self.d.menu(f"若是首次进行部署, 请从\'{menu['1']}\'依次开始:", 
                     choices=[
                         ("1", menu["1"]), 
                         ("2", menu["2"]),
-                        ("3", menu["3"])
+                        #("3", menu["3"])
                         ], 
                     title="主菜单", 
                     width=48

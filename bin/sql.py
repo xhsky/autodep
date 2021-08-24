@@ -10,7 +10,7 @@ from libs.env import log_remote_level, backup_dir, \
 def install():
     """安装
     """
-    return_value=0
+    return_value=normal_code
     db_tar_file=conf_dict["pkg_file"]
     value, msg=common.install(db_tar_file, None, None, None, located)
     if not value:
@@ -23,11 +23,36 @@ def run():
     """
     db_file=os.listdir(sql_dir)[0]
     db_abs_file=os.path.abspath(f"{sql_dir}/{db_file}")
-    if db_type.lower()=="mysql":
+    if db_type=="mysql":
         db_name=sql_info_dict["db_name"]
         root_password=sql_info_dict["root_password"]
         db_port=sql_info_dict["db_port"]
         source_db_command=f"mysql -uroot -p{root_password} -P {db_port} {db_name} < {db_abs_file}"
+        log.logger.debug(f"{source_db_command=}")
+        log.logger.info(f"{softname}: 数据导入中, 请稍后...")
+        result, msg=common.exec_command(source_db_command, timeout=3600)
+        if result:
+            if os.path.exists(db_abs_file):
+                log.logger.info("清理数据包...")
+                os.remove(db_abs_file)
+            return normal_code
+        else:
+            log.logger.error(msg)
+            return error_code
+    elif db_type=="dameng":
+        from_user=sql_info_dict["from_user"].lower()
+        to_user=sql_info_dict["to_user"].lower()
+
+        system_user=conf_dict[f"{db_type}_info"]["system_user"]
+        dba_user=conf_dict[f"{db_type}_info"]["dba_user"]
+        dba_password=conf_dict[f"{db_type}_info"]["dba_password"]
+        db_port=conf_dict[f"{db_type}_info"]["db_port"]
+
+        source_db_command=f"chown -R {system_user} {sql_dir} && su -l {system_user} -c 'dimp userid={dba_user}/{dba_password}:{db_port} file={db_abs_file} log=/tmp/{db_type}_{to_user}.log owner={from_user} dummy=Y LOG_WRITE=Y TABLE_EXISTS_ACTION=REPLACE"
+        if from_user!=to_user:
+            source_db_command=f"{source_db_command} remap_schema={from_user.upper()}:{to_user.upper()}'"
+        else:
+            source_db_command=f"{source_db_command}'"
         log.logger.debug(f"{source_db_command=}")
         log.logger.info(f"{softname}: 数据导入中, 请稍后...")
         result, msg=common.exec_command(source_db_command, timeout=3600)
@@ -92,7 +117,7 @@ if __name__ == "__main__":
     located=conf_dict["located"]
     sql_dir=f"{located}/{softname}"             # 数据文件的上级目录名称必须与其软件名称相同
     sql_info_dict=conf_dict[f"{softname}_info"]
-    db_type=sql_info_dict["db_type"]
+    db_type=sql_info_dict["db_type"].lower()
 
     if action=="install":
         sys.exit(install())
