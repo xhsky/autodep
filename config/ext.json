@@ -36,6 +36,12 @@
   "redis": {
      "file":"redis-5.0.7-bin.tar.gz", 
      "version": "5.0.7", 
+     "py": "redis5.py", 
+     "type": "env"
+  }, 
+  "redis6": {
+     "file":"redis-6.2.5-bin.tar.gz", 
+     "version": "6.2.5", 
      "py": "redis.py", 
      "type": "env"
   }, 
