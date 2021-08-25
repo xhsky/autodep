@@ -46,8 +46,8 @@
      "type": "env"
   }, 
   "mysql": {
-    "file": "mysql-8.0.19.tar.gz", 
-    "version": "8.0.19", 
+    "file": "mysql-8.0.26.tar.gz", 
+    "version": "8.0.26", 
     "py": "mysql.py", 
      "type": "env"
   }, 
@@ -117,52 +117,6 @@
     "py": "localization_db.py", 
     "type": "env"
   }, 
-  "abcprogram": {
-    "graduate": {
-      "basics": {
-        "file": "dsfa-graduate-basics-starter-1.0.0-SNAPSHOT.jar", 
-        "version": "1.0.0", 
-        "py": "program.py", 
-        "type": "program"
-      }, 
-      "main": {
-        "file": "dsfa-graduate-main-small-1.0.0-SNAPSHOT.jar", 
-        "version": "1.0.0", 
-        "py": "program.py", 
-        "type": "program"
-      }, 
-      "recruit": {
-        "file": "dsfa-graduate-recruit-starter-1.0.0-SNAPSHOT.jar", 
-        "version": "1.0.0", 
-        "py": "program.py", 
-        "type": "program"
-      }, 
-      "teaching": {
-        "file": "dsfa-graduate-teaching-starter-1.0.0-SNAPSHOT.jar", 
-        "version": "1.0.0", 
-        "py": "program.py", 
-        "type": "program"
-      }, 
-      "frontend": {
-        "file": "dsfa-graduate-frontend-1.0.0.tar.gz", 
-        "version": "1.0.0", 
-        "py": "frontend.py", 
-        "type": "frontend"
-      }, 
-      "sql": {
-        "file": "dsfa_graduate_sql-1.0.0.tar.gz", 
-        "version": "1.0.0", 
-        "py": "sql.py", 
-        "type": "sql"
-      }, 
-      "gateway": {
-        "file": "dsfa-platform-service-gateway-1.0.0-SNAPSHOT.jar", 
-        "version": "1.0", 
-        "py": "program.py", 
-        "type": "program"
-      }
-    }
-  }, 
   "program": {
     "graduate": {
       "basics": {
@@ -190,7 +144,7 @@
         "type": "program"
       }, 
       "static": {
-        "file": "dsfa-graduate-frontend-1.0.0.tar.gz", 
+        "file": "frontend.tar.gz", 
         "version": "1.0.0", 
         "py": "frontend.py", 
         "type": "frontend"

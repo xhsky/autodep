@@ -550,7 +550,7 @@ if __name__ == "__main__":
         二进制安装, 需要libaio
         1.mysql-8.0.19-linux-glibc2.12-x86_64.tar.xz解压
         2.将liabio放入其中新建的pkg目录
-        3.更改目录名为mysql8并重新压缩
+        3.更改目录名为mysql-<version>并重新压缩
     """
     softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
