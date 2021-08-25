@@ -10,8 +10,8 @@
     "version": "3.8"
   }, 
   "nginx": {
-    "file": "nginx-1.17.9-bin.tar.gz", 
-    "version": "1.17.9", 
+    "file": "nginx-1.21.1-bin.tar.gz", 
+    "version": "1.21.1", 
     "py": "nginx.py", 
     "type": "env"
   }, 
