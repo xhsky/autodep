@@ -3153,7 +3153,7 @@ class graphics_deploy(Deploy):
                         localization_dict[node]["software"]=[]
                     localization_dict[node]["software"].append(softname)
 
-                    if localization_source_dict[node].get(f"{softname}_info") is None:
+                    if localization_source_dict.get(node) is None or localization_source_dict[node].get(f"{softname}_info") is None:
                         localization_dict[node][f"{softname}_info"]=soft_default_info
                     else:
                         localization_dict[node][f"{softname}_info"]=localization_source_dict[node][f"{softname}_info"]
