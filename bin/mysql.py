@@ -51,260 +51,6 @@ def init(db_info_dict, mysql_dir, init_password, cluster_info_dict, role, log):
         log.logger.error(msg)
         return error_code
 
-def main():
-    softname, action, conf_json=sys.argv[1:]
-    conf_dict=json.loads(conf_json)
-    located=conf_dict.get("located")
-    mysql_dir=f"{located}/{mysql_dst}"
-
-    log=common.Logger({"remote": log_remote_level}, loggger_name="mysql")
-    mysql_info_dict=conf_dict.get("mysql_info")
-    db_info_dict=mysql_info_dict.get("db_info")
-    mysql_port=db_info_dict.get("mysql_port")
-    my_logs="mylogs"
-    my_data="mydata"
-    port_list=[
-            mysql_port
-            ]
-
-    cluster_info_dict=mysql_info_dict.get("cluster_info")
-    my_client_cnf_file="/etc/my_client.cnf"
-    if cluster_info_dict is None:
-        cluster_flag=0
-        role="stand-alone"
-    else:
-        cluster_flag=1
-        role=cluster_info_dict.get("role")
-
-    # 安装
-    flag=0
-    if action == "install":
-        pkg_file=conf_dict["pkg_file"]
-        command=f"id -u {mysql_user} &> /dev/null || useradd -r -s /bin/false {mysql_user}"
-        log.logger.debug(f"创建用户: {command=}")
-        result, msg=common.exec_command(command)
-        if not result:
-            log.logger.error(msg)
-
-        value, msg=common.install(pkg_file, mysql_src, mysql_dst, mysql_pkg_dir, located)
-        if not value:
-            log.logger.error(msg)
-            flag=1
-            sys.exit(flag)
-
-        # 配置
-        mk_dirs_commands=f"mkdir -p {mysql_dir}/{{{my_data},{my_logs}}} && mkdir -p {mysql_dir}/{my_logs}/{{binlog,redolog,undolog,relay}} && chown -R {mysql_user}:{mysql_user} {located}/{mysql_src}* && ln -snf {located}/{mysql_src}* /usr/local/mysql && \cp -f {mysql_dir}/support-files/mysql.server /etc/init.d/mysqld && systemctl daemon-reload"
-        log.logger.debug(f"建立目录, 授权: {mk_dirs_commands=}")
-        result, msg=common.exec_command(mk_dirs_commands)
-        if not result:
-            log.logger.error(msg)
-            flag=1
-            sys.exit(flag)
-
-        mem=db_info_dict.get("innodb_mem")
-        server_id=db_info_dict.get("server_id")
-        max_connections=db_info_dict.get("max_connections")
-
-        mysql_sh_context=f"""\
-            export MySQL_HOME={mysql_dir}
-            export PATH=$MySQL_HOME/bin:$PATH
-        """
-        my_cnf_context=f"""\
-            [mysqld]
-            # dir
-            datadir={mysql_dir}/{my_data}
-            #secure_file_priv=/var/lib/mysql-files
-            pid_file={mysql_dir}/{my_data}/mysqld.pid
-
-            # network
-            #socket=/tmp/mysql.sock
-            port={mysql_port}
-            max_connections={max_connections}
-
-            # general set
-            lower_case_table_names=1
-            default_authentication_plugin=mysql_native_password
-            default-time-zone='+08:00'
-            wait_timeout=288000
-
-            # Log 
-            ## Error Log
-            log_error={mysql_dir}/{my_logs}/mysqld.log
-            log_timestamps=system
-            ## Slow log
-            log_output=file
-            slow_query_log=1
-            long_query_time=2
-
-            # bin log
-            server_id={server_id}
-            log_bin={mysql_dir}/{my_logs}/binlog/binlog
-            binlog_format=row
-            binlog_row_event_max_size=8192
-            binlog_checksum=crc32
-            max_binlog_size=512M
-
-            binlog_cache_size=128K
-            binlog_stmt_cache_size=32K
-            max_binlog_cache_size=8G
-            max_binlog_stmt_cache_size=2G
-
-            binlog_error_action=abort_server
-            binlog_expire_logs_seconds=0
-
-            sync_binlog=1
-            binlog_group_commit_sync_delay=0
-
-            default_storage_engine=innodb
-            transaction_write_set_extraction=xxhash64
-
-            # innodb
-            gtid_mode=on
-            enforce_gtid_consistency=1
-            ## buffer pool
-            innodb_buffer_pool_size={mem}
-            innodb_change_buffer_max_size=25
-            innodb_buffer_pool_instances=16
-
-            ## redo log
-            innodb_log_group_home_dir={mysql_dir}/{my_logs}/redolog
-            innodb_log_file_size=256M
-            innodb_log_files_in_group=4
-
-            ## log buffer
-            innodb_log_buffer_size=16M
-            innodb_flush_log_at_trx_commit=1
-
-            ## tablespace
-            ### system tablespace
-            innodb_file_per_table=1
-            ### undo tablespace
-            innodb_undo_directory={mysql_dir}/{my_logs}/undolog
-            innodb_rollback_segments=128
-            innodb_max_undo_log_size=1G
-
-            !include {my_client_cnf_file}
-
-            log_slave_updates=1
-            [client]
-        """
-        my_cnf_file=f"/etc/my.cnf"
-
-        config_dict={
-                "mysql_sh":{
-                    "config_file": "/etc/profile.d/mysql.sh", 
-                    "config_context": mysql_sh_context, 
-                    "mode": "w"
-                    }, 
-                "my_cnf":{
-                    "config_file": my_cnf_file, 
-                    "config_context": my_cnf_context,
-                    "mode": "w"
-                    }
-                }
-
-        # slave配置
-        if cluster_flag:
-            if role=="slave":
-                my_client_cnf=f"""\
-                    [mysqld]
-                    #replication
-                    ## master
-                    ## slave
-                    ### relay log
-                    relay_log={mysql_dir}/{my_logs}/relay/relay
-                    relay_log_info_repository=table
-                """
-                sync_dbs_list=cluster_info_dict.get("sync_dbs")
-                sync_dbs_config=""
-                for sync_db in sync_dbs_list:
-                    sync_dbs_config=f"{sync_dbs_config}\nreplicate_do_db={sync_db}"
-                config_dict.update(
-                        {
-                            "my_client_cnf":{
-                                "config_file": my_client_cnf_file, 
-                                "config_context": my_client_cnf,
-                                "mode": "w"
-                                }, 
-                            "my_sync_db_cnf":{
-                                "config_file": my_client_cnf_file, 
-                                "config_context": sync_dbs_config, 
-                                "mode": "a"
-                                }
-                            }
-                        )
-        log.logger.debug(f"写入配置文件: {json.dumps(config_dict)}")
-        result, msg=common.config(config_dict)
-        if not result:
-            log.logger.error(msg)
-            flag=1
-
-        sys.exit(flag)
-
-    elif action=="run":
-        #init_command=f"{mysql_dir}/bin/mysqld --initialize --user={mysql_user} --datadir={mysql_dir}/{my_data}"
-        init_command=f"{mysql_dir}/bin/mysqld --initialize --user={mysql_user}"
-        log.logger.debug(f"初始化中: {init_command=}")
-        result, msg=common.exec_command(init_command, timeout=600)
-        if result:
-            try:
-                log.logger.debug("获取随机密码")
-                with open(f"{mysql_dir}/{my_logs}/mysqld.log", "r") as f:
-                    for i in f.readlines():
-                        if "temporary password" in i:
-                            pass_line=i.split(" ")
-                            init_password=pass_line[-1].strip()
-                            log.logger.debug(f"{init_password=}")
-                            break
-            except Exception as e:
-                log.logger.error(str(e))
-                flag=1
-                sys.exit(flag)
-
-            start_command=f"systemctl start mysqld"
-            log.logger.debug(f"{start_command=}")
-            result, msg=common.exec_command(start_command, timeout=600)
-            if result:
-                log.logger.debug(f"检测端口: {port_list=}")
-                if common.port_exist(port_list):
-                    flag=init(db_info_dict, mysql_dir, init_password, cluster_info_dict, role, log)
-                else:
-                    flag=2
-            else:
-                log.logger.error(msg)
-                flag=1
-        else:
-            log.logger.error(msg)
-            flag=1
-
-        sys.exit(flag)
-
-    elif action=="start":
-        start_command=f"systemctl start mysqld"
-        log.logger.debug(f"{start_command=}")
-        result, msg=common.exec_command(start_command, timeout=600)
-        if result:
-            log.logger.debug(f"检测端口: {port_list=}")
-            if not common.port_exist(port_list):
-                flag=2
-        else:
-            log.logger.error(msg)
-            flag=1
-        sys.exit(flag)
-
-    elif action=="stop":
-        stop_command=f"systemctl stop mysqld"
-        log.logger.debug(f"{stop_command=}")
-        result, msg=common.exec_command(stop_command, timeout=600)
-        if result:
-            log.logger.debug(f"检测端口: {port_list=}")
-            if not common.port_exist(port_list, exist_or_not=False):
-                flag=2
-        else:
-            log.logger.error(msg)
-            flag=1
-        sys.exit(flag)
-
 def install():
     """安装
     """
@@ -385,7 +131,6 @@ def install():
         binlog_group_commit_sync_delay=0
 
         default_storage_engine=innodb
-        transaction_write_set_extraction=xxhash64
 
         # innodb
         gtid_mode=on
@@ -414,7 +159,7 @@ def install():
 
         !include {my_client_cnf_file}
 
-        log_slave_updates=1
+        log_replica_updates=1
         [client]
     """
     my_cnf_file=f"/etc/my.cnf"
@@ -442,7 +187,6 @@ def install():
                 ## slave
                 ### relay log
                 relay_log={mysql_dir}/{my_logs}/relay/relay
-                relay_log_info_repository=table
             """
             sync_dbs_list=cluster_info_dict.get("sync_dbs")
             sync_dbs_config=""
