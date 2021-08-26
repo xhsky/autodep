@@ -48,13 +48,16 @@ def main():
         log.logger.info(f"建立安装目录: {located}")
         os.makedirs(located, exist_ok=1)
         if located != located_dir_link:
-            if os.path.islink(located_dir_link):
-                if os.readlink(located_dir_link) != located:
-                    os.remove(located_dir_link)
-                    os.symlink(located, located_dir_link)
+            if os.path.exists(located_dir_link):
+                if os.path.islink(located_dir_link):
+                    if os.readlink(located_dir_link) != located:
+                        os.remove(located_dir_link)
+                        os.symlink(located, located_dir_link)
+                else:
+                    log.logger.error(f"{located_dir_link}目录存在, 无法安装, 请移除该目录!")
+                    return_value=error_code
             else:
-                log.logger.error(f"{located_dir_link}目录存在, 无法安装, 请移除该目录!")
-                return_value=error_code
+                os.symlink(located, located_dir_link)
     except Exception as e:
         log.logger.error(f"{str(e)}")
         return_value=error_code
