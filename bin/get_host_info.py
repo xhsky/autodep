@@ -78,7 +78,7 @@ def main():
                     check_time=False
             time.tzset()    # 程序内重新获取时区信息
             # 校准时间
-            response = c.request('ntp1.aliyun.com', timeout=2)
+            response = c.request('ntp.ntsc.ac.cn', timeout=2)
             ts=response.tx_time
             date_=time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))
             set_time=f"date -s '{date_}' && hwclock -w"
