@@ -2,7 +2,7 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, json, os
+import sys, json, os, textwrap
 from libs import common
 from libs.env import log_remote_level, nginx_src, nginx_dst, nginx_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
@@ -43,8 +43,9 @@ def install():
 
                         location = /favicon.ico {{
                             return 200;     		# 忽略浏览器的title前面的图标
-                    }}
+                        }}
             """
+            nginx_server_config=textwrap.dedent(nginx_server_config)
             for name in vhosts_info_dict[port]:
                 mode=vhosts_info_dict[port][name]["mode"]
                 if mode=="proxy":
@@ -57,17 +58,17 @@ def install():
                         upstream_servers=f"{upstream_servers}\n}}" 
                     nginx_server_config=f"{upstream_servers}\n{nginx_server_config}"
 
-                    name_config=f"""\
+                    name_config=textwrap.indent(textwrap.dedent(f"""\
                             location {name} {{
                                 proxy_pass http://{proxy_name};
-                    }}
-                    """
+                            }}
+                    """), "    ")
                 elif mode=="location":
-                    name_config=f"""\
+                    name_config=textwrap.indent(textwrap.dedent(f"""\
                             location {name} {{
                                 root {vhosts_info_dict[port][name]['frontend_dir']};
-                    }}
-                    """
+                            }}
+                    """), "    ")
                 nginx_server_config=f"{nginx_server_config}\n{name_config}"
             else:
                 nginx_server_config=f"{nginx_server_config}\n}}"
