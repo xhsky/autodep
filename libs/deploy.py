@@ -776,7 +776,7 @@ class Deploy(object):
         control_dict={}
         autocheck_name="autocheck"
         for node in localization_dict:
-            if autocheck_name == localization_dict[node]["software"]:
+            if [autocheck_name] == localization_dict[node]["software"]:
                 continue
             else:
                 if autocheck_name in localization_dict[node]["software"]:
