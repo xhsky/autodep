@@ -326,12 +326,13 @@ class Deploy(object):
             
     def _get_soft_weights(self, arch_dict, node, softname):
         """获取单个软件权重(内存)
+        return mem(byte), cpu
         """
         if softname=="elasticsearch":
             mem=arch_dict[node]["elasticsearch_info"]["jvm_mem"]
         elif softname=="mysql":
             mem=arch_dict[node]["mysql_info"]["db_info"]["innodb_mem"]
-        elif softname=="nginx":
+        elif softname=="nginx" or softname=="dps":
             mem="1G"
             #self.arch_dict[node]["nginx_info"]["worker_processes"]=softname_cpu
         elif softname=="rabbitmq":
@@ -1168,39 +1169,6 @@ class Deploy(object):
         run_result, run_stats_dict=super(graphics_deploy, self).run(init_dict, update_arch_dict, ext_dict)
         return run_result, run_stats_dict
 
-        #arch_program_above_type_dict=self._get_program_above_type_dict(arch_dict, ext_dict)
-        #control_dict={}
-        #for node in update_arch_dict:
-        #    control_dict[node]=update_arch_dict[node]["software"]
-        #update_type_dict=self._divide_service(control_dict, ext_dict)
-
-        # 将arch中软件类型:项目 以上的服务加入到update_arch_dict分类服务中以运行
-        #for soft_type in arch_program_above_type_dict:
-        #    if soft_type in update_type_dict:
-        #        for node in arch_program_above_type_dict[soft_type]:
-        #            if node in update_type_dict[soft_type]:
-        #                for softname in arch_program_above_type_dict[soft_type][node]:
-        #                    if softname not in update_type_dict[soft_type][node]:
-        #                        update_type_dict[soft_type][node].append(softname)
-        #            else:
-        #                update_type_dict[soft_type][node]=arch_program_above_type_dict[soft_type][node]
-        #    else:
-        #        update_type_dict[soft_type]=arch_program_above_type_dict[soft_type]
-        #self.log.logger.debug(f"{update_type_dict=}")
-
-        #run_result=True
-        #run_stats_dict={}
-        #for soft_type in update_arch_dict:
-        #    if len(update_type_dict[soft_type]) != 0:
-        #        self.log.logger.info(f"***{soft_type}服务运行***")
-        #        run_result, run_stats_dict=self.nodes_control(update_type_dict[soft_type], "run", "运行", init_dict, arch_dict, ext_dict)
-        #        run_stats_dict[soft_type]=run_stats_dict
-        #        if run_result:
-        #            continue
-        #        else:
-        #            break
-        #return run_result, run_stats_dict
-
     def program_start(self, init_dict, arch_dict, ext_dict):
         """项目启动
         """
@@ -1235,6 +1203,9 @@ class Deploy(object):
             port_list.append(arch_dict[node]["mysql_info"]["db_info"]["mysql_port"])
         elif softname=="nginx":
             for port in arch_dict[node]["nginx_info"]["vhosts_info"]:
+                port_list.append(int(port))
+        elif softname=="dps":
+            for port in arch_dict[node]["dps_info"]["vhosts_info"]:
                 port_list.append(int(port))
         elif softname=="rabbitmq":
             for port_name in arch_dict[node]["rabbitmq_info"]["port"]:

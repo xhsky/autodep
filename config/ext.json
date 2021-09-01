@@ -15,6 +15,12 @@
     "py": "nginx.py", 
     "type": "env"
   }, 
+  "dps": {
+    "file": "dreamProxyServer-1.20.1.tar.gz", 
+    "version": "1.20.1", 
+    "py": "dps.py", 
+    "type": "env"
+  }, 
   "jdk": {
     "file": "jdk-8u251-linux-x64.tar.gz", 
     "version": "1.8.251", 

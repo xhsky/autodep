@@ -202,6 +202,10 @@ nginx_src="nginx-"
 nginx_dst="nginx"
 nginx_pkg_dir=None
 
+dps_src="dps-"
+dps_dst="dps"
+dps_pkg_dir=None
+
 rabbitmq_src="rabbitmq_server-"
 rabbitmq_dst="rabbitmq"
 rabbitmq_pkg_dir=None
