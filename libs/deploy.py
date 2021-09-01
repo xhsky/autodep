@@ -339,6 +339,8 @@ class Deploy(object):
             mem=arch_dict[node]["rabbitmq_info"]["erlang_mem"]
         elif softname=="redis":
             mem=arch_dict[node]["redis_info"]["db_info"]["redis_mem"]
+        elif softname=="dch":
+            mem=arch_dict[node]["dch_info"]["db_info"]["dch_mem"]
         elif softname=="rocketmq":
             mem1=arch_dict[node]["rocketmq_info"]["namesrv_mem"]
             mem2=arch_dict[node]["rocketmq_info"]["broker_mem"]
@@ -355,6 +357,65 @@ class Deploy(object):
             mem="0G"
         cpu=1
         return self._format_size(mem), cpu
+
+    def _get_soft_port_list(self, arch_dict, node, softname):
+        """获取单个软件的端口列表
+            return:
+                port_list:
+                    [11, 22]    - 软件端口列表
+                    [0]         - glusterfs-client, autocheck等无端口有服务软件
+                    [1]         - 工具类无端口软件
+        """
+        port_list=[]
+        if softname=="elasticsearch":
+            for port_name in arch_dict[node]["elasticsearch_info"]["port"]:
+                port_list.append(arch_dict[node]["elasticsearch_info"]["port"][port_name])
+        elif softname=="mysql":
+            port_list.append(arch_dict[node]["mysql_info"]["db_info"]["mysql_port"])
+        elif softname=="nginx":
+            for port in arch_dict[node]["nginx_info"]["vhosts_info"]:
+                port_list.append(int(port))
+        elif softname=="dps":
+            for port in arch_dict[node]["dps_info"]["vhosts_info"]:
+                port_list.append(int(port))
+        elif softname=="rabbitmq":
+            for port_name in arch_dict[node]["rabbitmq_info"]["port"]:
+                port_list.append(arch_dict[node]["rabbitmq_info"]["port"][port_name])
+        elif softname=="redis":
+            port_list.append(arch_dict[node]["redis_info"]["db_info"]["redis_port"])
+            if arch_dict[node]["redis_info"].get("sentinel_info"):
+                port_list.append(arch_dict[node]["redis_info"]["sentinel_info"]["sentinel_port"])
+        elif softname=="dch":
+            port_list.append(arch_dict[node]["dch_info"]["db_info"]["dch_port"])
+            if arch_dict[node]["dch_info"].get("sentinel_info"):
+                port_list.append(arch_dict[node]["dch_info"]["sentinel_info"]["sentinel_port"])
+        elif softname=="glusterfs-server":
+            #for port_name in arch_dict[node]["glusterfs-server_info"]["port"]:
+            #    port_list.append(arch_dict[node]["glusterfs-server_info"]["port"][port_name])
+            port_list.append(arch_dict[node]["glusterfs-server_info"]["port"]["volume_port"])
+        elif softname=="rocketmq":
+            for port_name in arch_dict[node]["rocketmq_info"]["port"]:
+                port_list.append(arch_dict[node]["rocketmq_info"]["port"][port_name])
+        elif softname=="tomcat":
+            for port_name in arch_dict[node]["tomcat_info"]["port"]:
+                port_list.append(arch_dict[node]["tomcat_info"]["port"][port_name])
+        elif softname.startswith("program"):
+            jvm_port=arch_dict[node][f"{softname}_info"].get("port")
+            if jvm_port is None:
+                port_list.append(tool_service_code)
+            else:
+                port_list.append(jvm_port)
+        elif softname=="nacos":
+            port_list.append(arch_dict[node]["nacos_info"]["web_port"])
+            if arch_dict[node]["nacos_info"].get("cluster_info") is not None:
+                port_list.append(arch_dict[node]["nacos_info"]["cluster_info"]["raft_port"])
+        elif softname=="autocheck" or softname=="glusterfs-client":
+            port_list.append(portless_service_code)
+        elif softname=="dameng" or softname=="shentong" or softname=="kingbase":
+            port_list.append(arch_dict[node][f"{softname}_info"]["db_port"])
+        else:
+            port_list.append(tool_service_code)
+        return port_list
 
     def _get_max_disk_name(self, host_info_dict):
         """获取每个ip剩余空间最大的磁盘目录名称
@@ -1186,61 +1247,6 @@ class Deploy(object):
                 else:
                     break
         return start_result, start_stats_dict
-
-    def _get_soft_port_list(self, arch_dict, node, softname):
-        """获取单个软件的端口列表
-            return:
-                port_list:
-                    [11, 22]    - 软件端口列表
-                    [0]         - glusterfs-client, autocheck等无端口有服务软件
-                    [1]         - 工具类无端口软件
-        """
-        port_list=[]
-        if softname=="elasticsearch":
-            for port_name in arch_dict[node]["elasticsearch_info"]["port"]:
-                port_list.append(arch_dict[node]["elasticsearch_info"]["port"][port_name])
-        elif softname=="mysql":
-            port_list.append(arch_dict[node]["mysql_info"]["db_info"]["mysql_port"])
-        elif softname=="nginx":
-            for port in arch_dict[node]["nginx_info"]["vhosts_info"]:
-                port_list.append(int(port))
-        elif softname=="dps":
-            for port in arch_dict[node]["dps_info"]["vhosts_info"]:
-                port_list.append(int(port))
-        elif softname=="rabbitmq":
-            for port_name in arch_dict[node]["rabbitmq_info"]["port"]:
-                port_list.append(arch_dict[node]["rabbitmq_info"]["port"][port_name])
-        elif softname=="redis":
-            port_list.append(arch_dict[node]["redis_info"]["db_info"]["redis_port"])
-            if arch_dict[node]["redis_info"].get("sentinel_info"):
-                port_list.append(arch_dict[node]["redis_info"]["sentinel_info"]["sentinel_port"])
-        elif softname=="glusterfs-server":
-            #for port_name in arch_dict[node]["glusterfs-server_info"]["port"]:
-            #    port_list.append(arch_dict[node]["glusterfs-server_info"]["port"][port_name])
-            port_list.append(arch_dict[node]["glusterfs-server_info"]["port"]["volume_port"])
-        elif softname=="rocketmq":
-            for port_name in arch_dict[node]["rocketmq_info"]["port"]:
-                port_list.append(arch_dict[node]["rocketmq_info"]["port"][port_name])
-        elif softname=="tomcat":
-            for port_name in arch_dict[node]["tomcat_info"]["port"]:
-                port_list.append(arch_dict[node]["tomcat_info"]["port"][port_name])
-        elif softname.startswith("program"):
-            jvm_port=arch_dict[node][f"{softname}_info"].get("port")
-            if jvm_port is None:
-                port_list.append(tool_service_code)
-            else:
-                port_list.append(jvm_port)
-        elif softname=="nacos":
-            port_list.append(arch_dict[node]["nacos_info"]["web_port"])
-            if arch_dict[node]["nacos_info"].get("cluster_info") is not None:
-                port_list.append(arch_dict[node]["nacos_info"]["cluster_info"]["raft_port"])
-        elif softname=="autocheck" or softname=="glusterfs-client":
-            port_list.append(portless_service_code)
-        elif softname=="dameng" or softname=="shentong" or softname=="kingbase":
-            port_list.append(arch_dict[node][f"{softname}_info"]["db_port"])
-        else:
-            port_list.append(tool_service_code)
-        return port_list
 
     def get_soft_status(self, init_dict, arch_dict, ext_dict):
         """获取软件状态

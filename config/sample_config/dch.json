@@ -1,0 +1,48 @@
+{
+  "dch1":{
+    "software": ["dch"], 
+    "located": "/data", 
+    "dch_info":{
+       "db_info":{                                                        // 单机信息
+         "dch_password": "b840fc02d524045429941cc15f59e41cb7be6c599",     // 密码(集群密码须相同)
+         "dch_port": 6379,                                                // dch端口
+         "dch_mem": "200M",                                               // dch最大使用内存
+         "dch_io_threads": 4                                              // dch I/O线程数
+       }, 
+       "cluster_info":{                                                   // 主从集群信息
+         "role": "master"                                                 // 主机角色  master|slave
+       }, 
+       "sentinel_info":{                                                  // 启用sentinel
+         "sentinel_port": 26379,                                          // sentinel端口
+         "monitor_host": "dch",                                           // 监控的主机
+         "monitor_port": 6379,                                            // 监控的端口
+         "replicas_members": ["dch1", "dch2"],                            // dch主从所有节点
+         "sentinel_password": "b840fc02d524045429941cc15f59e41cb7be6c598" // sentinel密码, 与dch_password不同. 若该选项为空或缺失, 则sentinel不配置密码
+       }
+    }
+  }, 
+  "dch2":{
+    "software": ["dch"], 
+    "located": "/data", 
+    "dch_info":{
+       "db_info":{
+         "dch_password": "b840fc02d524045429941cc15f59e41cb7be6c599", 
+         "dch_port": 6379, 
+         "dch_mem": "200M", 
+         "dch_io_threads": 4                                              // dch I/O线程数
+       }, 
+       "cluster_info":{
+         "role": "slave", 
+         "master_host": "dch1",                                           // 角色若为"slave", 则需指定master主机
+         "master_port": 6379                                              // 角色若为"slave", 则需指定master端口
+       }, 
+       "sentinel_info":{                                                    
+         "sentinel_port": 26379,
+         "monitor_host": "dch1",
+         "monitor_port": 6379, 
+         "replicas_members": ["dch1", "dch2"],                            // dch主从所有节点
+         "sentinel_password": "b840fc02d524045429941cc15f59e41cb7be6c598" // sentinel密码, 与dch_password不同. 若该选项为空或缺失, 则sentinel不配置密码
+       }
+    }
+  } 
+}

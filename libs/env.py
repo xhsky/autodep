@@ -218,6 +218,10 @@ redis_src="redis-"
 redis_dst="redis"
 redis_pkg_dir=None
 
+dch_src="dch-"
+dch_dst="dch"
+dch_pkg_dir=None
+
 autocheck_src="autocheck-"
 autocheck_dst="autocheck"
 autocheck_pkg_dir=None
