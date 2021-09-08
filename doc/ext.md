@@ -1,7 +1,6 @@
 # Ext打包
 
 
-
 ## 说明
 
 1. 下载时注意CPU架构不同(x86, arm)
@@ -25,10 +24,8 @@
 
 ### ffmpeg
 
-1. 按文档编译，编译后目录为`ffmpeg-<version>`
-2. 在编译好的目录下建立`deps`目录
-3. 下载libXau, libxcb, SDL2包并放入deps目录
-4. 编译目录打包为`ffmpeg-<version>-bin.tar.gz`格式
+1. 从官网下载即可(https://johnvansickle.com/ffmpeg/)
+2. 重新解压缩, 将格式换为tar.gz格式
 
 
 

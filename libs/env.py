@@ -167,9 +167,9 @@ host_weights_unit_dict={
 """
 
 # link
-ffmpeg_src="ffmpeg"
+ffmpeg_src="ffmpeg-"
 ffmpeg_dst="ffmpeg"
-ffmpeg_pkg_dir="deps"
+ffmpeg_pkg_dir=None
 
 elasticsearch_src="elasticsearch"
 elasticsearch_dst="elasticsearch"
