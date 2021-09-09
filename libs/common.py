@@ -4,7 +4,7 @@
 
 import tarfile, psutil, shutil
 import os, time, socket, sys
-from subprocess import run, call
+from subprocess import run
 import textwrap
 from logging import handlers
 import logging
@@ -51,7 +51,6 @@ def exec_command(command, timeout=45):
         return False, str(e)
 
 def format_size(byte, integer=False):
-    #byte=float(byte)
     kb=byte/1024
 
     if kb >= 1024:
@@ -118,6 +117,59 @@ def port_connect(host, port):
     except Exception:
         return False
 
+def pkg_install(pkgs_dir, log):
+    """安装pkg
+    """
+    yum_file="/usr/bin/yum"
+    apt_file="/usr/bin/apt"
+    pkg_files=os.listdir(pkgs_dir)
+    if os.path.exists(yum_file):
+        not_query_command="rpm -qpi"
+        install_query_command="rpm -qi"
+        install_command="rpm -Uvh"
+    elif os.path.exists(apt_file):
+        not_query_command="dpkg -f"
+        install_query_command="dpkg -s"
+        install_command="dpkg -i"
+    else:
+        return False, "不支持apt/yum"
+
+    not_install_pkgs_list=[]
+    for i in pkg_files:
+        command=f"{not_query_command} {pkgs_dir}/{i} | head -n 3"
+        log.logger.debug(f"{command}")
+        result, msg=exec_command(command)
+        if result:
+            pkg_info=msg.split("\n")
+            pkg_name=pkg_info[0].split(":")[1].strip()
+            pkg_version=pkg_info[1].split(":")[1].strip()
+
+            command=f"{install_query_command} {pkg_name} | grep -E ^Version"
+            log.logger.debug(f"{command}")
+            result, msg=exec_command(command)
+            if result:                                                # 判断已安装的pkg与未安装的pkg的版本大小, 未安装的pkg版本大则安装
+                installed_pkg_version=msg.split("\n")[0].split(":")[1].strip()
+                log.logger.debug(f"{pkg_version=}, {installed_pkg_version=}")
+                if pkg_version > installed_pkg_version:
+                    not_install_pkgs_list.append(i)
+            else:
+                not_install_pkgs_list.append(i)
+        else:
+            return False, msg
+
+    log.logger.debug(f"未安装包: {not_install_pkgs_list}")
+    if len(not_install_pkgs_list) == 0:
+        return True, None
+    else:
+        pkgs=" ".join(not_install_pkgs_list)
+        command=f"cd {pkgs_dir} && {install_command} {pkgs} &> /dev/null"
+        log.logger.debug(f"{command=}")
+        result, msg=exec_command(command)
+        if result:
+            return True, msg
+        else:
+            return False, msg
+
 def install(soft_file, link_src, link_dst, pkg_dir, located):
     """软件安装: 建立目录, 解压等
     """
@@ -150,43 +202,8 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
 
         # 安装依赖
         if pkg_dir is not None:
-            pkg_dir=f"{dst}/{pkg_dir}"
-            pkg_list=os.listdir(pkg_dir)
-
-            not_intall_pkg_list=[]  # 判断rpm是否已安装
-            for i in pkg_list:
-                command=f"rpm -qpi {pkg_dir}/{i} | head -n 3"
-                log.logger.debug(f"{command=}")
-                result, msg=exec_command(command)
-                if result:
-                    #pkg_name=result.stdout.split(":")[1].strip()
-                    pkg_info=msg.split("\n")
-                    pkg_name=pkg_info[0].split(":")[1].strip()
-                    pkg_version=pkg_info[2].split(":")[1].strip()
-                    command=f"rpm -qi {pkg_name}"
-                    log.logger.debug(f"{command=}")
-                    result, msg=exec_command(command)
-                    if result:                                                # 判断已安装的pkg与未安装的pkg的版本大小, 未安装的pkg版本大则安装
-                        installed_pkg_version=msg.split("\n")[2].split(":")[1].strip()
-                        if pkg_version > installed_pkg_version:
-                            not_intall_pkg_list.append(i)
-                    else:
-                        not_intall_pkg_list.append(i)
-                else:
-                    return False, msg
-
-            log.logger.debug(f"未安装包: {not_intall_pkg_list=}")
-            if len(not_intall_pkg_list) == 0:
-                return True, None
-            else:
-                pkgs=" ".join(not_intall_pkg_list)
-                command=f"cd {pkg_dir} && rpm -Uvh {pkgs} &> /dev/null"
-                log.logger.debug(f"{command=}")
-                result, msg=exec_command(command)
-                if result:
-                    return True, msg
-                else:
-                    return False, msg
+            result, msg=pkg_install(pkg_dir, log)
+            return result, msg
         else:
             return True, None
     except Exception as e:
