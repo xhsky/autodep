@@ -4,7 +4,6 @@
 # sky
 
 import paramiko
-import pymysql
 import os, json
 from libs.common import Logger
 from libs.env import log_file, log_file_level, remote_python_exec, \
