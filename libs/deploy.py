@@ -22,7 +22,7 @@ for dir_ in autodep_dir:
         os.makedirs(dir_, exist_ok=1)
 
 from textwrap import dedent
-from libs.common import Logger, post_info, format_size, port_connect, exec_command
+from libs.common import Logger, post_info, format_size, port_connect, exec_command, pkg_install
 from libs.remote import ssh, soft
 
 if test_mode:                       # 是否启用测试模式: 代码文件在install, run, start, stop, update阶段重复传输
@@ -426,8 +426,8 @@ class Deploy(object):
         """
         max_disk_dict={}
         for ip in host_info_dict:
-            disk_sorted=sorted(host_info_dict[ip]["Disk"].items(), key=lambda item:item[1][0]*(100-item[1][1]))
-            max_disk_dict[ip]=disk_sorted[-1][0]
+            disk_sorted=sorted(host_info_dict[ip]["Disk"].items(), key=lambda item:item[1][0]*(100-item[1][1]), reverse = True)
+            max_disk_dict[ip]=disk_sorted[0][0]
         return max_disk_dict
 
     def _get_backup_file(self, ip, port, backup_version, softname):
@@ -2482,7 +2482,7 @@ class graphics_deploy(Deploy):
                     ("root用户密码:", 2, 1, "", 2, first_node_xi_length, password_field_length, 0), 
                     ("ssh端口:", 3, 1, "22", 3, first_node_xi_length, port_field_length, 0), 
                     ]
-            code, fields=self.d.form(f"请根据示例填写集群中主机信息\n\n第1台主机:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消")
+            code, fields=self.d.form(f"请根据示例填写集群中主机信息\n\n第1台主机:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消", height=9)
         else:
             elements=[]
             n=0
@@ -2669,7 +2669,7 @@ class graphics_deploy(Deploy):
         xi_3=38
         xi_4=50
         xi_5=62
-        field_length=45
+        field_length=60
         elements=[]
 
         n=0
@@ -2679,8 +2679,8 @@ class graphics_deploy(Deploy):
             if node_info_dict.get("error_info") is None:
                 info=[
                         (f"{ip}: ", n, 1, "", n, xi_1, field_length, 0, HIDDEN), 
-                        ("内核版本: ", n+1, tab, node_info_dict["kernel_version"], n+1, xi_2-3, field_length, 0, READ_ONLY), 
-                        ("发行版本: ", n+2, tab, node_info_dict["os_name"], n+2, xi_2-3, field_length, 0, READ_ONLY), 
+                        ("内核版本: ", n+1, tab, node_info_dict["kernel_version"], n+1, xi_1-3, field_length, 0, READ_ONLY), 
+                        ("发行版本: ", n+2, tab, node_info_dict["os_name"], n+2, xi_1-3, field_length, 0, READ_ONLY), 
                         ("CPU架构: ", n+3, tab, f"{node_info_dict['cpu_arch']}", n+3, xi_1-2, field_length, 0, READ_ONLY), 
                         ("CPU个数: ", n+3, xi_2, f"{node_info_dict['CPU'][0]}", n+3, xi_3, field_length, 0, READ_ONLY), 
                         ("CPU使用率: ", n+3, xi_4, f"{node_info_dict['CPU'][1]}%", n+3, xi_5, field_length, 0, READ_ONLY), 
@@ -2694,8 +2694,8 @@ class graphics_deploy(Deploy):
                 for disk in node_info_dict["Disk"]:
                     n=n+1
                     disk_info=[
-                            ("挂载目录: ", n, tab*2, disk, n, xi_1, field_length, 0, READ_ONLY),
-                            ("磁盘大小: ", n, xi_2, format_size(node_info_dict['Disk'][disk][0]), n, xi_3, field_length, 0, READ_ONLY), 
+                            ("挂载目录: ", n, tab*2, disk, n, xi_1-1, field_length, 0, READ_ONLY),
+                            ("磁盘大小: ", n, xi_2+3, format_size(node_info_dict['Disk'][disk][0]), n, xi_3, field_length, 0, READ_ONLY), 
                             ("磁盘使用率: ", n, xi_4, f"{node_info_dict['Disk'][disk][1]}%", n, xi_5, field_length, 0, READ_ONLY)
                             ]
                     elements.extend(disk_info)
@@ -3586,7 +3586,7 @@ class graphics_deploy(Deploy):
                 init_dict={}
         else:
             self.log.logger.error(config_list)
-            self.showmsg(config_list, "ERROR")
+            self.showmsg(config_list, "Error")
             return
 
         # init
@@ -3604,7 +3604,7 @@ class graphics_deploy(Deploy):
                     result, msg=self.write_config(config[0], config[1])
                     if not result:
                         self.log.logger.error(msg)
-                        self.showmsg(msg, title="Error")
+                        self.showmsg(msg, "Error")
                         return False
             else:
                 self._show_non_resource(arch_dict)
@@ -4105,19 +4105,13 @@ class graphics_deploy(Deploy):
         """
         msg="检测并配置dialog环境, 请稍等..."
         self.log.logger.info(msg)
-        command="rpm -qi dialog"
-        result, msg=exec_command(command)
-        self.log.logger.debug(command)
-        if not result:
-            command="rpm -Uvh ../ext/dialog/dialog-1.2-5.20130523.el7.x86_64.rpm"
-            result, msg=exec_command(command)
-            self.log.logger.debug(command)
-            if result:
-                return True
-            else:
-                return False
-        else:
+        dialog_dir=f"{ext_dir}/dialog"
+        result, msg=pkg_install(dialog_dir, self.log)
+        if result:
             return True
+        else:
+            self.log.logger.error(msg)
+            return False
 
     def show(self):
         """说明
@@ -4142,7 +4136,7 @@ class graphics_deploy(Deploy):
         else:
             self.cancel()
 
-    def showmsg(self, title, msg, width=80, height=6):
+    def showmsg(self, msg, title, width=80, height=6):
         """msgbox显示
         """
         self.d.msgbox(msg, title=title, width=width, height=height)
