@@ -235,6 +235,7 @@ def install():
             # active-defrag-cycle-max 25
             # active-defrag-max-scan-fields 1000
             jemalloc-bg-thread yes
+            ignore-warnings ARM64-COW-BUG
             """
     config_dict.update(
             {
