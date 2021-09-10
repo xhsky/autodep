@@ -43,6 +43,7 @@ def config_jvm(file_, jvm_mem, log):
         with open(file_, "w", encoding="utf8") as f_w:
             f_w.writelines(text)
 
+'''
 def main():
     softname, action, conf_json=sys.argv[1:]
     conf_dict=json.loads(conf_json)
@@ -251,6 +252,7 @@ def main():
             log.logger.error(msg)
             flag=1
         sys.exit(flag)
+'''
 
 def install():
     """安装
@@ -395,8 +397,8 @@ def run():
     """运行
     """
     return_value=normal_code
-    namesrv_command=f"cd {rocketmq_dir} && bash ./bin/start.sh namesrv" 
-    broker_command=f"cd {rocketmq_dir} && bash ./bin/start.sh broker" 
+    namesrv_command=f"bash -lc 'cd {rocketmq_dir} && bash ./bin/start.sh namesrv'"
+    broker_command=f"bash -lc 'cd {rocketmq_dir} && bash ./bin/start.sh broker'" 
 
     log.logger.debug(f"{namesrv_command=}")
     result, msg=common.exec_command(namesrv_command)
@@ -428,8 +430,8 @@ def stop():
     """停止
     """
     return_value=normal_code
-    namesrv_command=f"cd {rocketmq_dir} && bash bin/mqshutdown namesrv" 
-    broker_command=f"cd {rocketmq_dir} && bash bin/mqshutdown broker" 
+    namesrv_command=f"bash -lc 'cd {rocketmq_dir} && bash bin/mqshutdown namesrv'" 
+    broker_command=f"bash -lc 'cd {rocketmq_dir} && bash bin/mqshutdown broker'"
 
     log.logger.debug(f"{namesrv_command=}")
     result, msg=common.exec_command(namesrv_command)

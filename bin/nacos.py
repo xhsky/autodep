@@ -122,7 +122,7 @@ def run():
         else:
             start_command=f"cd {nacos_dir} ; ./bin/startup.sh -p embedded"
     else:
-        start_command=f"cd {nacos_dir} ; ./bin/startup.sh -m standalone"
+        start_command=f"bash -lc 'cd {nacos_dir} ; ./bin/startup.sh -m standalone'"
     log.logger.debug(f"{start_command=}")
     result, msg=common.exec_command(start_command)
     if result:
@@ -143,7 +143,7 @@ def stop():
     """关闭
     """
     return_value=normal_code
-    stop_command=f"cd {nacos_dir} ; ./bin/shutdown.sh"
+    stop_command=f"bash -lc 'cd {nacos_dir} ; ./bin/shutdown.sh'"
     log.logger.debug(f"{stop_command=}")
     result, msg=common.exec_command(stop_command)
     if result:

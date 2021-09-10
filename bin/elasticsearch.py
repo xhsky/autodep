@@ -121,7 +121,7 @@ def run():
     """运行
     """
     return_value=normal_code
-    command=f"su elastic -l -c 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'" 
+    command=f"su elastic --session-command 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'" 
     log.logger.debug(f"{command=}")
 
     result, msg=common.exec_command(command, timeout=80)
@@ -143,7 +143,7 @@ def stop():
     """停止
     """
     return_value=normal_code
-    command=f"su elastic -l -c 'cd {es_dir} && kill `cat elasticsearch.pid`'" 
+    command=f"su elastic --session-command 'cd {es_dir} && kill `cat elasticsearch.pid`'" 
     log.logger.debug(f"{command=}")
 
     result, msg=common.exec_command(command)
