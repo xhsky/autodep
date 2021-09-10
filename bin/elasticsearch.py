@@ -65,7 +65,7 @@ def install():
     add_java_file=f"{es_dir}/bin/elasticsearch-env"          # 将es自身的java环境写入脚本, 防止与其他JAVA_HOME变量冲突
     with open(add_java_file, "r+") as f:
         raw_text=f.readlines()
-        java_home=f"export JAVA_HOME={es_dir}/jdk\n"
+        java_home=f"export ES_JAVA_HOME={es_dir}/jdk\n"
         raw_text.insert(2, java_home)
         f.seek(0)
         f.writelines(raw_text)
@@ -124,7 +124,7 @@ def run():
     command=f"su elastic -l -c 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'" 
     log.logger.debug(f"{command=}")
 
-    result, msg=common.exec_command(command)
+    result, msg=common.exec_command(command, timeout=80)
     if result:
         log.logger.debug(f"检测端口: {port_list=}")
         if not common.port_exist(port_list):
