@@ -98,7 +98,7 @@ class Deploy(object):
         """
         try: 
             with open(file_, "w", encoding="utf8") as f:
-                json.dump(dict_, f, ensure_ascii=False)
+                json.dump(dict_, f, ensure_ascii=False, indent=2)
             return True, ""
         except Exception as e:
             return False, str(e)
