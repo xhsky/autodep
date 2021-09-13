@@ -13,11 +13,12 @@ def install():
     """
     return_value=normal_code
     pkg_file=conf_dict["pkg_file"]
-    command="id -u elastic &> /dev/null || useradd elastic"
+    command="id -u elastic > /dev/null 2>&1 || useradd -m -s /bin/bash elastic"
     log.logger.debug(f"创建用户: {command=}")
     result, msg=common.exec_command(command)
     if not result:
         log.logger.error(msg)
+        return error_code
     value, msg=common.install(pkg_file, elasticsearch_src, elasticsearch_dst, elasticsearch_pkg_dir, located)
     if not value:
         log.logger.error(msg)
@@ -110,7 +111,7 @@ def install():
         log.logger.debug(f"配置环境: {command=}")
         result, msg=common.exec_command(command)
         if not result:
-            log.logger.error(result)
+            log.logger.error(msg)
             return_value=error_code
     else:
         log.logger.error(msg)
