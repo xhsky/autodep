@@ -122,7 +122,8 @@ def run():
     """运行
     """
     return_value=normal_code
-    command=f"su elastic --session-command 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'" 
+    #command=f"su elastic --session-command 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'" 
+    command=f"su elastic -lc 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'" 
     log.logger.debug(f"{command=}")
 
     result, msg=common.exec_command(command, timeout=80)
