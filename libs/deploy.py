@@ -4044,8 +4044,17 @@ class graphics_deploy(Deploy):
         if result:
             init_dict, arch_dict, ext_dict=config_list
         else:
-            self.log.logger.error(f"{result}")
-            self.d.msgbox(f"{result}")
+            self.log.logger.error(f"{config_list}")
+            self.d.msgbox(f"{config_list}")
+            return
+
+        check_flag=True
+        for node in arch_dict:
+            if "autocheck" not in arch_dict[node]["software"]:
+                check_flag=False
+            break
+        if not check_flag:
+            self.showmsg("未配置巡检", title="提示", width=30)
             return
 
         node_list=[]
