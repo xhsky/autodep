@@ -1,0 +1,148 @@
+{
+  "init": {
+    "py": "init.py"
+  }, 
+  "set_hosts": {
+    "py": "set_hosts.py"
+  }, 
+  "python3": {
+    "file": "python3.tar.gz",
+    "version": "3.9.7"
+  }, 
+  "dps": {
+    "file": "dreamProxyServer-1.20.1-aarch64-UOS20.tar.gz", 
+    "version": "1.20.1", 
+    "py": "dps.py", 
+    "type": "env"
+  }, 
+  "jdk": {
+    "file": "jdk-8u271-linux-aarch64.tar.gz", 
+    "version": "1.8.271", 
+    "py": "jdk.py", 
+    "type": "env"
+  }, 
+  "ffmpeg": {
+    "file": "ffmpeg-4.4-arm64-static.tar.gz", 
+    "version": "4.4", 
+    "py": "ffmpeg.py", 
+    "type": "env"
+  }, 
+  "dch": {
+     "file":"dreamCache-6.2.5-aarch64-UOS20.tar.gz", 
+     "version": "6.2.5", 
+     "py": "dch.py", 
+     "type": "env"
+  }, 
+  "glusterfs-server": {
+    "file": "glusterfs-7.9-deb-aarch64-UOS20.tar.gz", 
+    "version": "7.9", 
+    "py": "glusterfs.py", 
+    "type": "env"
+  }, 
+  "glusterfs-client": {
+    "file": "glusterfs-7.9-deb-aarch64-UOS20.tar.gz", 
+    "version": "7.9", 
+    "py": "glusterfs.py", 
+    "type": "platform"
+  }, 
+  "elasticsearch": {
+    "file": "elasticsearch-7.14.1-linux-aarch64.tar.gz", 
+    "version": "7.14.1", 
+    "py": "elasticsearch.py", 
+    "type": "env"
+  }, 
+  "erlang": {
+    "file":"erlang-23.2-aarch64-UOS20.tar.gz", 
+    "version": "23.2", 
+    "py": "erlang.py", 
+    "type": "env"
+  }, 
+  "rabbitmq": {
+    "file": "rabbitmq-server-generic-unix-3.8.9.tar.xz", 
+    "version": "3.8.9", 
+    "py": "rabbitmq.py", 
+    "type": "env"
+  }, 
+  "rocketmq": {
+    "file": "rocketmq-all-4.8.0-bin-release.tar.gz", 
+    "version": "4.8.0", 
+    "py": "rocketmq.py", 
+    "type": "env"
+  }, 
+  "autocheck": {
+    "file":"autocheck-1.3.4.tar.gz", 
+    "version": "1.3.4", 
+    "py": "autocheck.py", 
+    "type": "check"
+  }, 
+  "nacos": {
+    "file": "nacos-server-1.4.1.tar.gz", 
+    "version": "1.4.1", 
+    "py": "nacos.py", 
+    "type": "platform"
+  }, 
+  "dameng": {
+    "py": "localization_db.py", 
+    "type": "env"
+  }, 
+  "shentong": {
+    "py": "localization_db.py", 
+    "type": "env"
+  }, 
+  "kingbase": {
+    "py": "localization_db.py", 
+    "type": "env"
+  }, 
+  "program": {
+    "graduate": {
+      "basics": {
+        "file": "basics.tar.gz", 
+        "version": "1.0.0", 
+        "py": "program.py", 
+        "type": "program"
+      }, 
+      "main": {
+        "file": "main.tar.gz", 
+        "version": "1.0.0", 
+        "py": "program.py", 
+        "type": "program"
+      }, 
+      "recruit": {
+        "file": "recruit.tar.gz", 
+        "version": "1.0.0", 
+        "py": "program.py", 
+        "type": "program"
+      }, 
+      "teaching": {
+        "file": "teaching.tar.gz", 
+        "version": "1.0.0", 
+        "py": "program.py", 
+        "type": "program"
+      }, 
+      "static": {
+        "file": "frontend.tar.gz", 
+        "version": "1.0.0", 
+        "py": "frontend.py", 
+        "type": "frontend"
+      }, 
+      "sql": {
+        "file": "dsfa_graduate_sql-1.0.0.tar.gz", 
+        "version": "1.0.0", 
+        "py": "sql.py", 
+        "type": "sql"
+      }, 
+      "dmp": {
+        "file": "graduate_dmp.tar.gz", 
+        "version": "1.0.0", 
+        "py": "sql.py", 
+        "type": "sql"
+      }, 
+      "gateway": {
+        "file": "gateway.tar.gz", 
+        "version": "1.0", 
+        "py": "program.py", 
+        "type": "program"
+      }
+    }
+  } 
+} 
