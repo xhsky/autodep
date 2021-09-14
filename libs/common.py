@@ -142,7 +142,7 @@ def pkg_install(pkgs_dir, log):
         if result:
             pkg_info=msg.split("\n")
             pkg_name=pkg_info[0].split(":")[1].strip()
-            pkg_version=pkg_info[1].split(":")[1].strip()
+            pkg_version=pkg_info[2].split(":")[1].strip()
 
             command=f"{install_query_command} {pkg_name} | grep -E ^Version"
             log.logger.debug(f"{command}")
@@ -187,22 +187,23 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
 
         # 建立软连接
         if link_dst is not None:
-            for i in os.listdir(located):
-                if i.startswith(link_src):
-                    src=f"{located}/{i}"
-                    break
             if link_dst.startswith("/"):
                 dst=link_dst
             else:
                 dst=f"{located}/{link_dst}"
             if os.path.exists(dst) and os.path.islink(dst):
                 os.remove(dst)
+
+            for i in os.listdir(located):
+                if i.startswith(link_src):
+                    src=f"{located}/{i}"
+                    break
             log.logger.debug(f"建立软连接: {src=} ==> {dst=}")
             os.symlink(src, dst)
 
         # 安装依赖
         if pkg_dir is not None:
-            result, msg=pkg_install(pkg_dir, log)
+            result, msg=pkg_install(f"{dst}/{pkg_dir}", log)
             return result, msg
         else:
             return True, None
