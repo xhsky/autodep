@@ -3,7 +3,6 @@
     "software": ["glusterfs-server"], 
     "located": "/data1", 
     "glusterfs-server_info":{
-        "volume_dir": "/data_db",                 // 服务端提供共享的原始目录
         "members":["web1", "web2", "web3"],       // 集群成员
         "port": {
           "glusterd_port": 24007,           // glusterd端口
@@ -15,7 +14,6 @@
     "software": ["glusterfs-server"], 
     "located": "/data1", 
     "glusterfs-server_info":{
-        "volume_dir": "/data_db",                 // 服务端提供共享的原始目录
         "members":["web1", "web2", "web3"],       // 集群成员
         "port": {
           "glusterd_port": 24007,                 // glusterd端口
@@ -27,7 +25,6 @@
     "software": ["glusterfs-server"], 
     "located": "/data1", 
     "glusterfs-server_info":{
-        "volume_dir": "/data_db",                 // 服务端提供共享的原始目录
         "members":["web1", "web2", "web3"],       // 集群成员
         "port": {
           "glusterd_port": 24007,           // glusterd端口

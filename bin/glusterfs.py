@@ -76,7 +76,7 @@ def install():
 
 def run():
     if server_flag == 1:    # server
-        volume_dir=glusterfs_info_dict.get("volume_dir")
+        volume_dir=f"{located}/brick"
         members=glusterfs_info_dict.get("members")
         try:
             log.logger.debug(f"建立volume目录: {volume_dir}")
