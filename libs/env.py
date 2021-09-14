@@ -14,7 +14,7 @@ log_platform_level="debug"
 log_update_level="debug"
 
 # 操作系统支持
-support_os=["centos 7"]
+support_os=["centos 7", "uos 20"]
 # 国产化软件及端口
 localization_soft_port={
         "autocheck": 0, 
@@ -24,7 +24,6 @@ localization_soft_port={
         }
 
 # 配置文件
-#conf_file="./config/conf.json"
 #program_file="./config/program.json"
 init_file="./config/init.json"
 arch_file="./config/arch.json"
@@ -122,56 +121,12 @@ interface={
         "platform_check": ["125.69.82.54", 14206, "/project/deploy/uploadXjText"],  # 公司平台巡检文件接口
         }
 
-"""
-local_pkg_name_dict={
-        "python3": "python3.tar.gz",
-        "nginx": "nginx-1.17.9-bin.tar.gz", 
-        "jdk": "jdk-8u251-linux-x64.tar.gz", 
-        "tomcat": "apache-tomcat-8.5.51.tar.gz", 
-        "ffmpeg": "ffmpeg-4.2.2-bin.tar.gz", 
-        "redis": "redis-5.0.7-bin.tar.gz", 
-        "mysql": "mysql-8.0.19.tar.gz", 
-        "glusterfs": "glusterfs-7.5-rpm.tar.gz", 
-        "elasticsearch": "elasticsearch-7.8.1-linux-x86_64.tar.gz", 
-        "erlang": "erlang_23_2.tar.gz", 
-        "rabbitmq": "rabbitmq-server-generic-unix-3.8.9.tar.xz", 
-        "rocketmq": "rocketmq-all-4.8.0-bin-release.tar.gz", 
-        "autocheck": "autocheck-1.3.4.tar.gz"
-        } 
-
-# 各软件权重比
-soft_weights_dict={
-        "elasticsearch": 1, 
-        "glusterfs": 1, 
-        "nginx": 1, 
-        "redis": 2, 
-        "ffmpeg": 1, 
-        "mysql": 3, 
-        "erlang": 0, 
-        "rabbitmq": 1, 
-        "rocketmq": 1, 
-        "jdk": 0, 
-        "tomcat": 2, 
-        "program": 1
-        }
-# 部署环境下的权重基数
-soft_weights_unit_dict={
-        "演示环境": 0.5, 
-        "测试环境": 1, 
-        "正式环境": 2
-        }
-host_weights_unit_dict={
-        "cpu": 1,               # 1 cpu core = 1
-        "mem": 536870912        # 512M = 1
-        }
-"""
-
 # link
 ffmpeg_src="ffmpeg-"
 ffmpeg_dst="ffmpeg"
 ffmpeg_pkg_dir=None
 
-elasticsearch_src="elasticsearch"
+elasticsearch_src="elasticsearch-"
 elasticsearch_dst="elasticsearch"
 elasticsearch_pkg_dir=None
 
@@ -189,7 +144,7 @@ jdk_src="jdk"
 jdk_dst="jdk"
 jdk_pkg_dir=None
 
-erl_src="erlang"
+erl_src="erlang-"
 erl_dst="erlang"
 erl_pkg_dir=None
 
