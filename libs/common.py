@@ -136,13 +136,13 @@ def pkg_install(pkgs_dir, log):
 
     not_install_pkgs_list=[]
     for i in pkg_files:
-        command=f"{not_query_command} {pkgs_dir}/{i} | head -n 3"
+        command=f'{not_query_command} {pkgs_dir}/{i} | grep -E "^\<Package\>|^\<Name\>|^\<Version\>"'
         log.logger.debug(f"{command}")
         result, msg=exec_command(command)
         if result:
             pkg_info=msg.split("\n")
             pkg_name=pkg_info[0].split(":")[1].strip()
-            pkg_version=pkg_info[2].split(":")[1].strip()
+            pkg_version=pkg_info[1].split(":")[1].strip()
 
             command=f"{install_query_command} {pkg_name} | grep -E ^Version"
             log.logger.debug(f"{command}")
