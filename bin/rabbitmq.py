@@ -119,7 +119,7 @@ def run():
                 log.logger.debug("添加账号权限")
                 for vhost, user, password in zip(vhosts_list, users_list, passwords_list):
                     command=f"rabbitmqctl add_user {user} {password} && rabbitmqctl add_vhost {vhost} && rabbitmqctl set_permissions -p {vhost} {user} '.*' '.*' '.*'"
-                    account_command=f"bash -lc '{command}'"
+                    account_command=f'bash -lc "{command}"'
                     log.logger.debug(f"{account_command=}")
                     result, msg=common.exec_command(account_command)
                     if not result:
@@ -196,7 +196,7 @@ if __name__ == "__main__":
             rabbitmq_port, 
             beam_port
             ]
-
+    
     port_list=[epmd_port]
     port_list.extend(mq_port_list)
 
