@@ -198,6 +198,8 @@ def install(soft_file, link_src, link_dst, pkg_dir, located):
                 if i.startswith(link_src):
                     src=f"{located}/{i}"
                     break
+            else:
+                return False, f"未找到{link_src}开头的目录"
             log.logger.debug(f"建立软连接: {src=} ==> {dst=}")
             os.symlink(src, dst)
 
