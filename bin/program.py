@@ -400,7 +400,7 @@ def start():
     """启动
     """
     return_value=normal_code
-    start_command=f"cd {program_dir} ; bash {program_sh_file} start" 
+    start_command=f"bash -lc 'cd {program_dir} ; bash {program_sh_file} start'" 
     log.logger.debug(f"{start_command=}")
     result, msg=common.exec_command(start_command)
     if result:
@@ -416,7 +416,7 @@ def stop():
     """停止
     """
     return_value=normal_code
-    stop_command=f"cd {program_dir} ; bash {program_sh_file} stop"
+    stop_command=f"bash -lc 'cd {program_dir} ; bash {program_sh_file} stop'"
     log.logger.debug(f"{stop_command=}")
     result, msg=common.exec_command(stop_command)
     if result:
