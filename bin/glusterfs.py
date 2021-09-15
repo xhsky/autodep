@@ -2,7 +2,7 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, os, json
+import sys, os, json, time
 from libs import common
 from libs.env import log_remote_level, glusterfs_src, glusterfs_dst, \
         glusterfs_all_pkg_dir, glusterfs_client_pkg_dir, glusterfs_volume_name, \
@@ -92,6 +92,8 @@ def run():
                 if not result:
                     log.logger.error(msg)
                     return error_code
+                else:
+                    time.sleep(1)           # 迅速添加后会导致创建volume失败...
 
             # 判读volume是否存在 以决定其它gluster是否去创建volume
             volume_exist_command=f"gluster volume info {glusterfs_volume_name} > /dev/null 2>&1"
