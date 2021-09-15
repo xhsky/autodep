@@ -12,7 +12,6 @@
     }, 
     "program_graduate_sql_info": {
       "db_type": "mysql", 
-      "db_name": "db2", 
       "db_port": 3306, 
       "root_password": "xxxxx", 
 
