@@ -94,7 +94,7 @@ def run():
                     return error_code
 
             # 判读volume是否存在 以决定其它gluster是否去创建volume
-            volume_exist_command=f"gluster volume info {glusterfs_volume_name} &> /dev/null"
+            volume_exist_command=f"gluster volume info {glusterfs_volume_name} > /dev/null 2>&1"
             log.logger.debug(f"查看volume是否存在: {volume_exist_command=}")
             result, msg=common.exec_command(volume_exist_command)
             if result:

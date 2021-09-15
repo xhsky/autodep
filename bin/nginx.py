@@ -12,7 +12,7 @@ def install():
     """
     return_value=0
     pkg_file=conf_dict["pkg_file"]
-    command="id -u nginx &> /dev/null || useradd -r nginx"
+    command="id -u nginx > /dev/null 2>&1 || useradd -r nginx"
     log.logger.debug(f"创建用户: {command=}")
     result, msg=common.exec_command(command)
     if not result:
