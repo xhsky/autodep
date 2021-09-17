@@ -24,7 +24,16 @@
 ### ffmpeg
 
 1. 从官网下载即可(https://johnvansickle.com/ffmpeg/)
+
 2. 重新解压缩, 将格式换为tar.gz格式
+
+   
+
+### backup_tool
+
+1. 目录结构为`backup_tool/{bin/backup.py,config,logs}`
+2. `backup.py`文件可从`autodep/scripts/下获取`
+3. 执行:`/opt/python3/bin/python3 bin/backup.py config/upload.json`
 
 
 

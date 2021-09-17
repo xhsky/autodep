@@ -185,6 +185,11 @@ nacos_src="nacos"
 nacos_dst=None
 nacos_pkg_dir=None
 
+backup_tool_src="backup_tool"
+backup_tool_dst=None
+backup_tool_pkg_dir=None
+
+
 '''
 ## nginx配置/代码模块转发配置
 nginx_server_config="""

@@ -39,6 +39,12 @@
     "py": "ffmpeg.py", 
     "type": "env"
   }, 
+  "backup_tool": {
+    "file": "backup_tool-1.0.tar.gz", 
+    "version": "1.0", 
+    "py": "backup_tool.py", 
+    "type": "env"
+  }, 
   "redis": {
      "file":"redis-5.0.7-bin.tar.gz", 
      "version": "5.0.7", 
