@@ -4,7 +4,7 @@
 # sky
 
 import sys, json, os
-from libs.common import Logger, exec_command
+from libs.common import Logger, exec_command, config
 from libs.env import log_remote_level, normal_code, error_code, \
         located_dir_link
 
@@ -33,16 +33,31 @@ def main():
 
         # 配置hosts
         hosts_file="/etc/hosts"
-        with open(hosts_file, "r") as f:
-            host_text_list=f.readlines()
-            added_hosts=[]
-            for hosts in hosts_list:
-                hosts=f"{hosts}\n"          # 添加换行符
-                if hosts not in host_text_list:
-                    added_hosts.append(hosts)
-        with open(hosts_file, "a") as f:
-            f.writelines(added_hosts)
-        log.logger.info(f"hosts配置完成")
+
+        config_dict={
+                "hosts":{
+                    "config_file": hosts_file,
+                    "config_context": "\n".join(hosts_list), 
+                    "mode": "r+"
+                    }
+                }
+        result, msg=config(config_dict)
+        if result:
+            log.logger.info(f"hosts配置完成")
+        else:
+            log.logger.error(msg)
+            return_value=error_code
+
+
+        #with open(hosts_file, "r") as f:
+        #    host_text_list=f.readlines()
+        #    added_hosts=[]
+        #    for hosts in hosts_list:
+        #        hosts=f"{hosts}\n"          # 添加换行符
+        #        if hosts not in host_text_list:
+        #            added_hosts.append(hosts)
+        #with open(hosts_file, "a") as f:
+        #    f.writelines(added_hosts)
 
         # 建立安装目录
         log.logger.info(f"建立安装目录: {located}")

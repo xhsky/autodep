@@ -249,16 +249,26 @@ def config(config_dict):
     try:
         for config in config_dict:
             mode=config_dict[config]["mode"]
-            context=textwrap.dedent(config_dict[config]["config_context"])
+            type_= config_dict[config].get("type")
+
+            if type_=="json":
+                context=config_dict[config]["config_context"]
+            else:
+                context=textwrap.dedent(config_dict[config]["config_context"])
             filename=config_dict[config]["config_file"]
             if mode=="w" or mode=="a":
                 with open(filename, mode, encoding="utf-8") as f:
-                    f.write(context)
+                    if type_=="json":
+                        json.dump(context, f, ensure_ascii=False, indent=2)
+                    else:
+                        f.write(context)
             elif mode=="r+":
                 with open(filename, mode, encoding="utf-8") as f:
                     all_text=f.readlines()
-                    if context not in all_text:
-                        f.write(context)
+                    for line in context.split("\n"):
+                        line=f"{line}\n"
+                        if line not in all_text:
+                            f.write(line)
         return True, None
     except Exception as e:
         return False, str(e)
