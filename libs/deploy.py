@@ -2992,7 +2992,7 @@ class graphics_deploy(Deploy):
             self.d.msgbox("发生莫名错误, 请返回菜单重试", width=40, height=5)
             return False, error_code
 
-    def adaptation_config(self, arch_dict, host_info_dict, localization_dict):
+    def adaptation_config(self, arch_dict, host_info_dict, localization_dict, init_dict):
         """适应配置文件, 并校验资源
         """
         # 将巡检信息写入arch_dict
@@ -3000,6 +3000,11 @@ class graphics_deploy(Deploy):
 
         # 资源校验适配
         result, arch_dict=self.resource_verifi(arch_dict, host_info_dict, localization_dict)
+
+        # 为备份信息中远程备份主机添加user和password
+        if result:
+            arch_dict=self._set_backup_tool_remote_info(arch_dict, init_dict)
+
         return result, arch_dict
 
     def init(self, title, init_dict, arch_dict, ext_dict):
@@ -3597,7 +3602,7 @@ class graphics_deploy(Deploy):
             init_dict=config_dict["init_dict"]
             arch_dict=config_dict["arch_dict"]
             localization_dict=config_dict["localization_dict"]
-            result, arch_dict=self.adaptation_config(arch_dict, host_info_dict, localization_dict)
+            result, arch_dict=self.adaptation_config(arch_dict, host_info_dict, localization_dict, init_dict)
             if result:
                 for config in [(arch_dict, arch_file), (init_dict, init_file)]:
                     self.log.logger.debug(f"写入{config[1]}")
@@ -3805,6 +3810,23 @@ class graphics_deploy(Deploy):
                             "sms_receive": sms_list, 
                             "sms_subject": f"{project_name}预警"
                             }
+        return arch_dict
+
+    def _set_backup_tool_remote_info(self, arch_dict, init_dict):
+        """若有备份且有远程备份, 则为远程备份中的node添加相应的user, password, port
+        """
+        backup_tool_name="backup_tool"
+        for node in arch_dict:
+            if backup_tool_name in arch_dict[node]["software"]:
+                for backup_type_info in arch_dict[node][f"{backup_tool_name}_info"]:
+                    for backup_info in arch_dict[node][f"{backup_tool_name}_info"][backup_type_info]:
+                        if backup_info != "type":
+                            if arch_dict[node][f"{backup_tool_name}_info"][backup_type_info][backup_info].get("remote_backup") is not None:
+                                self.log.logger.debug(f"为{node}添加{backup_info}的远程备份信息")
+                                remote_backup_host=arch_dict[node][f"{backup_tool_name}_info"][backup_type_info][backup_info]["remote_backup"]["remote_backup_host"]
+                                arch_dict[node][f"{backup_tool_name}_info"][backup_type_info][backup_info]["remote_backup"]["user"]="root"
+                                arch_dict[node][f"{backup_tool_name}_info"][backup_type_info][backup_info]["remote_backup"]["password"]=init_dict[arch_dict[node]["ip"]]["root_password"]
+                                arch_dict[node][f"{backup_tool_name}_info"][backup_type_info][backup_info]["remote_backup"]["port"]=init_dict[arch_dict[node]["ip"]]["port"]
         return arch_dict
 
     def management(self, title):
