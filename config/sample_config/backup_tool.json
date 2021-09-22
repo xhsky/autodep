@@ -26,6 +26,7 @@
             "remote_backup_host": "db2",                    // 远程备份主机(该主机必须在集群中存在)
             "user": "root",                                 // 程序自动补充, 和平台无关
             "password": "xxx",                              // 程序自动补充, 和平台无关
+            "port": 22, 
             "remote_backup_dir": "/dream/backup_upload"     // 远程备份目的地址
           }
         }, 
@@ -46,23 +47,29 @@
         "type": "dm", 
         "user1":{                                                 // 备份的模式名/用户名
           "backup_dir": "/dream/dm_bakcup/user1", 
+          "system_user": "dmdba",                                 // 可直接执行dexp命令的用户. 默认为root. 程序自动补充, 和平台无关
+          "dba_password": "xxx",                                  // dba密码. 程序自动补充, 和平台无关
           "timing": "0 1 * * *", 
           "keep_days": 7,                                         // 保留天数(定期删除)
           "remote_backup":{                                       // 是否启用远程备份, 无该参数则不启用
             "remote_backup_host": "db2",                          // 远程备份主机(该主机必须在集群中存在)
             "user": "root",                                 // 程序自动补充, 和平台无关
             "password": "xxx",                              // 程序自动补充, 和平台无关
+            "port": 22, 
             "remote_backup_dir": "/dream/mysql_backup/user1"      // 远程备份目的地址
           }
         }, 
         "user2":{                                                 // 备份的模式名/用户名
           "backup_dir": "/dream/dm_bakcup/user1", 
+          "system_user": "dmdba",                                 // 可直接执行dexp命令的用户. 默认为root. 程序自动补充, 和平台无关
+          "dba_password": "xxx",                                  // dba密码. 程序自动补充, 和平台无关
           "timing": "0 1 * * *", 
           "keep_days": 7,                                         // 保留天数(定期删除)
           "remote_backup":{                                       // 是否启用远程备份, 无该参数则不启用
             "remote_backup_host": "db2",                          // 远程备份主机(该主机必须在集群中存在)
             "user": "root",                                       // 程序自动补充, 和平台无关
             "password": "xxx",                                    // 程序自动补充, 和平台无关
+            "port": 22, 
             "remote_backup_dir": "/dream/mysql_backup/user1"      // 远程备份目的地址
           }
         }
@@ -70,6 +77,7 @@
       "mysql_backup":{
         "type":"mysql", 
         "dbname1":{                                               // 备份的库名
+          "root_password": "DreamSoft_135",                       // root密码, 程序自动补充, 和平台无关
           "backup_dir": "/dream/mysql_backup/dbname1",            // 备份目的地址
           "timing": "0 1 * * *", 
           "keep_days": 7,                                         // 保留天数(定期删除)
@@ -77,10 +85,12 @@
             "remote_backup_host": "db2",                          // 远程备份主机(该主机必须在集群中存在)
             "user": "root",                                       // 程序自动补充, 和平台无关
             "password": "xxx",                                    // 程序自动补充, 和平台无关
+            "port": 22, 
             "remote_backup_dir": "/dream/mysql_backup/dbname1"    // 远程备份目的地址
           }
         }, 
         "dbname2":{                                               // 备份的库名
+          "root_password": "DreamSoft_135",                       // root密码, 程序自动补充, 和平台无关
           "backup_dir": "/dream/mysql_backup/dbname2",            // 备份目的地址
           "timing": "0 1 * * *", 
           "keep_days": 7,                                         // 保留天数(定期删除)
@@ -88,6 +98,7 @@
             "remote_backup_host": "db2",                          // 远程备份主机(该主机必须在集群中存在)
             "user": "root",                                       // 程序自动补充, 和平台无关
             "password": "xxx",                                    // 程序自动补充, 和平台无关
+            "port": 22, 
             "remote_backup_dir": "/dream/mysql_backup/dbname2"    // 远程备份目的地址
           }
         }

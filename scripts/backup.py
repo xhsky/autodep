@@ -6,6 +6,7 @@
 import os, sys, json, logging, tarfile, time
 from logging import handlers
 import paramiko
+from subprocess import run
 
 def get_time_format():
     return time.strftime('%Y%m%d%H%M', time.localtime())
@@ -103,7 +104,6 @@ def date_comp(keep_days, mtime):
 def remote_backup(remote_backup_dict, backup_file, keep_days):
     '''远程备份
     '''
-
     ssh=free_pass_set(remote_backup_dict)
     remote_backup_dir=remote_backup_dict["remote_backup_dir"]
     remote_file=f"{remote_backup_dir}/{backup_file.split('/')[-1]}"
@@ -113,7 +113,7 @@ def remote_backup(remote_backup_dict, backup_file, keep_days):
         sftp.stat(remote_backup_dir)
     except FileNotFoundError as e:
         logger.info(f"创建远程备份目录'{remote_backup_dir}'")
-        sftp.mkdir(remote_backup_dir)
+        ssh.exec_command(f"mkdir -p {remote_backup_dir}")
 
     ip=remote_backup_dict["remote_backup_host"]
     logger.info(f"远程备份中: {backup_file} --> {ip}:{remote_file}")
@@ -122,6 +122,16 @@ def remote_backup(remote_backup_dict, backup_file, keep_days):
     if keep_days is not None:
         backup_keep(remote_backup_dir, keep_days, keyname, "remote", sftp=sftp)
     sftp.close()
+
+def exec_command(command, timeout=45):
+    try:
+        result=run(command, capture_output=True, encoding="utf8", shell=True, timeout=timeout)
+        if result.returncode == 0:
+            return True, result.stdout
+        else:
+            return False, result.stderr
+    except Exception as e:
+        return False, str(e)
 
 def text_backup(src_dir, dst_dir, keyname):
     '''文本类备份
@@ -137,11 +147,40 @@ def text_backup(src_dir, dst_dir, keyname):
         logger.error(f"备份目录({src_dir})不存在, 该备份忽略")
         return ""
 
-def dm_backup():
-    pass
+def db_backup(dump_db_command, dump_db_file, dst_dir, dbname):
+    '''
+    '''
+    logger.info(f"数据'{dbname}'备份中, 请稍后...")
+    logger.debug(f"{dump_db_command=}")
+    result, msg=exec_command(dump_db_command, timeout=3600)
+    if result:
+        logger.info(f"数据压缩中, 请稍后...")
+        backup_file=text_backup(dump_db_file, dst_dir, dbname)
+        if backup_file != "":
+            if os.path.exists(dump_db_file):
+                logger.info("清理数据包...")
+                os.remove(dump_db_file)
+        return backup_file
+    else:
+        logger.error(msg)
+        return ""
 
-def mysql_backup():
-    pass
+def dm_backup(system_user, schema, dba_password, dst_dir):
+    '''dm备份
+    '''
+    dba_user="sysdba"
+    if system_user is None:
+        system_user="root"
+    db_abs_file=f"{dst_dir}/{schema}.dmp"
+    dump_db_command=f"chown -R {system_user} {dst_dir} && su -l {system_user} -c 'dexp userid={dba_user}/{dba_password} file={db_abs_file} log=/tmp/{schema}.log owner={schema} dummy=Y LOG_WRITE=Y'"
+    return db_backup(dump_db_command, db_abs_file, dst_dir, schema)
+
+def mysql_backup(dbname, root_password, dst_dir):
+    '''mysql数据库备份
+    '''
+    db_abs_file=f"{dst_dir}/{dbname}.sql"
+    dump_db_command=f"mysqldump -uroot -p{root_password} --set-gtid-purged=OFF {db_name} > {db_abs_file}"
+    return db_backup(dump_db_command, db_abs_file, dst_dir, dbname)
 
 def logger_config(log_file, log_name):
     '''日志
@@ -152,7 +191,7 @@ def logger_config(log_file, log_name):
     format_str=logging.Formatter(fmt, datefmt='%Y-%m-%d %H:%M:%S')                           # 设置日志格式
 
     fh=handlers.TimedRotatingFileHandler(filename=log_file, when="D", backupCount=7, encoding='utf-8')
-    fh.setLevel(logging.INFO)
+    fh.setLevel(logging.DEBUG)
     fh.setFormatter(format_str)                            # 设置文件里写入的格式
     logger.addHandler(fh)                             # 把对象加到logger里
 
@@ -184,9 +223,12 @@ if __name__ == "__main__":
         src_dir=conf_dict["source_dir"]
         backup_file=text_backup(src_dir, dst_dir, keyname)
     elif type_=="dm" or type_=="dameng":
-        pass
+        system_user=conf_dict.get("system_user")
+        dba_password=conf_dict["dba_password"]
+        backup_file=dm_backup(system_user, keyname, dba_password, dst_dir)
     elif type_=="mysql":
-        pass
+        root_password=conf_dict["root_password"]
+        backup_file=mysql_backup(keyname, root_password, dst_dir)
 
     if backup_file != "":
         logger.info(f"'{backup_file}'备份成功")
@@ -197,5 +239,4 @@ if __name__ == "__main__":
 
         if conf_dict.get("remote_backup") is not None:
             remote_backup(conf_dict["remote_backup"], backup_file, keep_days)
-
 
