@@ -5,28 +5,123 @@
 
 import os, sys, json, logging, tarfile, time
 from logging import handlers
+import paramiko
 
 def get_time_format():
     return time.strftime('%Y%m%d%H%M', time.localtime())
 
-def backup_keep(dst_dir, keep_days, keyname):
+def backup_keep(dst_dir, keep_days, keyname, type_, **kwargs):
     '''定时删除
     '''
-    now_time=time.time()
-    diff_time=keep_days*60*60*24
-    if os.path.exists(dst_dir):
-        logger.info("开始定时删除...")
-        for filename in os.listdir(dst_dir):
-            if filename.startswith(keyname) and filename.endswith("tar.gz"):
+    if type_=="local":
+        if os.path.exists(dst_dir):
+            for filename in os.listdir(dst_dir):
+                if filename.startswith(keyname) and filename.endswith("tar.gz"):
+                    filename_abs=f"{dst_dir}/{filename}"
+                    if os.path.isfile(filename_abs):
+                        mtime=os.path.getmtime(filename_abs)
+                        if date_comp(keep_days, mtime):
+                            logger.info(f"本地备份定时删除: '{filename_abs}'")
+                            os.remove(filename_abs)
+    elif type_=="remote":
+        sftp=kwargs["sftp"]
+        attr_list=sftp.listdir_attr(dst_dir)
+        for f in attr_list:
+            filename=f.filename
+            if filename.startswith(keyname) and filename.endswith("tar.gz") and date_comp(keep_days, f.st_mtime):
                 filename_abs=f"{dst_dir}/{filename}"
-                if os.path.isfile(filename_abs):
-                    mtime=os.path.getmtime(filename_abs)
-                    if now_time - mtime >= diff_time:
-                        logger.info(f"删除'{filename_abs}'")
-                        os.remove(filename_abs)
+                logger.info(f"远程备份定时删除: '{filename_abs}'")
+                sftp.remove(filename_abs)
 
-def remote_backup(remote_backup_dict):
-    pass
+def free_pass_set(remote_backup_dict):
+    '''设置免密码登录, 返回ssh
+    '''
+    key_dir=f"{os.environ['HOME']}/.ssh"
+    key_file=f"{key_dir}/id_rsa"
+    key_pub_file=f"{key_dir}/id_rsa.pub"
+    ip=remote_backup_dict["remote_backup_host"]
+    user=remote_backup_dict["user"]
+    password=remote_backup_dict["password"]
+    port=remote_backup_dict["port"]
+
+    ssh=paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
+
+    if not os.path.exists(key_dir):
+        logger.info(f"创建{key_dir}目录")
+        os.mkdir(key_dir)
+        os.chmod(key_dir, 0o700)
+
+    if not os.path.exists(key_file) or not os.path.exists(key_pub_file):
+        logger.info(f"生成公私钥文件")
+        key=paramiko.rsakey.RSAKey.generate(2048)    # 生成私钥文件
+        key.write_private_key_file(key_file)
+
+        key_pub=key.get_base64() # 生成公钥文件
+        key_pub_and_sign="%s%s" % (" ".join(["ssh-rsa", key_pub]), "\n")
+        with open(key_pub_file, "w") as f:
+            f.write(key_pub_and_sign)
+
+    try:
+        with open(key_pub_file, "r") as f:
+            key_pub=f.read()
+        ssh.connect(ip, port=port, username=user, key_filename=key_file, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
+        logger.info(f"已实现免密码登录, 可直接远程备份")
+    except Exception as e:
+        try:
+            ssh.connect(ip, port=port, username=user, password=password, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
+        except Exception as e:
+            logger.error(f"远程信息有误: {e}")
+            sys.exit(127)
+
+        logger.info("传输私钥...")
+        if user=="root":
+            ssh_dir="/root/.ssh"
+        else:
+            ssh_dir=f"/home/{user}/.ssh"
+
+        sftp=ssh.open_sftp()
+        try:
+            sftp.stat(ssh_dir)
+        except FileNotFoundError as e:
+            sftp.mkdir(ssh_dir, 0o700)
+        sftp_file=sftp.file(f"{ssh_dir}/authorized_keys", "a")
+        sftp_file.write(key_pub)
+        sftp_file.chmod(384)
+        sftp_file.close()
+        sftp.close()
+        logger.info(f"{ip}免密码登录完成")
+    return ssh
+
+def date_comp(keep_days, mtime):
+    '''判断mtime是否超过keey_days
+    '''
+    now_time=time.time()
+    keep_days_time=keep_days*60*60*24
+    return now_time - mtime >= keep_days_time
+
+def remote_backup(remote_backup_dict, backup_file, keep_days):
+    '''远程备份
+    '''
+
+    ssh=free_pass_set(remote_backup_dict)
+    remote_backup_dir=remote_backup_dict["remote_backup_dir"]
+    remote_file=f"{remote_backup_dir}/{backup_file.split('/')[-1]}"
+    sftp=ssh.open_sftp()
+
+    try:
+        sftp.stat(remote_backup_dir)
+    except FileNotFoundError as e:
+        logger.info(f"创建远程备份目录'{remote_backup_dir}'")
+        sftp.mkdir(remote_backup_dir)
+
+    ip=remote_backup_dict["remote_backup_host"]
+    logger.info(f"远程备份中: {backup_file} --> {ip}:{remote_file}")
+    sftp.put(backup_file, remote_file, confirm=True)
+
+    if keep_days is not None:
+        backup_keep(remote_backup_dir, keep_days, keyname, "remote", sftp=sftp)
+    sftp.close()
 
 def text_backup(src_dir, dst_dir, keyname):
     '''文本类备份
@@ -70,19 +165,19 @@ def logger_config(log_file, log_name):
     
 if __name__ == "__main__":
     try:
-        backup_home=os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-        logger=logger_config(f"{backup_home}/logs/backup.log", "backup")
         conf_file=sys.argv[1]
+        backup_home=os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
         with open(conf_file, "r", encoding="utf8") as f:
             conf_dict=json.load(f)
+        keyname=conf_dict["keyword"]
+        logger=logger_config(f"{backup_home}/logs/{keyname}.log", "backup")
     except Exception as e:
-        logger.error(e)
+        print(e)
         sys.exit(127)
 
     type_=conf_dict["type"]
     logger.info(f"开始备份({type_})...")
 
-    keyname=conf_dict["keyword"]
     dst_dir=conf_dict["backup_dir"]
     os.makedirs(dst_dir, exist_ok=1)
     if type_=="text":
@@ -96,11 +191,11 @@ if __name__ == "__main__":
     if backup_file != "":
         logger.info(f"'{backup_file}'备份成功")
 
-    keep_days=conf_dict.get("keep_days")
-    if keep_days is not None:
-        backup_keep(dst_dir, keep_days, keyname)
+        keep_days=conf_dict.get("keep_days")
+        if keep_days is not None:
+            backup_keep(dst_dir, keep_days, keyname, "local")
 
-    if conf_dict.get("remote_backup") is not None:
-        remote_backup(conf_dict["remote_backup"])
+        if conf_dict.get("remote_backup") is not None:
+            remote_backup(conf_dict["remote_backup"], backup_file, keep_days)
 
 
