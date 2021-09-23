@@ -182,7 +182,7 @@ def mysql_backup(dbname, root_password, dst_dir):
     '''mysql数据库备份
     '''
     db_abs_file=f"{dst_dir}/{dbname}.sql"
-    dump_db_command=f"mysqldump -uroot -p{root_password} --set-gtid-purged=OFF {db_name} > {db_abs_file}"
+    dump_db_command=f"/dream/mysql/bin/mysqldump -uroot -p{root_password} --set-gtid-purged=OFF {dbname} > {db_abs_file}"
     return db_backup(dump_db_command, db_abs_file, dst_dir, dbname)
 
 def logger_config(log_file, log_name):
