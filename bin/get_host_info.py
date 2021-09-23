@@ -26,6 +26,19 @@ def main():
         host_info_dict["kernel_version"]=kernel_version
         host_info_dict["cpu_arch"]=platform.machine()
 
+        # 网卡信息
+        nic=psutil.net_if_addrs()
+        host_info_dict["adapter"]={}
+        for adapter in nic:
+            ipv4=None
+            mac=None
+            for snic in nic[adapter]:
+                if snic.family.name == "AF_INET":
+                    ipv4=snic.address
+                elif snic.family.name in ["AF_LINK", "AF_PACKET"]:
+                    mac=snic.address
+            host_info_dict["adapter"][adapter]={ipv4: mac}
+
         # disk
         host_info_dict["Disk"]={}
         all_disk=psutil.disk_partitions()
