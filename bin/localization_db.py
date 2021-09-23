@@ -54,6 +54,7 @@ def run():
     return_value=normal_code
     log.logger.debug(f"创建业务账号...")
     if softname=="dameng":
+        #select distinct object_name from all_objects where object_type = 'sch' and owner='user1';
         create_sql_template="create user %s identified by %s;\ngrant dba to %s;"
         create_command=f"su -l {system_user} -c 'disql -S -L {dba_user}/{dba_password} \`{sql_file}'"
         exit_sql="exit;"
@@ -79,7 +80,9 @@ def run():
     log.logger.debug(f"create user command: {create_command}")
     result, msg=common.exec_command(create_command, timeout=600)
     if result:
-        log.logger.info(msg)
+        if "错误" in msg or "error" in msg.lower():
+            log.logger.error(msg)
+            return_value=error_code
     else:
         log.logger.error(msg)
         return_value=error_code
