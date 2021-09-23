@@ -13,7 +13,7 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         g_term_rows, g_term_cols, \
         tool_service_code, portless_service_code, \
         located_dir_name, located_dir_link, autocheck_dst, report_dir, report_file_list, \
-        init_file, arch_file, update_init_file, update_arch_file, start_file, stop_file, deploy_file, ext_file, localization_file, backup_version_file, \
+        init_file, arch_file, project_file, update_init_file, update_arch_file, start_file, stop_file, deploy_file, ext_file, localization_file, backup_version_file, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code, \
         localization_soft_port
 
@@ -65,8 +65,8 @@ class Deploy(object):
                 config_file=update_init_file
             #elif config=="check":
             #    config_file=check_file
-            #elif config=="project":
-            #    config_file=project_file
+            elif config=="project":
+                config_file=project_file
             elif config=="localization":
                 config_file=localization_file
             elif config=="backup_version":
@@ -178,16 +178,16 @@ class Deploy(object):
             self.ssh_client.scp(node, port, "root", get_msg_py, remote_file)
             get_msg_command=f"{remote_python_exec} {remote_file}"
             self.log.logger.debug(f"获取{node}主机信息: {get_msg_command=}")
-            status=self.ssh_client.exec(node, port, get_msg_command, get_pty=0)
+            status=self.ssh_client.exec(node, port, get_msg_command, get_pty=1)
 
-            stdout_msg=status[1].read().strip().decode("utf8")
-            stderr_msg=status[2].read().strip().decode("utf8")
-            stats_value=status[1].channel.recv_exit_status()
-            if  stats_value != normal_code:
-                msg=stdout_msg
+            result_code=status[1].channel.recv_exit_status()
+            msg=status[1].read().strip().decode("utf8")
+            if result_code==normal_code:
+                self.log.logger.info(f"{node}已获取")
             else:
-                msg=stderr_msg
-            all_host_info[node]=[stats_value, msg]
+                self.log.logger.error(f"{node}获取失败: {msg}")
+
+            all_host_info[node]=[result_code, msg]
         return all_host_info
 
     def str_to_title(self, str_, level):
@@ -1517,7 +1517,7 @@ class graphics_deploy(Deploy):
         term_rows, term_cols=self.d.maxsize(use_persistent_args=False)
         if term_rows < g_term_rows or term_cols < g_term_cols:
             print(f"当前终端窗口({term_rows}, {term_cols})过小({g_term_rows}, {g_term_cols}), 请放大窗口后重试")
-            sys.exit(1)
+            sys.exit(error_code)
         else:
             self.log.logger.debug(f"当前窗口大小为({term_rows}, {term_cols})")
             return int(term_rows * 0.8), int(term_cols * 0.8)
@@ -3676,7 +3676,7 @@ class graphics_deploy(Deploy):
         """
         self.d.msgbox(f"取消安装", title="提示")
         self.log.logger.info(f"退出安装")
-        sys.exit(0)
+        sys.exit(error_code)
 
     def show_menu(self):
         """主菜单
@@ -4370,7 +4370,7 @@ class platform_deploy(Deploy):
         if update_pkg is not None:      
             deploy_flag=False
             if not self.update_extract(update_pkg, program_unzip_dir, ["update.json"]):
-                sys.exit(1)
+                sys.exit(error_code)
 
         code, result=self.read_config(["update"])
         if code:
