@@ -3001,7 +3001,7 @@ class graphics_deploy(Deploy):
         # 资源校验适配
         result, arch_dict=self.resource_verifi(arch_dict, host_info_dict, localization_dict)
 
-        # 为备份信息中远程备份主机添加user和password
+        # 为arch_dict中的备份信息添加参数
         if result:
             arch_dict=self._set_backup_tool_remote_info(arch_dict, init_dict)
 
@@ -3818,15 +3818,33 @@ class graphics_deploy(Deploy):
         backup_tool_name="backup_tool"
         for node in arch_dict:
             if backup_tool_name in arch_dict[node]["software"]:
-                for backup_type_info in arch_dict[node][f"{backup_tool_name}_info"]:
-                    for backup_info in arch_dict[node][f"{backup_tool_name}_info"][backup_type_info]:
-                        if backup_info != "type":
-                            if arch_dict[node][f"{backup_tool_name}_info"][backup_type_info][backup_info].get("remote_backup") is not None:
-                                self.log.logger.debug(f"为{node}添加{backup_info}的远程备份信息")
-                                remote_backup_host=arch_dict[node][f"{backup_tool_name}_info"][backup_type_info][backup_info]["remote_backup"]["remote_backup_host"]
-                                arch_dict[node][f"{backup_tool_name}_info"][backup_type_info][backup_info]["remote_backup"]["user"]="root"
-                                arch_dict[node][f"{backup_tool_name}_info"][backup_type_info][backup_info]["remote_backup"]["password"]=init_dict[arch_dict[node]["ip"]]["root_password"]
-                                arch_dict[node][f"{backup_tool_name}_info"][backup_type_info][backup_info]["remote_backup"]["port"]=init_dict[arch_dict[node]["ip"]]["port"]
+                for type_backup in arch_dict[node][f"{backup_tool_name}_info"]:
+                    backup_type=arch_dict[node][f"{backup_tool_name}_info"][type_backup]["type"]
+                    if backup_type == "mysql":
+                        keyname_info={
+                                "root_password": arch_dict[node][f"{backup_type}_info"]["db_info"]["root_password"]
+                                }
+                    elif backup_type=="dm" or backup_type=="kingbase" or backup_type=="shentong":
+                        if backup_type=="dm":
+                            backup_type="dameng"
+                        keyname_info={
+                                "system_user": arch_dict[node][f"{backup_type}_info"]["system_user"], 
+                                "dba_password": arch_dict[node][f"{backup_type}_info"]["dba_password"], 
+                                "dba_user": arch_dict[node][f"{backup_type}_info"]["dba_user"], 
+                                }
+                    else:
+                        keyname_info={}
+
+                    for keyname in arch_dict[node][f"{backup_tool_name}_info"][type_backup]:
+                        if keyname != "type":
+                            self.log.logger.debug(f"添加{keyname}的信息: {keyname_info}")
+                            arch_dict[node][f"{backup_tool_name}_info"][type_backup][keyname].update(keyname_info)
+                            if arch_dict[node][f"{backup_tool_name}_info"][type_backup][keyname].get("remote_backup") is not None:
+                                self.log.logger.debug(f"为{node}添加{type_backup}的远程备份信息")
+                                remote_backup_host=arch_dict[node][f"{backup_tool_name}_info"][type_backup][keyname]["remote_backup"]["remote_backup_host"]
+                                arch_dict[node][f"{backup_tool_name}_info"][type_backup][keyname]["remote_backup"]["user"]="root"
+                                arch_dict[node][f"{backup_tool_name}_info"][type_backup][keyname]["remote_backup"]["password"]=init_dict[arch_dict[node]["ip"]]["root_password"]
+                                arch_dict[node][f"{backup_tool_name}_info"][type_backup][keyname]["remote_backup"]["port"]=init_dict[arch_dict[node]["ip"]]["port"]
         return arch_dict
 
     def management(self, title):

@@ -117,11 +117,14 @@ def remote_backup(remote_backup_dict, backup_file, keep_days):
 
     ip=remote_backup_dict["remote_backup_host"]
     logger.info(f"远程备份中: {backup_file} --> {ip}:{remote_file}")
-    sftp.put(backup_file, remote_file, confirm=True)
-
-    if keep_days is not None:
-        backup_keep(remote_backup_dir, keep_days, keyname, "remote", sftp=sftp)
-    sftp.close()
+    try:
+        sftp.put(backup_file, remote_file, confirm=True)
+        logger.info("远程备份完成")
+        if keep_days is not None:
+            backup_keep(remote_backup_dir, keep_days, keyname, "remote", sftp=sftp)
+        sftp.close()
+    except Exception as e:
+        logger.error(f"远程备份失败: {e}")
 
 def exec_command(command, timeout=45):
     try:

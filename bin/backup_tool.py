@@ -47,20 +47,21 @@ def install():
         if result:
             crontab_list_str=msg
         else:
-            log.logger.error(msg)
-            return error_code
+            if msg.strip()=="no crontab for root":
+                crontab_list_str=""
+            else:
+                log.logger.error(msg)
+                return error_code
 
-        config_dict={
-                "crontab_list":{
-                    "config_file": backup_crontab_file, 
-                    "config_context": crontab_list_str, 
-                    "mode": "w"
-                    }, 
-                "crontab":{
-                    "config_file": backup_crontab_file, 
-                    "config_context": crontab_str, 
-                    "mode": "r+"
-                    }
+        config_dict["crontab_list"]={
+                "config_file": backup_crontab_file,
+                "config_context": crontab_list_str,
+                "mode": "w"
+                }
+        config_dict["crontab"]={
+                "config_file": backup_crontab_file,
+                "config_context": crontab_str,
+                "mode": "r+"
                 }
 
     log.logger.debug(f"写入配置文件: {json.dumps(config_dict)=}")
