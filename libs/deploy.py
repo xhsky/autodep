@@ -1291,6 +1291,50 @@ class Deploy(object):
                         soft_stats_dict[node][softname]=error_code
         return soft_stats_dict
 
+    def get_backup_info(self, arch_dict, type_):
+        """获取备份信息
+        return:
+            backup_info_dict={
+                "node":{
+                    "key": {
+                        "local_backup_dir": "/path", 
+                        "remote_backup_dir": "node1:/path"
+                    }
+                }
+            }
+
+            backup_info_dict={
+                "backup_dir":""
+            }
+        """
+        backup_info_dict={}
+        if type_=="crontab":
+            backup_tool_name="backup_tool"
+            for node in arch_dict:
+                if backup_tool_name in arch_dict[node]["software"]:
+                    backup_config_dict=arch_dict[node][f"{backup_tool_name}_info"]
+                    backup_info_dict[node]={}
+                    for backup_str in backup_config_dict:
+                        for key in backup_config_dict[backup_str]:
+                            if key != "type":
+                                if backup_config_dict[backup_str][key].get("remote_backup") is None:
+                                    remote_backup_dir="未设置"
+                                else:
+                                    remote_backup_host=backup_config_dict[backup_str][key]["remote_backup"]["remote_backup_host"]
+                                    remote_backup_dir=f"{remote_backup_host}:{backup_config_dict[backup_str][key]['remote_backup']['remote_backup_dir']}"
+                                backup_info_dict[node][f"{backup_str}_{key}"]={
+                                        "local_backup_dir": backup_config_dict[backup_str][key]["backup_dir"], 
+                                        "remote_backup_dir": remote_backup_dir
+                                        }
+        elif type_=="update":
+            if os.path.exists(backup_dir):
+                backup_info_dict={
+                        "backup_dir": backup_dir
+                        }
+        else:
+            self.log.logger.warning(f"未识别的类型: {type_}")
+        return backup_info_dict
+
     def tar_report(self, init_dict, arch_dict, check_stats_dict):
         """获取巡检报告并打包发送
         """
@@ -3685,13 +3729,15 @@ class graphics_deploy(Deploy):
             menu={
                     "1": "部署", 
                     "2": "管理", 
-                    #"3": "更新"
+                    "3": "查看", 
+                    "4": "更新" 
                     }
             code,tag=self.d.menu(f"若是首次进行部署, 请从\'{menu['1']}\'依次开始:", 
                     choices=[
                         ("1", menu["1"]), 
                         ("2", menu["2"]),
-                        #("3", menu["3"])
+                        ("3", menu["3"]), 
+                        ("4", menu["4"])
                         ], 
                     title="主菜单", 
                     width=48
@@ -3704,6 +3750,8 @@ class graphics_deploy(Deploy):
                 if tag=="2":
                     self.management(menu[tag])
                 if tag=="3":
+                    self.info_query(menu[tag])
+                if tag=="4":
                     self.update_management(menu[tag])
                 self.d.infobox(f"{menu[tag]}结束, 将返回主菜单...", title="提示", width=40, height=4)
                 time.sleep(1)
@@ -3846,6 +3894,203 @@ class graphics_deploy(Deploy):
                                 arch_dict[node][f"{backup_tool_name}_info"][type_backup][keyname]["remote_backup"]["password"]=init_dict[arch_dict[node]["ip"]]["root_password"]
                                 arch_dict[node][f"{backup_tool_name}_info"][type_backup][keyname]["remote_backup"]["port"]=init_dict[arch_dict[node]["ip"]]["port"]
         return arch_dict
+
+    def info_query(self, title):
+        """主机, 软件, 备份信息查看
+        """
+        result, config_list=self.read_config(["init", "arch", "ext"])
+        if result:
+            init_dict, arch_dict, ext_dict=config_list
+        else:
+            self.log.logger.error(config_list)
+            self.d.msgbox(config_list)
+            return
+
+        while True:
+            menu={
+                    "1": "主机", 
+                    "2": "软件", 
+                    "3": "备份"
+                    }
+
+            code,tag=self.d.menu("", choices=[
+                        ("1", menu["1"]), 
+                        ("2", menu["2"]),
+                        ("3", menu["3"])
+                        ], 
+                    title=title, 
+                    width=40, 
+                    height=6
+                    )
+            if code==self.d.OK:
+                self.log.logger.debug(f"{code=}, {tag=}")
+                self.log.logger.info(f"选择{menu[tag]}")
+                if tag=="1":
+                    self.nodes_query(menu[tag], init_dict, arch_dict)
+                if tag=="2":
+                    self.soft_choice(menu[tag], "start")
+                if tag=="3":
+                    self.backup_choice(menu[tag], arch_dict)
+            else:
+                break
+
+    def backup_choice(self, title, arch_dict):
+        """选择常规备份和更新备份
+        """
+        while True:
+            menu={
+                    "1": "日常备份", 
+                    "2": "更新备份", 
+                    }
+
+            code,tag=self.d.menu("", choices=[
+                        ("1", menu["1"]), 
+                        ("2", menu["2"]),
+                        ], 
+                    title=title, 
+                    width=40, 
+                    height=6
+                    )
+            if code==self.d.OK:
+                self.log.logger.debug(f"{code=}, {tag=}")
+                self.log.logger.info(f"选择{menu[tag]}")
+                if tag=="1":
+                    self.show_crontab_backup(menu[tag], arch_dict)
+                if tag=="2":
+                    self.show_update_backup(menu[tag], arch_dict)
+            else:
+                break
+
+    def show_crontab_backup(self, title, arch_dict):
+        """显示定时备份
+        """
+        HIDDEN = 0x1
+        READ_ONLY = 0x2
+        tab=3           # 
+        xi_1=20
+        xi_2=30
+        field_length=80
+
+        backup_info_dict=self.get_backup_info(arch_dict, "crontab")
+        self.log.logger.debug(f"{backup_info_dict=}")
+        if len(backup_info_dict)==0:
+            self.showmsg("未设置备份", "提示", width=20)
+        else:
+            n=0
+            elements=[]
+            for node in backup_info_dict:
+                n=n+1
+                elements.append((f"{node}: ", n, 1, "", n, xi_2, field_length, 0, HIDDEN))
+                for backup_key in backup_info_dict[node]:
+                    elements.append((f"{backup_key}: ", n+1, tab, "", n+1, xi_2, field_length, 0, HIDDEN))
+                    elements.append(("本地备份地址: ", n+2, tab*2, backup_info_dict[node][backup_key]["local_backup_dir"], n+2, xi_1, field_length, 0, READ_ONLY))
+                    elements.append(("远程备份地址: ", n+3, tab*2, backup_info_dict[node][backup_key]["remote_backup_dir"], n+3, xi_1, field_length, 0, READ_ONLY))
+                    n=n+3
+            elements.append(("", n+1, 1, "", n+1, xi_1, field_length, 0, HIDDEN))
+            self.log.logger.debug(f"backup summary: {elements=}")
+            code, _ = self.d.mixedform(f"日常备份信息:", title=title, elements=elements, ok_label="确认", no_cancel=True)
+            return code
+
+    def show_update_backup(self, title, arch_dict):
+        """显示更新备份
+        """
+        HIDDEN = 0x1
+        READ_ONLY = 0x2
+        tab=3           # 
+        xi_1=20
+        xi_2=30
+        field_length=80
+
+        backup_info_dict=self.get_backup_info(arch_dict, "update")
+        self.log.logger.debug(f"{backup_info_dict=}")
+        if len(backup_info_dict)==0:
+            self.showmsg("尚未有更新备份", "提示", width=20)
+        else:
+            n=1
+            elements=[]
+            elements.append(("localhost: ", n, 1, "", n, xi_2, field_length, 0, HIDDEN))
+            elements.append(("更新备份地址: ", n+1, tab*2, backup_info_dict["backup_dir"], n+1, xi_1, field_length, 0, READ_ONLY))
+            elements.append(("", n+2, 1, "", n+2, xi_1, field_length, 0, HIDDEN))
+            self.log.logger.debug(f"backup summary: {elements=}")
+            code, _ = self.d.mixedform(f"更新备份信息:", title=title, elements=elements, ok_label="确认", no_cancel=True)
+            return code
+
+    def nodes_query(self, title, init_dict, arch_dict):
+        """主机查询
+        """
+        node_list=[]
+        for node in arch_dict:
+            node_list.append((node, ""))
+
+        while True:
+            code,tag=self.d.menu(f"选择节点", 
+                    choices=node_list, 
+                    title=title, 
+                    width=48, 
+                    cancel_label="返回", 
+                    ok_label="选择" 
+                    )
+            if code==self.d.OK:
+                self.log.logger.debug(f"{code=}, {tag=}")
+                node_info_dict=self.node_query(tag, init_dict, arch_dict)
+                self.node_info_show(node_info_dict)
+            else:
+                break
+
+    def node_query(self, title, init_dict, arch_dict):
+        """主机信息查询
+        """
+        return {}
+
+    def node_info_show(self, node_info_dict):
+        """主机信息显示
+        """
+        HIDDEN = 0x1
+        READ_ONLY = 0x2
+        tab=3           # 
+        xi_1=17
+        xi_2=25
+        xi_3=38
+        xi_4=50
+        xi_5=62
+        field_length=60
+        elements=[]
+
+        n=0
+        all_host_info_dict=node_info_dict
+        for ip in all_host_info_dict:
+            n=n+1
+            node_info_dict=all_host_info_dict[ip]
+            if node_info_dict.get("error_info") is None:
+                info=[
+                        (f"{ip}: ", n, 1, "", n, xi_1, field_length, 0, HIDDEN), 
+                        ("内核版本: ", n+1, tab, node_info_dict["kernel_version"], n+1, xi_1-3, field_length, 0, READ_ONLY), 
+                        ("发行版本: ", n+2, tab, node_info_dict["os_name"], n+2, xi_1-3, field_length, 0, READ_ONLY), 
+                        ("CPU架构: ", n+3, tab, f"{node_info_dict['cpu_arch']}", n+3, xi_1-2, field_length, 0, READ_ONLY), 
+                        ("CPU个数: ", n+3, xi_2, f"{node_info_dict['CPU'][0]}", n+3, xi_3, field_length, 0, READ_ONLY), 
+                        ("CPU使用率: ", n+3, xi_4, f"{node_info_dict['CPU'][1]}%", n+3, xi_5, field_length, 0, READ_ONLY), 
+                        ("内存大小: ", n+4, tab, format_size(node_info_dict['Mem'][0]), n+4, xi_1-2, field_length, 0, READ_ONLY), 
+                        ("内存使用率: ", n+4, xi_2, f"{node_info_dict['Mem'][1]}%", n+4, xi_3, field_length, 0, READ_ONLY)
+                        ]
+                elements.extend(info)
+
+                n=n+5
+                elements.append(("磁盘: ", n, tab, "", n, xi_1, field_length, 0, HIDDEN))
+                for disk in node_info_dict["Disk"]:
+                    n=n+1
+                    disk_info=[
+                            ("挂载目录: ", n, tab*2, disk, n, xi_1-1, field_length, 0, READ_ONLY),
+                            ("磁盘大小: ", n, xi_2+3, format_size(node_info_dict['Disk'][disk][0]), n, xi_3, field_length, 0, READ_ONLY), 
+                            ("磁盘使用率: ", n, xi_4, f"{node_info_dict['Disk'][disk][1]}%", n, xi_5, field_length, 0, READ_ONLY)
+                            ]
+                    elements.extend(disk_info)
+            else:
+                error_msg=node_info_dict["error_info"]
+                elements.append((ip, n, 1, error_msg, n, xi_1, field_length, 0, READ_ONLY))
+        elements.append(("", n+1, 1, "", n+1, xi_1, field_length, 0, HIDDEN))
+        self.log.logger.debug(f"host info summary: {elements=}")
+        code, _ = self.d.mixedform(f"主机信息:", elements=elements, ok_label="确认")
+        return code
 
     def management(self, title):
         """集群管理: 监控, 启动, 停止, 巡检
