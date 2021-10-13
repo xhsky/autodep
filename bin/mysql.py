@@ -231,6 +231,8 @@ def run():
                         init_password=pass_line[-1].strip()
                         log.logger.debug(f"{init_password=}")
                         break
+                else:
+                    log.logger.error(f"初始化失败, 请查看MySQL日志")
         except Exception as e:
             log.logger.error(str(e))
             sys.exit(error_code)
