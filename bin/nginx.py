@@ -17,6 +17,7 @@ def install():
     result, msg=common.exec_command(command)
     if not result:
         log.logger.error(msg)
+        return error_code
     value, msg=common.install(pkg_file, nginx_src, nginx_dst, nginx_pkg_dir, located)
     if not value:
         log.logger.error(msg)
