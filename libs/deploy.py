@@ -3,7 +3,7 @@
 # 2020-10-21 17:37:47
 # sky
 
-import locale, json, os, time, sys, tarfile, math, shutil, copy
+import locale, json, os, time, sys, tarfile, math, shutil, copy, psutil
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, log_graphics_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, ext_dir, autodep_dir, backup_dir, \
@@ -1416,6 +1416,19 @@ class Deploy(object):
         rollback_version_list=self.trans_backup_version_to_date(backup_version_list)
         return rollback_version_list
 
+    def get_local_ip_list(self):
+        '''获取本机ip列表
+        return (ip1, ip2)
+        '''
+        local_ip_list=[]
+        nic=psutil.net_if_addrs()
+        for adapter in nic:
+            for snic in nic[adapter]:
+                if snic.family.name=="AF_INET":
+                    if adapter!="lo" or snic.address!="127.0.0.1":
+                        local_ip_list.append(snic.address)
+        return local_ip_list
+
 class text_deploy(Deploy):
     '''文本安装'''
 
@@ -2520,13 +2533,28 @@ class graphics_deploy(Deploy):
         ip_field_length=15
         password_field_length=15
         port_field_length=5
-        if init_list == []:
-            elements=[
-                    ("IP:", 1, 1, "192.168.0.1", 1, first_node_xi_length, ip_field_length, 0), 
-                    ("root用户密码:", 2, 1, "", 2, first_node_xi_length, password_field_length, 0), 
-                    ("ssh端口:", 3, 1, "22", 3, first_node_xi_length, port_field_length, 0), 
-                    ]
-            code, fields=self.d.form(f"请根据示例填写集群中主机信息\n\n第1台主机:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消", height=9)
+        if len(init_list) == 0:
+            local_ip_list=self.get_local_ip_list()
+            if len(local_ip_list)==0:
+                self.showmsg("当前主机未配置ip", "Error")
+                self.cancel()
+            while True:
+                if len(local_ip_list)==1:
+                    elements=[
+                            ("IP:", 1, 1, local_ip_list[0], 1, first_node_xi_length, ip_field_length, 0), 
+                            ("root用户密码:", 2, 1, "", 2, first_node_xi_length, password_field_length, 0), 
+                            ("ssh端口:", 3, 1, "22", 3, first_node_xi_length, port_field_length, 0), 
+                            ]
+                    code, fields=self.d.form(f"请填写集群中主机信息\n\n本机:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消", height=9)
+                    break
+                else:
+                    choices_list=[]
+                    for ip in local_ip_list:
+                        choices_list.append((ip, ""))
+                    _, ip=self.d.menu("请选择本机IP:", choices=choices_list, title=title, no_cancel=True)
+                    self.log.logger.debug(f"选择{ip=}")
+                    local_ip_list=[ip]
+                    continue
         else:
             elements=[]
             n=0
@@ -3615,7 +3643,7 @@ class graphics_deploy(Deploy):
                 }
         result, msg=self.write_config(deploy_dict, deploy_file)
         if result:
-            self.log.logger.info(f"请将文件'{os.path.abspath(deploy_file)}'上传至平台 !")
+            self.log.logger.info(f"请将文件'{os.path.abspath(deploy_file)}'上传至Dreamone平台, 上传之后可获取系统登录地址 !")
             return True, {"Sucessful": True}
         else:
             return False, msg
@@ -3623,7 +3651,6 @@ class graphics_deploy(Deploy):
     def deploy(self, title):
         """图形: init, install, run, generate_deploy_file
         """
-
         # get config
         result, config_list=self.read_config(["ext", "arch"])
         if result:
