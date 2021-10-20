@@ -523,7 +523,7 @@ if __name__ == "__main__":
     else:
         data_id=f"{service_name}-{config_active}.{config_file_type}"
     #config_file=f"{program_dir}/{data_id}"
-    config_file=f"{program_dir}/application.{config_file_type}"
+    config_file=f"{program_dir}/app.{config_file_type}"
 
     nacos_addr_url=f"http://{nacos_host}:{nacos_port}"
     configs_path="/nacos/v1/cs/configs"
