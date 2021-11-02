@@ -4,7 +4,7 @@
 
 import sys, json, os, requests, yaml, tarfile, shutil
 from libs import common
-from libs.env import log_remote_level, program_sh_name, backup_dir, program_license_file, located_dir_link, \
+from libs.env import log_remote_level, program_sh_name, backup_dir, program_license_file, node_license_path, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 """
@@ -317,7 +317,7 @@ def install():
         if os.path.exists(jar_license_path):
             try:
                 log.logger.info("安装license")
-                shutil.move(jar_license_path, program_license_path)
+                shutil.move(jar_license_path, node_license_path)
             except Exception as e:
                 log.logger.error(f"license移动失败: {str(e)}")
         else:
@@ -516,7 +516,6 @@ if __name__ == "__main__":
     program_dir=program_info_dict['program_dir']
 
     jar_license_path=f"{program_dir}/{program_license_file}"
-    program_license_path=f"{located_dir_link}/.{program_license_file}"
 
     nacos_host=program_info_dict["nacos_config"]["nacos_host"]
     nacos_port=program_info_dict["nacos_config"]["nacos_port"]
