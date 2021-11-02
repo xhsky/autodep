@@ -65,6 +65,9 @@ report_file_list=["check.info", "slow_analysis.log"]
 # 目录
 autodep_dir=[logs_dir, data_dir, report_dir]
 
+# license name
+program_license_file="license.lic"
+
 # 更新
 #code_saved_remote_dir="/tmp"
 

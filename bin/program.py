@@ -2,9 +2,9 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, json, os, requests, yaml, tarfile
+import sys, json, os, requests, yaml, tarfile, shutil
 from libs import common
-from libs.env import log_remote_level, program_sh_name, backup_dir, \
+from libs.env import log_remote_level, program_sh_name, backup_dir, program_license_file, located_dir_link, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 """
@@ -311,19 +311,24 @@ def install():
         if os.path.exists(config_file):
             log.logger.debug(f"已存在可读配置文件: {config_file}")
         else:
-            #result=generate_local_config()
-            #if not result:
-            #    return error_code
             log.logger.error(f"{config_file}不存在")
             return error_code
+
+        if os.path.exists(jar_license_path):
+            try:
+                log.logger.info("安装license")
+                shutil.move(jar_license_path, program_license_path)
+            except Exception as e:
+                log.logger.error(f"license移动失败: {str(e)}")
+        else:
+            log.logger.warning("不存在license")
+
         if os.path.exists(program_sh_file):
             log.logger.debug(f"已存在控制脚本: {program_sh_file}")
         else:
             result=generate_sh(jar_file)
             if not result:
                 return error_code
-            #log.logger.error(f"{program_sh_file}不存在")
-            #return error_code
     #elif pkg_file.endswith(".jar"):
     #    value, msg=common.install(pkg_file, "jar", None, None, program_dir)
     #    if not value:
@@ -509,6 +514,9 @@ if __name__ == "__main__":
     program_info_dict=conf_dict[f"{softname}_info"]
     port_list=[program_info_dict["port"]]
     program_dir=program_info_dict['program_dir']
+
+    jar_license_path=f"{program_dir}/{program_license_file}"
+    program_license_path=f"{located_dir_link}/.{program_license_file}"
 
     nacos_host=program_info_dict["nacos_config"]["nacos_host"]
     nacos_port=program_info_dict["nacos_config"]["nacos_port"]
