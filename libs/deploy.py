@@ -15,6 +15,7 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         located_dir_name, located_dir_link, autocheck_dst, report_dir, report_file_list, \
         init_file, arch_file, project_file, update_init_file, update_arch_file, start_file, stop_file, deploy_file, ext_file, localization_file, backup_version_file, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code, \
+        local_license_path, node_license_path, \
         localization_soft_port
 
 for dir_ in autodep_dir:
@@ -1428,6 +1429,25 @@ class Deploy(object):
                     if adapter!="lo" or snic.address!="127.0.0.1":
                         local_ip_list.append(snic.address)
         return local_ip_list
+
+    def program_license_register(self, src_license, dst_license, init_dict, arch_dict):
+        '''license注册
+        '''
+        register_dict={}
+        register_result=True
+        for node in arch_dict:
+            for softname in arch_dict[node]["software"]:
+                if softname.startswith("program_"):
+                    port=init_dict[arch_dict[node]["ip"]]["port"]
+                    self.log.logger.info(f"{node}节点注册license")
+                    self.log.logger.debug(f"scp {src_license} {node}:{dst_license}")
+                    result, msg=self.ssh_client.scp(node, port, "root", src_license, dst_license)
+                    register_dict[node]=result
+                    if not result:
+                        self.log.logger.error(f"{node}节点注册失败: {msg}")
+                        register_result=False
+                    break
+        return register_result, register_dict
 
 class text_deploy(Deploy):
     '''文本安装'''
@@ -4120,21 +4140,23 @@ class graphics_deploy(Deploy):
         return code
 
     def management(self, title):
-        """集群管理: 监控, 启动, 停止, 巡检
+        """集群管理: 监控, 启动, 停止, 巡检, license
         """
         while True:
             menu={
                     "1": "状态", 
                     "2": "启动", 
                     "3": "停止", 
-                    "4": "巡检"
+                    "4": "巡检", 
+                    "5": "license"
                     }
 
             code,tag=self.d.menu("", choices=[
                         ("1", menu["1"]), 
                         ("2", menu["2"]),
                         ("3", menu["3"]), 
-                        ("4", menu["4"])
+                        ("4", menu["4"]), 
+                        ("5", menu["5"])
                         ], 
                     title=title, 
                     width=40, 
@@ -4151,6 +4173,8 @@ class graphics_deploy(Deploy):
                     self.status_management(menu[tag], "stop")
                 if tag=="4":
                     self.check(menu[tag])
+                if tag=="5":
+                    self.program_license_register_management(menu[tag])
             else:
                 break
 
@@ -4420,6 +4444,74 @@ class graphics_deploy(Deploy):
         else:
             self.d.msgbox("发生莫名错误, 请返回菜单重试", width=40, height=5)
             self.show_menu()
+
+    def program_license_register_management(self, title):
+        """program注册license
+        """
+        if not os.path.exists(local_license_path):
+            self.showmsg(f"'{local_license_path}'文件不存在", title="Error", height=4)
+            return
+
+        code=self.d.yesno(f"此过程将会重启项目服务.\n是否确认继续?", title="提醒") 
+        if code != self.d.OK:
+            return
+        stage_method={
+                "program_stop": self.program_stop, 
+                "program_license_register": self.program_license_register, 
+                "program_start": self.program_start
+                }
+
+        read_fd, write_fd = os.pipe()
+        child_pid = os.fork()
+
+        if child_pid == 0:          # 进入子进程
+            try:
+                os.close(read_fd)
+                with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
+                    self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)
+                    for stage in stage_method:
+                        result, dict_=stage_method[stage]()
+                        self.log.logger.debug(f"{stage}: {result}, {dict_}")
+                        if result:
+                            continue
+                        else:
+                            self.log.logger.error(f"'{stage}'阶段执行失败: {dict_}")
+                            os._exit(error_code)
+                    else:
+                        self.log.logger.debug("删除上传license文件")
+                        os.remove(local_license_path)
+                os._exit(normal_code)
+            except Exception as e:
+                self.log.logger.error(str(e))
+                os._exit(error_code)
+        os.close(write_fd)
+        self.d.programbox(fd=read_fd, title=title, height=25, width=170)
+        exit_info = os.waitpid(child_pid, 0)[1]
+        if os.WIFEXITED(exit_info):
+            exit_code = os.WEXITSTATUS(exit_info)
+        elif os.WIFSIGNALED(exit_info):
+            self.d.msgbox("子进程被被信号'{exit_code}中断', 将返回菜单", width=40, height=5)
+            self.show_menu()
+        else:
+            self.d.msgbox("发生莫名错误, 请返回菜单重试", width=40, height=5)
+            self.show_menu()
+
+    def program_license_register(self):
+        """图形: licens注册
+        """
+        self.log.logger.info(self.str_to_title("节点注册", 1))
+        result, config_list=self.read_config(["init", "arch"])
+        if result:
+            init_dict, arch_dict=config_list
+            result, dict_=super(graphics_deploy, self).program_license_register(local_license_path, node_license_path, init_dict, arch_dict)
+            if result:
+                self.log.logger.info("节点注册完成")
+            else:
+                self.log.logger.error("节点注册失败")
+        else:
+            self.log.logger.error(f"配置文件读取失败: {config_list}")
+            dict_={}
+        return result, dict_
 
     def _install_dialog(self):
         """安装dialog

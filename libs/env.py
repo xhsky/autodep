@@ -67,6 +67,8 @@ autodep_dir=[logs_dir, data_dir, report_dir]
 
 # license name
 program_license_file="license.lic"
+local_license_path=f"/root/{program_license_file}"
+node_license_path=f"{located_dir_link}/.{program_license_file}"
 
 # 更新
 #code_saved_remote_dir="/tmp"

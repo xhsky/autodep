@@ -116,12 +116,12 @@ class ssh(object):
             return 1
 
     def exec(self, ip, port, commands, get_pty=1, user='root'):
-        self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
         """
         stdin, stdout, stderr=self.ssh.exec_command(commands)
         return stdin, stdout, stderr
         """
         try:
+            self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
             status=self.ssh.exec_command(commands, get_pty=get_pty)
         except Exception as e:
             return str(e)
@@ -148,11 +148,14 @@ class ssh(object):
         sftp.close()
 
     def scp(self, ip, port, user, local_file, remote_file):
-        self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
-        sftp=self.ssh.open_sftp()
-        result=sftp.put(local_file, remote_file, confirm=True)
-        sftp.close()
-        return result
+        try:
+            self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
+            sftp=self.ssh.open_sftp()
+            result=sftp.put(local_file, remote_file, confirm=True)
+            sftp.close()
+            return True, result
+        except Exception as e:
+            return False, str(e)
 
     def get(self, ip, port, user, remote_file, local_file):
         try:
