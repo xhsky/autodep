@@ -8,12 +8,14 @@
       "db_type": "mysql", 
       "db_name": "db1", 
       "db_port": 3306, 
-      "root_password": "xxxxx"
+      "root_password": "xxxxx", 
+      "sql_dir": "/dream/sql"       // 可选参数, 若有数据文件直接包含在压缩包中, 否则安装目录为名为软件名称的目录
     }, 
     "program_graduate_sql_info": {
       "db_type": "mysql", 
       "db_port": 3306, 
       "root_password": "xxxxx", 
+      "sql_dir": "/dream/sql"       // 可选参数, 若有数据文件直接包含在压缩包中, 否则安装目录为名为软件名称的目录
 
       "db_type": "dameng",            //数据库类型
       "from_user": "dream",           //导出用户

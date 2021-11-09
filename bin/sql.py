@@ -12,7 +12,7 @@ def install():
     """
     return_value=normal_code
     db_tar_file=conf_dict["pkg_file"]
-    value, msg=common.install(db_tar_file, None, None, None, located)
+    value, msg=common.install(db_tar_file, None, None, None, install_dir)
     if not value:
         log.logger.error(msg)
         return error_code
@@ -115,9 +115,13 @@ if __name__ == "__main__":
     log=common.Logger({"remote": log_remote_level}, logger_name="sql")
 
     located=conf_dict["located"]
-    sql_dir=f"{located}/{softname}"             # 数据文件的上级目录名称必须与其软件名称相同
     sql_info_dict=conf_dict[f"{softname}_info"]
     db_type=sql_info_dict["db_type"].lower()
+    sql_dir=sql_info_dict["sql_dir"]
+    install_dir=located
+    if sql_dir is None:
+        sql_dir=f"{located}/{softname}"             # 数据文件的上级目录名称必须与其软件名称相同
+        install_dir=sql_dir
 
     if action=="install":
         sys.exit(install())
