@@ -774,7 +774,13 @@ class Deploy(object):
                 password=init_dict[node].get("root_password")
 
                 self.ssh_client.free_pass_set(node, port, password)
-                self.log.logger.info(f"免密码登录设置完成")
+                result, msg=self.ssh_client.key_conn(node, port)
+                if result:
+                    self.log.logger.info(f"免密码登录设置完成")
+                else: 
+                    self.log.logger.error(f"免密码登录失败: {msg}")
+                    msg=Exception(msg)
+                    raise msg
                 
                 # 传输Python
                 local_python3_file=self.get_soft_info("python3", ext_dict, "file")

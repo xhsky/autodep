@@ -95,6 +95,18 @@ class ssh(object):
         #self.ssh.close()
         return status, msg
 
+    def key_conn(self, ip, port, user='root'): 
+        """ 秘钥连接尝试
+        """
+        msg=""
+        result=True
+        try:
+            self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
+        except Exception as e:                                                    # 未知错误
+            msg=str(e)
+            result=False
+        return result, msg
+
     def gen_keys(self):
         """生成公私钥对"""
 
