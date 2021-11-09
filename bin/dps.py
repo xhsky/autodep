@@ -121,7 +121,8 @@ def install():
                 gzip  on;
                 gzip_min_length 1k;
                 gzip_buffers 16 64k;
-                gzip_types text/plain application/x-javascript text/css application/xml;
+                #gzip_types text/plain application/x-javascript text/css application/xml;
+                gzip_types text/plain application/javascript application/x-javascript text/css application/xml text/javascript application/x-httpd-php image/jpeg image/gif image/png;
                 gzip_vary on;
 
 
