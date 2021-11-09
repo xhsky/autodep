@@ -314,14 +314,25 @@ def install():
             log.logger.error(f"{config_file}不存在")
             return error_code
 
-        if os.path.exists(jar_license_path):
-            try:
+        try:
+            if os.path.exists(jar_license_path):
                 log.logger.info("安装license")
                 shutil.move(jar_license_path, node_license_path)
-            except Exception as e:
-                log.logger.error(f"license移动失败: {str(e)}")
-        else:
-            log.logger.warning("不存在license")
+            else:
+                log.logger.warning("不存在license")
+
+        except Exception as e:
+            log.logger.error(f"license移动失败: {str(e)}")
+
+        try:
+            if upload_dir is not None:
+                if os.path.exists(upload_dir):
+                    log.logger.warning(f"{upload_dir}目录已存在")
+                else:
+                    log.logger.info(f"建立上传数据目录{upload_dir}")
+                    os.makedirs(upload_dir, exist_ok=1)
+        except Exception as e:
+            log.logger.error(f"上传目录建立失败: {str(e)}")
 
         if os.path.exists(program_sh_file):
             log.logger.debug(f"已存在控制脚本: {program_sh_file}")
@@ -514,6 +525,7 @@ if __name__ == "__main__":
     program_info_dict=conf_dict[f"{softname}_info"]
     port_list=[program_info_dict["port"]]
     program_dir=program_info_dict['program_dir']
+    upload_dir=program_info_dict.get("upload_dir")
 
     jar_license_path=f"{program_dir}/{program_license_file}"
 

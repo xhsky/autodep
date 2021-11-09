@@ -7,6 +7,7 @@
 			"port": 8866,
 			"jvm_mem": "2G", 
       "db_type": "mysql",
+      "upload_dir": "/dream/upload",          # 可选参数, 若有则建立目录
       "nacos_config": {
         "nacos_host": "nacos1", 
         "nacos_port": 8848, 
