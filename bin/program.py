@@ -211,17 +211,18 @@ def generate_sh(jar_file):
             action=$1
             jar_file={jar_file}
             jar_name=`echo $jar_file | rev | cut -d "/" -f 1 | rev`
+            nacos_addr={nacos_addr}
+            nacos_namespace={namespace_name}
+            nacos_group={group_name}
+            nacos_config_file_extension={config_file_type}
+            nacos_application_name={service_name}         # 须同jar_name配套
+            nacos_profiles_active={config_active}         # 须同jar_name配套
+
             if [ -z "$1" ]; then
-              echo "Usage: $0 start|stop"
+              echo "Usage: $0 start|stop|publish"
               exit {error_code}
             elif [ "$action" == "start" ]; then
               jvm_mem={jvm_mem}
-              nacos_addr={nacos_addr}
-              nacos_namespace={namespace_name}
-              nacos_group={group_name}
-              nacos_config_file_extension={config_file_type}
-              nacos_application_name={service_name}         # 须同jar_name配套
-              nacos_profiles_active={config_active}         # 须同jar_name配套
               accept_count=1000
               threads=500
               max_connections=8192
@@ -273,8 +274,11 @@ def generate_sh(jar_file):
                 fi
                 sleep 1
               done
+            elif [ "$action" == "publish" ]; then
+              content=`cat {program_dir}/app.${{nacos_config_file_extension}}`
+              curl -X POST "http://${{nacos_addr}}{configs_path}" -d tenant=${{nacos_namespace}} -d dataId=${{nacos_application_name}}-${{nacos_profiles_active}}.${{nacos_config_file_extension}} -d group=${{nacos_group}} --data-urlencode content="${{content}}" -d type=${{nacos_config_file_extension}}
             else
-              echo "Usage: $0 start|stop"
+              echo "Usage: $0 start|stop|publish"
             fi
     """
     config_dict={
