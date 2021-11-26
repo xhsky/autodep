@@ -48,17 +48,6 @@ def main():
             log.logger.error(msg)
             return_value=error_code
 
-
-        #with open(hosts_file, "r") as f:
-        #    host_text_list=f.readlines()
-        #    added_hosts=[]
-        #    for hosts in hosts_list:
-        #        hosts=f"{hosts}\n"          # 添加换行符
-        #        if hosts not in host_text_list:
-        #            added_hosts.append(hosts)
-        #with open(hosts_file, "a") as f:
-        #    f.writelines(added_hosts)
-
         # 建立安装目录
         log.logger.info(f"建立安装目录: {located}")
         os.makedirs(located, exist_ok=1)
