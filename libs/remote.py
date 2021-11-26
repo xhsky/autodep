@@ -5,6 +5,8 @@
 
 import paramiko
 import os, json
+from shutil import copy
+import subprocess
 from libs.common import Logger
 from libs.env import log_file, log_file_level, remote_python_exec, \
         located_dir_link, autocheck_dst
@@ -23,14 +25,14 @@ class soft(object):
     def init(self, py_file):
         command=f"{remote_python_exec} {py_file}"
         log.logger.debug(f"init: {command}")
-        status=self.ssh_client.exec(self.ip, self.port, command)
-        return status
+        obj, status=self.ssh_client.exec(command, ip=self.ip, port=self.port)
+        return obj, status
 
     def sendmail(self, py_file, args_dict):
         command=f"cd {located_dir_link}/{autocheck_dst} ; {remote_python_exec} {py_file} 'autocheck' sendmail '{json.dumps(args_dict)}'"
         log.logger.debug(f"sendmail: {command}")
-        status=self.ssh_client.exec(self.ip, self.port, command)
-        return status
+        obj, status=self.ssh_client.exec(command, ip=self.ip, port=self.port)
+        return obj, status
 
     def remote_exec(self, py_file, softname, action, args_dict):
         """
@@ -38,36 +40,36 @@ class soft(object):
         """
         command=f"{remote_python_exec} {py_file} {softname} {action} '{json.dumps(args_dict)}'"
         log.logger.debug(f"{action=}: {command}")
-        status=self.ssh_client.exec(self.ip, self.port, command)
-        return status
+        obj, status=self.ssh_client.exec(command, ip=self.ip, port=self.port)
+        return obj, status
 
     def install(self, py_file, softname, args_dict):
-        status=self.remote_exec(py_file, softname, "install", args_dict)
-        return status
+        obj, status=self.remote_exec(py_file, softname, "install", args_dict)
+        return obj, status
 
     def run(self, py_file, softname, args_dict):
-        status=self.remote_exec(py_file, softname, "run", args_dict)
-        return status
+        obj, status=self.remote_exec(py_file, softname, "run", args_dict)
+        return obj, status
 
     def start(self, py_file, softname, args_dict):
-        status=self.remote_exec(py_file, softname, "start", args_dict)
-        return status
+        obj, status=self.remote_exec(py_file, softname, "start", args_dict)
+        return obj, status
 
     def stop(self, py_file, softname, args_dict):
-        status=self.remote_exec(py_file, softname, "stop", args_dict)
-        return status
+        obj, status=self.remote_exec(py_file, softname, "stop", args_dict)
+        return obj, status
 
     def monitor(self, py_file, softname, args_dict):
-        status=self.remote_exec(py_file, softname, "monitor", args_dict)
-        return status
+        obj, status=self.remote_exec(py_file, softname, "monitor", args_dict)
+        return obj, status
 
     def backup(self, py_file, softname, args_dict):
-        status=self.remote_exec(py_file, softname, "backup", args_dict)
-        return status
+        obj, status=self.remote_exec(py_file, softname, "backup", args_dict)
+        return obj, status
 
     def test(self, py_file, softname, args_dict):
-        status=self.remote_exec(py_file, softname, "test", args_dict)
-        return status
+        obj, status=self.remote_exec(py_file, softname, "test", args_dict)
+        return obj, status
 
 class ssh(object):
     def __init__(self):
@@ -127,17 +129,38 @@ class ssh(object):
                 f.write(key_pub_and_sign)
             return 1
 
-    def exec(self, ip, port, commands, get_pty=1, user='root'):
+    def exec(self, commands, ip="127", port=0, get_pty=1, user='root'):
         """
+        本地/远程执行
         stdin, stdout, stderr=self.ssh.exec_command(commands)
         return stdin, stdout, stderr
         """
+        obj=""
         try:
-            self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
-            status=self.ssh.exec_command(commands, get_pty=get_pty)
+            if port==0:
+                log.logger.debug("local")
+                cmd=subprocess.Popen(commands, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True, shell=True, bufsize=1)
+                status=(cmd.stdin, cmd.stderr, cmd.stderr)
+                obj=cmd
+            else:
+                log.logger.debug("ssh")
+                self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
+                status=self.ssh.exec_command(commands, get_pty=get_pty)
+                obj=status
         except Exception as e:
-            return str(e)
-        return status
+            return obj, str(e)
+            log.logger.error(str(e))
+        return obj, status
+
+    def returncode(self, obj, local_flag):
+        """
+        等待status执行完成返回状态码
+        """
+        if local_flag:
+            code=obj.wait()
+        else:
+            code=obj[1].channel.recv_exit_status()
+        return code
 
     def free_pass_set(self, ip, port, password, user='root'):
         "ssh-copy-id"
@@ -159,22 +182,38 @@ class ssh(object):
         sftp_file.close()
         sftp.close()
 
-    def scp(self, ip, port, user, local_file, remote_file):
+    def scp(self, local_file, remote_file, ip="127", port=0, user="root"):
+        """本地/远程拷贝
+        return
+            bool:  成功/失败
+            result: 
+        """
         try:
-            self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
-            sftp=self.ssh.open_sftp()
-            result=sftp.put(local_file, remote_file, confirm=True)
-            sftp.close()
+            if port==0:
+                result=copy(local_file, remote_file)
+            else:
+                self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
+                sftp=self.ssh.open_sftp()
+                result=sftp.put(local_file, remote_file, confirm=True)
+                sftp.close()
             return True, result
         except Exception as e:
             return False, str(e)
 
-    def get(self, ip, port, user, remote_file, local_file):
+    def get(self, remote_file, local_file, ip="127", port=0, user="root"):
+        """本地/远程拷贝
+        return
+            bool:  成功/失败
+            result: local_file
+        """
         try:
-            self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
-            sftp=self.ssh.open_sftp()
-            sftp.get(remote_file, local_file)
-            sftp.close()
+            if port==0:
+                local_file=copy(remote_file, local_file)
+            else:
+                self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
+                sftp=self.ssh.open_sftp()
+                sftp.get(remote_file, local_file)
+                sftp.close()
             return True, local_file
         except Exception as e:
             return False, str(e)
