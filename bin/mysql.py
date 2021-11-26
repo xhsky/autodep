@@ -100,7 +100,13 @@ def install():
         lower_case_table_names=1
         default_authentication_plugin=mysql_native_password
         default-time-zone='+08:00'
-        wait_timeout=288000
+        wait_timeout=600
+        default_password_lifetime=90
+
+        # plugin 
+        plugin-load-add=connection_control.so
+        connection_control_failed_connections_threshold=10
+        connection_control_min_connection_delay=1000 
 
         # Log 
         ## Error Log
