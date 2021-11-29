@@ -3,16 +3,12 @@
 # 2020-10-21 13:55:46
 # sky
 
-import sys
+import sys, os
 import argparse
 from textwrap import dedent
 from libs import deploy
 
 def main():
-    import time
-    time_=time.strftime("%Y-%m-%d %H:%M:%S",  time.localtime()) 
-    print(f"{time_}: 开始")
-
     choices=["init", "install", "run", "start", "stop", "update", "deploy", "monitor", "check"]
     parser=argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
@@ -24,7 +20,9 @@ def main():
     parser.add_argument("-i", type=str, help="指定项目id")
     args=parser.parse_args()
 
-    print(f"{time_}: 参数获取结束")
+    if os.getuid() != 0:
+        print("Error: 该程序需要用root用户启动")
+        return 
 
     if args.t is not None:
         d=deploy.text_deploy()
@@ -69,7 +67,6 @@ def main():
             result_dict=d.check()
         d.generate_info("platform_info", result_dict)
     elif args.g is not None:
-        print(f"{time_}: 检测并配置dialog环境,  请稍等...")
         d=deploy.graphics_deploy()
         d.show()
 
