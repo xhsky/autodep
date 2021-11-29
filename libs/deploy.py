@@ -1482,6 +1482,12 @@ class Deploy(object):
 
     def program_license_register(self, src_license, dst_license, init_dict, arch_dict):
         '''license注册
+        para:
+            src_license:  /path
+            dst_license:  /path
+        return:
+            register_result: bool
+            register_dict:{node: bool, node: bool}
         '''
         register_dict={}
         register_result=True
@@ -1490,7 +1496,7 @@ class Deploy(object):
                 if softname.startswith("program_"):
                     port=init_dict[arch_dict[node]["ip"]]["port"]
                     self.log.logger.info(f"{node}节点注册license")
-                    self.log.logger.debug(f"scp {src_license} {node}:{dst_license}")
+                    self.log.logger.debug(f"copy {src_license} {node}:{dst_license}")
                     result, msg=self.ssh_client.scp(node, port, "root", src_license, dst_license)
                     register_dict[node]=result
                     if not result:
@@ -2580,12 +2586,17 @@ class graphics_deploy(Deploy):
         first_node_xi_length=20
         ip_field_length=15
         password_field_length=15
+        SHOW=0x0
+        HIDDEN = 0x1
+        READ_ONLY = 0x2
         if local_flag:
             port_field_length=5
             port=0
+            ATTRIBUTE=READ_ONLY
         else:
             port_field_length=5
             port=22
+            ATTRIBUTE=SHOW
 
         if len(init_list) == 0:
             local_ip_list=self.get_local_ip_list()
@@ -2595,14 +2606,14 @@ class graphics_deploy(Deploy):
             while True:
                 if len(local_ip_list)==1:
                     elements=[
-                            ("IP:", 1, 1, local_ip_list[0], 1, first_node_xi_length, ip_field_length, 0), 
-                            ("root用户密码:", 2, 1, "", 2, first_node_xi_length, password_field_length, 0), 
-                            ("ssh端口:", 3, 1, str(port), 3, first_node_xi_length, port_field_length, 0), 
+                            ("IP:", 1, 1, local_ip_list[0], 1, first_node_xi_length, ip_field_length, 0, SHOW), 
+                            ("root用户密码:", 2, 1, "", 2, first_node_xi_length, password_field_length, 0, SHOW), 
+                            ("ssh端口:", 3, 1, str(port), 3, first_node_xi_length, port_field_length, 0, ATTRIBUTE), 
                             ]
                     if local_flag:
-                        code, init_fields=self.d.form(f"请填写本机信息:", elements=elements, title=title, ok_label="初始化", cancel_label="取消", height=9)
+                        code, init_fields=self.d.mixedform(f"请填写本机信息:", elements=elements, title=title, ok_label="初始化", cancel_label="取消", height=9)
                     else:
-                        code, init_fields=self.d.form(f"请填写集群中主机信息\n\n本机:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消", height=9)
+                        code, init_fields=self.d.mixedform(f"请填写集群中主机信息\n\n本机:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消", height=9)
                     break
                 else:
                     choices_list=[]
@@ -2617,13 +2628,13 @@ class graphics_deploy(Deploy):
             n=0
             for account_info in init_list:
                 n=n+1
-                elements.append(("IP:", n, 1, account_info[0], n, 5, ip_field_length, 0))
-                elements.append(("root用户密码:", n, 22, account_info[1], n, 36, password_field_length, 0))
-                elements.append(("ssh端口: ", n, 52, str(account_info[2]), n, 61, port_field_length, 0))
+                elements.append(("IP:", n, 1, account_info[0], n, 5, ip_field_length, 0, SHOW))
+                elements.append(("root用户密码:", n, 22, account_info[1], n, 36, password_field_length, 0, SHOW))
+                elements.append(("ssh端口: ", n, 52, str(account_info[2]), n, 61, port_field_length, 0, ATTRIBUTE))
             if local_flag:
-                code, init_fields=self.d.form(f"填写本机信息:", elements=elements[:3], title=title, ok_label="初始化", cancel_label="取消")
+                code, init_fields=self.d.mixedform(f"填写本机信息:", elements=elements[:3], title=title, ok_label="初始化", cancel_label="取消")
             else:
-                code, init_fields=self.d.form(f"填写集群主机信息:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消")
+                code, init_fields=self.d.mixedform(f"填写集群主机信息:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消")
         self.log.logger.debug(f"主机信息: {code=}, {init_fields=}")
         return code, init_fields
 
@@ -3755,7 +3766,7 @@ class graphics_deploy(Deploy):
                 }
         result, msg=self.write_config(deploy_dict, deploy_file)
         if result:
-            self.log.logger.info(f"请将文件'{os.path.abspath(deploy_file)}'上传至Dreamone平台, 上传之后可获取系统登录地址 !")
+            self.log.logger.info(f"请将文件'{os.path.abspath(deploy_file)}'上传至Dreamone平台,\n 上传之后可获取系统登录地址 !")
             return True, {"Sucessful": True}
         else:
             return False, msg
@@ -3825,9 +3836,8 @@ class graphics_deploy(Deploy):
                     n=n+1
                 elements.extend(info)
             code, data_list = self.d.mixedform(msg, elements=elements, title=title, ok_label=ok_label, cancel_label=cancel_label)
-
             if code==self.d.OK:
-                self.log.logger.debug(f"{data_list=}")
+                self.log.logger.debug(f"{ok_label}: {data_list=}")
                 blank_flag=False
                 if located_is_show:
                     for index, node in enumerate(data_list):
@@ -3852,6 +3862,7 @@ class graphics_deploy(Deploy):
                     continue
                 return True, arch_dict
             else:
+                self.log.logger.debug(f"{cancel_label}: {data_list=}")
                 return False, {}
 
     @stream_show
@@ -3892,6 +3903,7 @@ class graphics_deploy(Deploy):
 
         # init
         hosts_list=[]               # hosts list
+        local_node = ""             
         if deploy_type=="remote":
             while True:
                 result, init_dict=self.config_init(title, init_dict, local_flag=False)
@@ -4531,8 +4543,8 @@ class graphics_deploy(Deploy):
         elif action=="stop":
             help_msg="停止"
 
-        node_list=[]            # 节点列表
-        service_soft_dict={}    # 可以启停的服务列表(排除工具类软件)
+        node_list=[]            # 节点列表: [(node, ""), (node, "")]
+        service_soft_dict={}    # 可以启停的服务列表(排除工具类软件): {node:[soft1, soft2], }
         for node in arch_dict:
             node_list.append((node, ""))
             service_soft_dict[node]=[]
@@ -4556,7 +4568,6 @@ class graphics_deploy(Deploy):
                 self.log.logger.info(f"选择{node}")
 
                 node_soft_list=[]       # 选择软件列表
-                #for softname in arch_dict[node]["software"]:
                 for softname in service_soft_dict[node]:
                     if control_dict.get(node) is not None:      # 已操作的软件依旧显示
                         if softname in control_dict[node]:
@@ -4575,21 +4586,26 @@ class graphics_deploy(Deploy):
                     continue
             elif code==self.d.HELP:         # start|stop按钮
                 if len(control_dict)==0:            # 默认全选
-                    #for node in arch_dict:
                     for node in service_soft_dict:
                         control_dict[node]=service_soft_dict[node]
 
+                self.log.logger.debug("显示已选择的主机和软件:")
                 code=self.show_choices_soft(title, action, control_dict)
                 if code==self.d.OK:
-                    self.status_management_exec(title, action, control_dict, init_dict, arch_dict, ext_dict)
+                    self.status_management_exec(title, action=action, control_dict=control_dict, init_dict=init_dict, arch_dict=arch_dict, ext_dict=ext_dict)
                     return
             else:
                 return
 
     @stream_show
-    def status_management_exec(self, title, action, control_dict, init_dict, arch_dict, ext_dict):
+    def status_management_exec(self, title, **kwargs):
         """图形: start|stop
         """
+        action=kwargs["action"]
+        control_dict=kwargs["control_dict"]
+        init_dict=kwargs["init_dict"]
+        arch_dict=kwargs["arch_dict"]
+        ext_dict=kwargs["ext_dict"]
         if action=="start":
             result, dict_=self.start(control_dict, init_dict, arch_dict, ext_dict)
         elif action=="stop":
