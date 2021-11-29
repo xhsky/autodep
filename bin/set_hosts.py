@@ -65,7 +65,7 @@ def main():
     except Exception as e:
         log.logger.error(f"{str(e)}")
         return_value=error_code
-    return return_value
+    sys.exit(return_value)
     
 if __name__ == "__main__":
     main()
