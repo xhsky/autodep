@@ -117,11 +117,11 @@ if __name__ == "__main__":
     located=conf_dict["located"]
     sql_info_dict=conf_dict[f"{softname}_info"]
     db_type=sql_info_dict["db_type"].lower()
-    sql_dir=sql_info_dict["sql_dir"]
-    install_dir=located
+    sql_dir=sql_info_dict.get("sql_dir")
+    install_dir=sql_dir
     if sql_dir is None:
         sql_dir=f"{located}/{softname}"             # 数据文件的上级目录名称必须与其软件名称相同
-        install_dir=sql_dir
+        install_dir=located
 
     if action=="install":
         sys.exit(install())
