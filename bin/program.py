@@ -425,7 +425,7 @@ def start():
     result, msg=common.exec_command(start_command)
     if result:
         log.logger.debug(f"检测端口: {port_list=}")
-        if not common.port_exist(port_list, seconds=600):
+        if not common.port_exist(port_list, seconds=1200):
             return_value=error_code
     else:
         log.logger.error(msg)
