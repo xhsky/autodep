@@ -488,7 +488,7 @@ class Deploy(object):
         """根据模板中各节点安装软件的权重和 对应 集群中各节点权重和(排序对应), 并将ip/located赋值给node配置
         return:
             True|False,
-            arch_dict|non_resouce_dict
+            arch_dict|non_resource_dict
         """
         self.log.logger.info("自动匹配node和ip")
 
@@ -511,31 +511,42 @@ class Deploy(object):
         self.log.logger.debug(f"{arch_no_ip_list=}")
         self.log.logger.debug(f"{host_info_no_ip_list=}")
 
+        localization_node_weights_dict={}
+        localization_ip_weights_dict={}
         node_weights_dict={}
         ip_weights_dict={}
         self.log.logger.debug("获取节点权重: [node_mem_weights, node_cpu_weights]")
-        for node in arch_no_ip_list:
+        #for node in arch_no_ip_list:
+        for node in arch_dict:
             node_mem_weights=0
             node_cpu_weights=0
             for softname in arch_dict[node]["software"]:
                 mem, cpu=self._get_soft_weights(arch_dict, node, softname)
                 node_mem_weights=node_mem_weights+mem
                 node_cpu_weights=node_cpu_weights+cpu
-            node_weights_dict[node]=[node_mem_weights, node_cpu_weights]
-        self.log.logger.debug(f"{node_weights_dict=}")
+            else:
+                if node in arch_no_ip_list:
+                    localization_node_weights_dict[node]=[node_mem_weights, node_cpu_weights]
+                node_weights_dict[node]=[node_mem_weights, node_cpu_weights]
+        self.log.logger.debug(f"{node_weights_dict=}, {localization_node_weights_dict=}")
 
         self.log.logger.debug("获取ip权重: [ip_mem_weights, ip_cpu_weights]")
-        for ip in host_info_no_ip_list:
-            ip_weights_dict[ip]=[host_info_dict[ip]["Mem"][0], host_info_dict[ip]["CPU"][0]]
+        #for ip in host_info_no_ip_list:
+        for ip in host_info_dict:
+            ip_mem=host_info_dict[ip]["Mem"][0]
+            ip_cpu=host_info_dict[ip]["CPU"][0]
+            if ip in host_info_no_ip_list:
+               localization_ip_weights_dict[ip]=[ip_mem, ip_cpu]
+            ip_weights_dict[ip]=[ip_mem, ip_cpu]
         self.log.logger.debug(f"{ip_weights_dict=}")
 
         self.log.logger.debug("node与ip适配:")
         # 节点与ip权重排序
-        ip_weights_sort=[ x for x, y in sorted(ip_weights_dict.items(), key=lambda item:item[1][0])]
-        node_weights_sort=[ x for x, y in sorted(node_weights_dict.items(), key=lambda item:item[1][0])]
+        localization_ip_weights_sort=[ x for x, y in sorted(localization_ip_weights_dict.items(), key=lambda item:item[1][0])]
+        localization_node_weights_sort=[ x for x, y in sorted(localization_node_weights_dict.items(), key=lambda item:item[1][0])]
 
         # 根据排序对应, 赋值
-        for node, ip in zip(node_weights_sort, ip_weights_sort):
+        for node, ip in zip(localization_node_weights_sort, localization_ip_weights_sort):
             arch_dict[node]["ip"]=ip
             self.log.logger.debug(f"{ip} <--> {node}")
 
@@ -551,29 +562,33 @@ class Deploy(object):
             self.log.logger.debug(f"{node} located_dir <--> {located_dir}")
 
         ## 资源大小验证
-        non_resouce_dict={}
-        non_resouce_flag=False
+        non_resource_dict={}
+        non_resource_flag=False
         if resource_verify_mode:
             self.log.logger.debug("资源校验...")
             for node in arch_dict:
                 ip=arch_dict[node]["ip"]
-                non_resouce_dict[ip]={}
+                self.log.logger.debug(f"{node} check {ip}")
                 mem=ip_weights_dict[ip][0]-node_weights_dict[node][0]
                 cpu=ip_weights_dict[ip][1]-node_weights_dict[node][1]
                 if mem < 0:
-                    non_resouce_flag=True
-                    non_resouce_dict[ip]["Mem"]=node_weights_dict[node][0]
+                    non_resource_flag=True
+                    if non_resource_dict.get(ip) is None:
+                        non_resource_dict[ip]={}
+                    non_resource_dict[ip]["Mem"]=node_weights_dict[node][0]
                 if cpu < 0:
-                    non_resouce_flag=True
-                    non_resouce_dict[ip]["CPU"]=node_weights_dict[node][1]
-            self.log.logger.debug("资源完成")
+                    non_resource_flag=True
+                    if non_resource_dict.get(ip) is None:
+                        non_resource_dict[ip]={}
+                    non_resource_dict[ip]["CPU"]=node_weights_dict[node][1]
+            self.log.logger.debug("资源校验完成")
         else:
-            self.log.logger.debug("资源校验未开启")
+            self.log.logger.warning("资源校验未开启")
 
-        if not non_resouce_flag:
-            return True, arch_dict
+        if non_resource_flag:
+            return False, non_resource_dict
         else:
-            return False, non_resouce_dict
+            return True, arch_dict
 
     def account_verifi(self, init_dict):
         """init_dict格式校验
@@ -1497,7 +1512,7 @@ class Deploy(object):
                     port=init_dict[arch_dict[node]["ip"]]["port"]
                     self.log.logger.info(f"{node}节点注册license")
                     self.log.logger.debug(f"copy {src_license} {node}:{dst_license}")
-                    result, msg=self.ssh_client.scp(node, port, "root", src_license, dst_license)
+                    result, msg=self.ssh_client.scp(src_license, dst_license, node, port)
                     register_dict[node]=result
                     if not result:
                         self.log.logger.error(f"{node}节点注册失败: {msg}")
@@ -2611,7 +2626,7 @@ class graphics_deploy(Deploy):
                             ("ssh端口:", 3, 1, str(port), 3, first_node_xi_length, port_field_length, 0, ATTRIBUTE), 
                             ]
                     if local_flag:
-                        code, init_fields=self.d.mixedform(f"请填写本机信息:", elements=elements, title=title, ok_label="初始化", cancel_label="取消", height=9)
+                        code, init_fields=self.d.mixedform(f"请填写本机信息:", elements=elements, title=title, ok_label="初始化", cancel_label="取消", height=7)
                     else:
                         code, init_fields=self.d.mixedform(f"请填写集群中主机信息\n\n本机:", elements=elements, title=title, extra_button=True, extra_label="继续添加", ok_label="初始化", cancel_label="取消", height=9)
                     break
@@ -2880,7 +2895,7 @@ class graphics_deploy(Deploy):
                 error_msg=node_info_dict["error_info"]
                 elements.append((ip, n, 1, error_msg, n, xi_1, field_length, 0, READ_ONLY))
         elements.append(("", n+1, 1, "", n+1, xi_1, field_length, 0, HIDDEN))
-        self.log.logger.debug(f"host info summary: {elements=}")
+        #self.log.logger.debug(f"host info summary: {elements=}")
         code, _ = self.d.mixedform(f"请确认集群主机信息:", elements=elements, ok_label="开始部署", cancel_label="终止部署")
         return code
 
@@ -2889,14 +2904,22 @@ class graphics_deploy(Deploy):
         """
         return self.edit_arch_ip_and_located(title, arch_dict, located_is_show=True, readonly=True)
 
-    def _show_non_resource(self, non_resouce_dict):
+    def _show_non_resource(self, non_resource_dict):
         """显示资源不足的信息
+        para:
+            non_resource_dict:
+                {
+                    ip:{
+                        "Mem": N, 
+                        "CPU": N
+                    }
+                }
         """
         msg=""
-        for ip in non_resouce_dict:
+        for ip in non_resource_dict:
             msg=f"{msg}\n* 主机({ip})至少需要:"
-            mem=non_resouce_dict[ip].get("Mem")
-            cpu=non_resouce_dict[ip].get("CPU")
+            mem=non_resource_dict[ip].get("Mem")
+            cpu=non_resource_dict[ip].get("CPU")
             if mem:
                 msg=f"{msg} {format_size(mem)}内存"
             if cpu:
@@ -3150,6 +3173,7 @@ class graphics_deploy(Deploy):
                 for node in connect_test_result:
                     if connect_test_result[node]["result"] != normal_code:
                         self.log.logger.error(f"{node}:\t{connect_test_result[node]['err_msg']}")
+                return False, {}
 
         result, dict_=super(graphics_deploy, self).init(init_dict, ext_dict, local_flag)
         if result is True:
@@ -3774,7 +3798,7 @@ class graphics_deploy(Deploy):
     def edit_arch_ip_and_located(self, title, arch_dict, located_is_show=True, readonly=False):
         """编辑arch_dict
         return: 
-            bool            # True: 确认, False: 取消
+            bool            # True: 确认, False: 取消/修改
             arch_dict       
         """
         SHOW=0x0
@@ -3784,6 +3808,7 @@ class graphics_deploy(Deploy):
         xi=15
         field_length=45
         ip_field_length=15
+        separator="*"
         if readonly:
             ATTRIBUTE=READ_ONLY
             ok_label="开始部署"
@@ -3791,7 +3816,7 @@ class graphics_deploy(Deploy):
         else:
             ATTRIBUTE=SHOW
             ok_label="确认"
-            cancel_label="取消"
+            cancel_label="返回"
         msg="请填写集群IP:"
         while True:
             n=0
@@ -3820,7 +3845,7 @@ class graphics_deploy(Deploy):
 
                 # 显示softname
                 softname_str=",".join(arch_dict[node]["software"])
-                row_chars=60
+                row_chars=40
                 rows=math.ceil(len(softname_str)/row_chars)
                 for i in range(rows):
                     if i == 0:
@@ -3832,29 +3857,25 @@ class graphics_deploy(Deploy):
                             )
                 else:
                     n=n+i
-                    info.append(("", n+1, 1, "-", n+1, xi, field_length, 0, HIDDEN))
+                    info.append(("", n+1, 1, separator, n+1, xi, field_length, 0, HIDDEN))
                     n=n+1
                 elements.extend(info)
-            code, data_list = self.d.mixedform(msg, elements=elements, title=title, ok_label=ok_label, cancel_label=cancel_label)
+            code, data_list = self.d.mixedform(msg, elements=elements, title=title, ok_label=ok_label, cancel_label=cancel_label, width=70)
             if code==self.d.OK:
                 self.log.logger.debug(f"{ok_label}: {data_list=}")
                 blank_flag=False
-                if located_is_show:
-                    for index, node in enumerate(data_list):
-                        if index % 5 == 0:
-                            ip=data_list[index+1].strip()
+                N=data_list.index(separator)+1
+                for index, node in enumerate(data_list):
+                    if index % N == 0:
+                        ip=data_list[index+1].strip()
+                        arch_dict[node]["ip"]=ip
+                        if located_is_show:
                             located=data_list[index+2].strip()
-                            arch_dict[node]["ip"]=ip
                             arch_dict[node]["located"]=located
-                            if ip=="" or located=="":
+                            if located == "":
                                 blank_flag=True
-                else:
-                    for index, node in enumerate(data_list):
-                        if index % 4 == 0:
-                            ip=data_list[index+1].strip()
-                            arch_dict[node]["ip"]=data_list[index+1]
-                            if ip=="":
-                                blank_flag=True
+                        if ip == "":
+                            blank_flag=True
 
                 if blank_flag:
                     msg=f"{msg}\n警告: 有未填写信息!"
@@ -3863,7 +3884,7 @@ class graphics_deploy(Deploy):
                 return True, arch_dict
             else:
                 self.log.logger.debug(f"{cancel_label}: {data_list=}")
-                return False, {}
+                return False, arch_dict
 
     @stream_show
     def g_deploy(self, title):
@@ -3882,6 +3903,7 @@ class graphics_deploy(Deploy):
                 continue
             else:
                 self.log.logger.error(f"'{stage}'阶段执行失败: {dict_}")
+                break
         return result, dict_
 
     def deploy(self, title, deploy_type):
@@ -3915,6 +3937,8 @@ class graphics_deploy(Deploy):
                         result, code=self.init("集群初始化", init_dict=init_dict, localization_dict=localization_dict, ext_dict=ext_dict, local_flag=False)
                         if result and code==normal_code:
                             break
+                        elif result and code!=normal_code:
+                            continue
                 return
         elif deploy_type=="local":
             while True:
@@ -3942,6 +3966,8 @@ class graphics_deploy(Deploy):
                             result, code=self.init("本机初始化", init_dict=init_dict, localization_dict=localization_dict, ext_dict=ext_dict, local_flag=True)
                             if result and code==normal_code:
                                 break
+                            elif result and code!=normal_code:
+                                continue
                 return
 
         # get config
@@ -3962,14 +3988,10 @@ class graphics_deploy(Deploy):
                 while True:
                     result, _=self.show_arch_summary(title, arch_dict)
                     if result:
-                        self.log.logger.info(f"确认{arch_dict=}")
                         break
                     else:
-                        result, arch_dict=self.edit_arch_ip_and_located(title, arch_dict)
-                        if result:
-                            continue
-                        else:
-                            return
+                        _, arch_dict=self.edit_arch_ip_and_located(title, arch_dict)
+                        continue
             else:
                 self._show_non_resource(arch_dict)
                 return
@@ -4403,7 +4425,7 @@ class graphics_deploy(Deploy):
         return code
 
     def management(self, title):
-        """集群管理: 监控, 启动, 停止, 巡检, license
+        """集群管理: 监控, 启动, 停止, 巡检, license注册
         """
         while True:
             menu={
@@ -4411,7 +4433,7 @@ class graphics_deploy(Deploy):
                     "2": "启动", 
                     "3": "停止", 
                     "4": "巡检", 
-                    "5": "license"
+                    "5": "license注册"
                     }
 
             code,tag=self.d.menu("", choices=[
@@ -4687,6 +4709,7 @@ class graphics_deploy(Deploy):
                 continue
             else:
                 self.log.logger.error(f"'{stage}'阶段执行失败: {dict_}")
+                break
         else:
             self.log.logger.debug("删除上传license文件")
             os.remove(local_license_path)
@@ -4696,10 +4719,10 @@ class graphics_deploy(Deploy):
         """program注册license
         """
         if not os.path.exists(local_license_path):
-            self.showmsg(f"'{local_license_path}'文件不存在", title="Error", height=4)
+            self.showmsg(f"'{local_license_path}'文件不存在", title="Error", height=5)
             return
 
-        code=self.d.yesno(f"此过程将会重启项目服务.\n是否确认继续?", title="提醒") 
+        code=self.d.yesno(f"此过程将会重启项目服务.\n是否确认继续?", title="提醒", height=8) 
         if code == self.d.OK:
             self.g_program_license_register_management(title)
         else:
