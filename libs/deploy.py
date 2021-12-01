@@ -2815,7 +2815,7 @@ class graphics_deploy(Deploy):
                 else:
                     pass
         elements.append((" ", n+1, 1, "", n+1, xi, field_length, 0, HIDDEN))
-        code, _ = self.d.mixedform(f"配置信息确认:", elements=elements, title=title, width=80, ok_label="初始化", cancel_label="返回")
+        code, _ = self.d.mixedform(f"配置信息确认:", elements=elements, title=title, width=80, ok_label="初始化", cancel_label="修改")
         if code==self.d.OK:
             return True
         else:
@@ -3273,37 +3273,40 @@ class graphics_deploy(Deploy):
 
     def manual_config(self, title, arch_dict):
         """图形: 国产化软件(未安装软件)配置
-            "localization_dict": {
-                "node":{
-                    "software": ["dameng", "shentong"], 
-                    "ip": xxx, 
-                    "dameng_info": {
-                        "db_ip": ip, 
-                        "system_user": user, 
-                        "dba_user": sysdba, 
-                        "dba_password": xxxx, 
-                        "db_port": port, 
-                        "start_command": xxxx, 
-                        "stop_command": xxx
-                    }
-                    "shentong_info": {
-                        "db_ip": ip, 
-                        "system_user": user, 
-                        "dba_user": sysdba, 
-                        "dba_password": xxxx, 
-                        "db_port": port, 
-                        "start_command": xxxx, 
-                        "stop_command": xxx
+        return
+            result: bool, 
+            localization_dict:
+                {
+                    "node":{
+                        "software": ["dameng", "shentong"], 
+                        "ip": xxx, 
+                        "dameng_info": {
+                            "db_ip": ip, 
+                            "system_user": user, 
+                            "dba_user": sysdba, 
+                            "dba_password": xxxx, 
+                            "db_port": port, 
+                            "start_command": xxxx, 
+                            "stop_command": xxx
+                        }
+                        "shentong_info": {
+                            "db_ip": ip, 
+                            "system_user": user, 
+                            "dba_user": sysdba, 
+                            "dba_password": xxxx, 
+                            "db_port": port, 
+                            "start_command": xxxx, 
+                            "stop_command": xxx
+                        }
                     }
                 }
-            }
-        return bool, {}
         """
         self.log.logger.debug("检测手动配置信息:")
         localization_source_dict=self._get_localization_info()
 
         localization_dict={}
         autocheck_flag=False     # 是否已添加autocheck的标志, localization_dict里只存在一份autocheck
+        # 配置软件默认值
         for node in arch_dict:
             for softname in arch_dict[node]["software"]:
                 if softname in localization_soft_port:
@@ -3368,31 +3371,35 @@ class graphics_deploy(Deploy):
                 temp_dict[num]=[node, softname]
 
         N=len(temp_dict)        # 国产化软件个数
-        for num in temp_dict:
-            node=temp_dict[num][0]
-            softname=temp_dict[num][1]
-            result, soft_manaul_dict=self.edit_localization_config(title, f"{num}/{N}", node, softname, localization_dict[node][f"{softname}_info"])
-            self.log.logger.debug(f"{node}: {softname}: {soft_manaul_dict}")
-            if result:
-                localization_dict[node][f"{softname}_info"]=soft_manaul_dict
-                if soft_manaul_dict.get("db_ip") is not None:
-                    localization_dict[node]["ip"]=soft_manaul_dict["db_ip"]
-                # 写入文件, 用于重新开始获取历史输入
-                self.log.logger.debug(f"写入{localization_file}")
-                result, msg=self.write_config(localization_dict, localization_file)
+        while True:
+            for num in temp_dict:
+                node=temp_dict[num][0]
+                softname=temp_dict[num][1]
+                result, soft_manaul_dict=self.edit_localization_config(title, f"{num}/{N}", node, softname, localization_dict[node][f"{softname}_info"])
+                self.log.logger.debug(f"{node}: {softname}: {soft_manaul_dict}")
                 if result:
-                    continue
-                else:
-                    self.showmsg(msg, "Error")
+                    localization_dict[node][f"{softname}_info"]=soft_manaul_dict
+                    if soft_manaul_dict.get("db_ip") is not None:
+                        localization_dict[node]["ip"]=soft_manaul_dict["db_ip"]
+                    # 写入文件, 用于重新开始获取历史输入
+                    self.log.logger.debug(f"写入{localization_file}")
+                    result, msg=self.write_config(localization_dict, localization_file)
+                    if result:
+                        continue
+                    else:
+                        self.showmsg(msg, "Error")
+                        return False, {}
+                else:                       # 取消
                     return False, {}
-            else:                       # 取消
-                return False, {}
-        else:
-            if len(localization_dict)==0:
-                result=True
             else:
-                result=self.show_localization_config(title, localization_dict)
-            return result, localization_dict
+                if len(localization_dict)==0:
+                    result=True
+                else:
+                    result=self.show_localization_config(title, localization_dict)
+                    if result:
+                        return result, localization_dict
+                    else:   # 修改
+                        continue
 
     def update_management(self, title):
         """图形: 更新管理: 更新 回滚
@@ -3790,7 +3797,7 @@ class graphics_deploy(Deploy):
                 }
         result, msg=self.write_config(deploy_dict, deploy_file)
         if result:
-            self.log.logger.info(f"请将文件'{os.path.abspath(deploy_file)}'上传至Dreamone平台,\n 上传之后可获取系统登录地址 !")
+            self.log.logger.info(f"请将文件'{os.path.abspath(deploy_file)}'上传至Dreamone平台!")
             return True, {"Sucessful": True}
         else:
             return False, msg
@@ -4015,7 +4022,7 @@ class graphics_deploy(Deploy):
 
         result, returncode=self.g_deploy(title)
         if result and returncode==normal_code:
-            self.d.msgbox("集群部署完成, 将返回菜单", width=35, height=5)
+            self.show_project_url()
             self.show_menu()
         else:
             self.d.msgbox("集群部署失败, 将返回菜单", width=35, height=5)
@@ -4787,6 +4794,19 @@ class graphics_deploy(Deploy):
         """msgbox显示
         """
         self.d.msgbox(msg, title=title, width=width, height=height)
+
+    def show_project_url(self):
+        """显示首页地址
+        """
+        result, config_list=self.read_config(["arch", "project"])
+        if result:
+            arch_dict, project_dict=config_list
+            project_url=project_dict["project_url"]
+            project_name=project_dict["project_name"]
+            node=project_url.split(":")[1][2:]
+            ip=arch_dict[node]["ip"]
+            project_url=project_url.replace(node, ip)
+            self.showmsg(f"\n{project_url}", f"{project_name}项目地址", height=7)
 
 class platform_deploy(Deploy):
     '''平台安装'''
