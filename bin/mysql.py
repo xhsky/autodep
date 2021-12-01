@@ -103,11 +103,6 @@ def install():
         wait_timeout=600
         default_password_lifetime=90
 
-        # plugin 
-        plugin-load-add=connection_control.so
-        connection_control_failed_connections_threshold=10
-        connection_control_min_connection_delay=1000 
-
         # Log 
         ## Error Log
         log_error={mysql_dir}/{my_logs}/mysqld.log
@@ -163,6 +158,7 @@ def install():
         innodb_rollback_segments=128
         innodb_max_undo_log_size=1G
 
+        !include {my_plugin_cnf_file}
         !include {my_client_cnf_file}
 
         log_replica_updates=1
@@ -241,16 +237,35 @@ def run():
                     log.logger.error(f"初始化失败, 请查看MySQL日志")
         except Exception as e:
             log.logger.error(str(e))
-            sys.exit(error_code)
+            return error_code
 
-        start_command=f"systemctl start mysqld"
-        log.logger.debug(f"{start_command=}")
-        result, msg=common.exec_command(start_command, timeout=600)
+        mysql_plugin_context="""\
+                # plugin
+                plugin-load-add=connection_control.so
+                connection_control_failed_connections_threshold=10
+                connection_control_min_connection_delay=1000
+                """
+        config_dict={
+                "my_plugin_cnf":{
+                    "config_file": my_plugin_cnf_file, 
+                    "config_context": mysql_plugin_context, 
+                    "mode":"w"
+                    }
+                }
+        log.logger.debug(f"写入配置文件: {json.dumps(config_dict)}")
+        result, msg=common.config(config_dict)
         if result:
-            log.logger.debug(f"检测端口: {port_list=}")
-            if common.port_exist(port_list):
-                return_value=init(db_info_dict, mysql_dir, init_password, cluster_info_dict, role, log)
+            start_command=f"systemctl start mysqld"
+            log.logger.debug(f"{start_command=}")
+            result, msg=common.exec_command(start_command, timeout=600)
+            if result:
+                log.logger.debug(f"检测端口: {port_list=}")
+                if common.port_exist(port_list):
+                    return_value=init(db_info_dict, mysql_dir, init_password, cluster_info_dict, role, log)
+                else:
+                    return_value=error_code
             else:
+                log.logger.error(msg)
                 return_value=error_code
         else:
             log.logger.error(msg)
@@ -321,6 +336,7 @@ if __name__ == "__main__":
 
     cluster_info_dict=mysql_info_dict.get("cluster_info")
     my_client_cnf_file="/etc/my_client.cnf"
+    my_plugin_cnf_file="/etc/my_plugin.cnf"
     if cluster_info_dict is None:
         cluster_flag=0
         role="stand-alone"
