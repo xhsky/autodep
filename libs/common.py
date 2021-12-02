@@ -263,12 +263,16 @@ def config(config_dict):
                     else:
                         f.write(context)
             elif mode=="r+":
-                with open(filename, mode, encoding="utf-8") as f:
-                    all_text=f.readlines()
-                    for line in context.split("\n"):
-                        line=f"{line}\n"
-                        if line not in all_text:
-                            f.write(line)
+                if os.path.exists(filename):
+                    with open(filename, mode, encoding="utf-8") as f:
+                        all_text=f.readlines()
+                        for line in context.split("\n"):
+                            line=f"{line}\n"
+                            if line not in all_text:
+                                f.write(line)
+                else:
+                    with open(filename, "w", encoding="utf-8") as f:
+                        f.write(context)
         return True, None
     except Exception as e:
         return False, str(e)
