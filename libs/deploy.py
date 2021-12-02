@@ -4801,12 +4801,15 @@ class graphics_deploy(Deploy):
         result, config_list=self.read_config(["arch", "project"])
         if result:
             arch_dict, project_dict=config_list
-            project_url=project_dict["project_url"]
-            project_name=project_dict["project_name"]
-            node=project_url.split(":")[1][2:]
-            ip=arch_dict[node]["ip"]
-            project_url=project_url.replace(node, ip)
-            self.showmsg(f"\n{project_url}", f"{project_name}项目地址", height=7)
+            project_url_list=project_dict.get("project_url")
+            if project_url_list is not None:
+                project_url_str=""
+                project_name=project_dict.get("project_name")
+                for project_url in project_url_list:
+                    node=project_url.split(":")[1][2:]
+                    ip=arch_dict[node]["ip"]
+                    project_url_str=f"{project_url_str}\n{project_url.replace(node, ip)}"
+                self.showmsg(f"{project_url_str}", f"{project_name}项目地址", height=8)
 
 class platform_deploy(Deploy):
     '''平台安装'''
