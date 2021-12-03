@@ -105,6 +105,9 @@ def port_exist(port_list, seconds=120, exist_or_not=True):
     else:
         return True
 
+def pid_exists(pid):
+    return psutil.pid_exists(pid)
+
 def port_connect(host, port):
     s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(2)
