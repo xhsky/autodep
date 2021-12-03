@@ -15,6 +15,12 @@
     "py": "nginx.py", 
     "type": "env"
   }, 
+  "keepalived": {
+    "file": "keepalived-2.2-4-x64-Centos7.tar.gz", 
+    "version": "2.2.4", 
+    "py": "keepalived.py", 
+    "type": "platform"
+  }, 
   "dps": {
     "file": "dreamProxyServer-1.20.1.tar.gz", 
     "version": "1.20.1", 
@@ -55,6 +61,12 @@
      "file":"dreamCache-6.2.5.tar.gz", 
      "version": "6.2.5", 
      "py": "dch.py", 
+     "type": "env"
+  }, 
+  "redis6": {
+     "file":"redis-6.2.5.tar.gz", 
+     "version": "6.2.5", 
+     "py": "redis6.py", 
      "type": "env"
   }, 
   "mysql": {
