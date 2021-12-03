@@ -114,7 +114,7 @@ def run():
     result, msg=common.exec_command(start_command)
     if result:
         return_code=monitor()
-        if return_code!=normal_code:
+        if return_code!=activated_code:
             return_value=error_code
     else:
         log.logger.error(msg)
@@ -151,7 +151,7 @@ def monitor():
         with open(pid_file, "r") as f:
             pid=int(f.read())
         if common.pid_exists(pid):
-            return normal_code
+            return activated_code
         else:
             return stopped_code
     else:
