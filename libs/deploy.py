@@ -3393,7 +3393,7 @@ class graphics_deploy(Deploy):
                     return False, {}
             else:
                 if len(localization_dict)==0:
-                    result=True
+                    return True, localization_dict
                 else:
                     result=self.show_localization_config(title, localization_dict)
                     if result:
