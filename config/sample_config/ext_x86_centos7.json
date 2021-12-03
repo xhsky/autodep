@@ -16,7 +16,7 @@
     "type": "env"
   }, 
   "keepalived": {
-    "file": "keepalived-2.2-4-x64-Centos7.tar.gz", 
+    "file": "keepalived-2.2.4-x64-Centos7.tar.gz", 
     "version": "2.2.4", 
     "py": "keepalived.py", 
     "type": "platform"
