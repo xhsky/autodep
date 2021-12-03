@@ -74,7 +74,7 @@ def install():
     result, msg=common.exec_command(mk_dirs_commands)
     if not result:
         log.logger.error(msg)
-        sys.exit(error_code)
+        return error_code
 
     mem=db_info_dict.get("innodb_mem")
     server_id=db_info_dict.get("server_id")
