@@ -332,7 +332,7 @@ class Deploy(object):
             port_list.append(arch_dict[node]["nacos_info"]["web_port"])
             if arch_dict[node]["nacos_info"].get("cluster_info") is not None:
                 port_list.append(arch_dict[node]["nacos_info"]["cluster_info"]["raft_port"])
-        elif softname=="autocheck" or softname=="glusterfs-client":
+        elif softname=="autocheck" or softname=="glusterfs-client" or softname=="keepalived":
             port_list.append(portless_service_code)
         elif softname=="dameng" or softname=="shentong" or softname=="kingbase":
             port_list.append(arch_dict[node][f"{softname}_info"]["db_port"])
@@ -3227,50 +3227,6 @@ class graphics_deploy(Deploy):
 
         return result, arch_dict
 
-    def init_bak(self, title, init_dict, arch_dict, ext_dict):
-        """图形: 初始化
-            1.填写init_dict
-            2.填写localization_dict(国产化软件和check)
-
-            return:
-                bool, config_dict={init_dict, arch_dict, localization_dict}
-        """
-        # 填写init_dict, 校验并确认
-        result, init_dict=self.config_init(title, init_dict)
-        if result:
-            result, dict_=self.account_verifi(init_dict)
-            if not result:
-                self._show_not_pass_init(dict_)
-                return False, {}
-        else:
-            return False, {}
-
-        # 填写localization_dict并确认
-        result, localization_dict=self.manual_config(title, arch_dict)
-        if not result:
-            return False, {}
-
-        result, exit_code=self.init_stream_show(title, init_dict, localization_dict, ext_dict)
-        if result and exit_code==normal_code:
-            time.tzset()                                    # 主机信息获取过程中会重置时区, 程序内重新获取时区信息
-            _, config_list=self.read_config(["host"])
-            host_info_dict=config_list[0]
-            code=self.show_hosts_info(host_info_dict)
-            if code==self.d.OK:             # 开始部署按钮
-                config_dict={
-                        "host_info_dict": host_info_dict, 
-                        "init_dict": init_dict, 
-                        "arch_dict": arch_dict, 
-                        "localization_dict": localization_dict
-                        }
-                return True, config_dict
-            else:                           # 终止部署按钮
-                return False, {}
-            return True
-        else:
-            self.log.logger.error(f"{exit_code=}")
-            return False, {}
-
     def manual_config(self, title, arch_dict):
         """图形: 国产化软件(未安装软件)配置
         return
@@ -4807,8 +4763,9 @@ class graphics_deploy(Deploy):
                 project_name=project_dict.get("project_name")
                 for project_url in project_url_list:
                     node=project_url.split(":")[1][2:]
-                    ip=arch_dict[node]["ip"]
-                    project_url_str=f"{project_url_str}\n{project_url.replace(node, ip)}"
+                    if arch_dict.get(node):
+                        ip=arch_dict[node]["ip"]
+                        project_url_str=f"{project_url_str}\n{project_url.replace(node, ip)}"
                 self.showmsg(f"{project_url_str}", f"{project_name}项目地址", height=8)
 
 class platform_deploy(Deploy):
