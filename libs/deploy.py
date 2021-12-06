@@ -16,7 +16,7 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         init_file, arch_file, project_file, update_init_file, update_arch_file, start_file, stop_file, deploy_file, ext_file, localization_file, backup_version_file, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code, \
         local_license_path, node_license_path, \
-        localization_soft_port
+        localization_soft_port, localization_test_soft
 
 for dir_ in autodep_dir:
     if not os.path.exists(dir_):
@@ -905,14 +905,21 @@ class Deploy(object):
         """
         # 构建control_dict并去掉autocheck信息
         control_dict={}
-        autocheck_name="autocheck"
         for node in localization_dict:
-            if [autocheck_name] == localization_dict[node]["software"]:
-                continue
-            else:
-                if autocheck_name in localization_dict[node]["software"]:
-                    localization_dict[node]["software"].remove(autocheck_name)
-                control_dict[node]=localization_dict[node]["software"]
+            for softname in localization_dict[node]["software"]:
+                if softname in localization_test_soft:
+                    if control_dict.get(node) is None:
+                        control_dict[node]=[]
+                    control_dict[node].append(softname)
+
+        #autocheck_name="autocheck"
+        #for node in localization_dict:
+        #    if [autocheck_name] == localization_dict[node]["software"]:
+        #        continue
+        #    else:
+        #        if autocheck_name in localization_dict[node]["software"]:
+        #            localization_dict[node]["software"].remove(autocheck_name)
+        #        control_dict[node]=localization_dict[node]["software"]
 
         localization_result, localization_stats_dict=self.nodes_control(control_dict, "test", "配置信息检测", \
                 init_dict, localization_dict, ext_dict)
@@ -2709,6 +2716,9 @@ class graphics_deploy(Deploy):
             elements.append(("邮箱地址:", 4, 1, ",".join(soft_manaul_dict.get("mail_list")), 4, first_xi_length, receive_length, 0))
             elements.append(("手机号:", 5, 1, ",".join(soft_manaul_dict.get("sms_list")), 5, first_xi_length, receive_length, 0))
             msg=f"{node}配置巡检信息:\n注: 多个邮箱地址或手机号使用','分割"
+        elif softname=="keepalived":
+            elements.append(("虚拟IP/MASK:", 1, 1, soft_manaul_dict.get("virtual_addr"), 1, ip_field_length+3, ip_field_length+3, 0))
+            msg=f"{node}配置keepalived信息:\n注: 格式为192.168.0.3/24"
         else:
             pass
         code, fields=self.d.form(msg, elements=elements, title=f"{title}: 手动配置({stage})", ok_label="继续", cancel_label="取消")
@@ -2727,6 +2737,8 @@ class graphics_deploy(Deploy):
                 soft_manaul_dict["sender"]=fields[2]
                 soft_manaul_dict["mail_list"]=fields[3].split(",")
                 soft_manaul_dict["sms_list"]=fields[4].split(",")
+            elif softname=="keepalived":
+                soft_manaul_dict["virtual_addr"]=fields[0]
             return True, soft_manaul_dict
         else:                   # 取消
             return False, ()
@@ -2812,6 +2824,10 @@ class graphics_deploy(Deploy):
                     elements.append(("邮箱地址:", n+5, 2*tab, ",".join(soft_dict.get("mail_list")), n+5, xi, receive_length, 0, READ_ONLY))
                     elements.append(("手机号:", n+6, 2*tab, ",".join(soft_dict.get("sms_list")), n+6, xi, receive_length, 0, READ_ONLY))
                     n=n+6
+                elif softname=="keepalived":
+                    elements.append((f"{softname}:", n+1, tab, "", n+1, xi, field_length, 0, HIDDEN))
+                    elements.append(("虚拟IP/MASK:", n+2, 2*tab, soft_dict.get("virtual_addr"), n+2, xi, ip_field_length+3, 0, READ_ONLY))
+                    n=n+2
                 else:
                     pass
         elements.append((" ", n+1, 1, "", n+1, xi, field_length, 0, HIDDEN))
@@ -3218,6 +3234,9 @@ class graphics_deploy(Deploy):
         # 将巡检信息写入arch_dict
         arch_dict=self._set_check_info(arch_dict, localization_dict)
 
+        # 将keepalived写入arch_dict
+        arch_dict=self._set_keepalived_info(arch_dict, localization_dict)
+
         # 资源校验适配
         result, arch_dict=self.node_adapter_ip(arch_dict, host_info_dict, localization_dict)
 
@@ -3262,6 +3281,7 @@ class graphics_deploy(Deploy):
 
         localization_dict={}
         autocheck_flag=False     # 是否已添加autocheck的标志, localization_dict里只存在一份autocheck
+        keepalived_flag=False    # 是否已添加keepalived的标志, localization_dict里只存在一份keepalived
         # 配置软件默认值
         for node in arch_dict:
             for softname in arch_dict[node]["software"]:
@@ -3276,6 +3296,14 @@ class graphics_deploy(Deploy):
                                     "sms_list": []
                                     }
                             autocheck_flag=True
+                        else:
+                            continue
+                    elif softname=="keepalived":
+                        if not keepalived_flag:
+                            soft_default_info={
+                                    "virtual_addr": "", 
+                                    }
+                            keepalived_flag=True
                         else:
                             continue
                     elif softname=="dameng":
@@ -3335,7 +3363,7 @@ class graphics_deploy(Deploy):
                 self.log.logger.debug(f"{node}: {softname}: {soft_manaul_dict}")
                 if result:
                     localization_dict[node][f"{softname}_info"]=soft_manaul_dict
-                    if soft_manaul_dict.get("db_ip") is not None:
+                    if soft_manaul_dict.get("db_ip") is not None:           # 数据库ip赋值
                         localization_dict[node]["ip"]=soft_manaul_dict["db_ip"]
                     # 写入文件, 用于重新开始获取历史输入
                     self.log.logger.debug(f"写入{localization_file}")
@@ -4155,6 +4183,30 @@ class graphics_deploy(Deploy):
                             }
         return arch_dict
 
+    def _set_keepalived_info(self, arch_dict, localization_dict):
+        """ 根据localization_dict信息补充arch_dict
+        keepalived_dict={
+            "virtual_addr": "", 
+        }
+        return: arch_dict
+        """
+        for node in localization_dict:
+            if "keepalived" in localization_dict[node]["software"]:
+                keepalived_flag=True
+                keepalived_dict=localization_dict[node]["keepalived_info"]
+                break
+        else:
+            keepalived_flag=False
+
+        self.log.logger.debug(f"{keepalived_flag=}")
+        if keepalived_flag: # 补充arch_dict
+            virtual_addr=keepalived_dict["virtual_addr"]
+            for node in arch_dict:
+                if "keepalived" in arch_dict[node]["software"]:
+                    arch_dict[node]["keepalived_info"]["virtual_addr"]=virtual_addr
+                    continue
+        return arch_dict
+
     def _set_backup_tool_remote_info(self, arch_dict, init_dict):
         """若有备份且有远程备份, 则为远程备份中的node添加相应的user, password, port
         """
@@ -4396,7 +4448,7 @@ class graphics_deploy(Deploy):
                     "2": "启动", 
                     "3": "停止", 
                     "4": "巡检", 
-                    "5": "license注册"
+                    #"5": "license注册"
                     }
 
             code,tag=self.d.menu("", choices=[
@@ -4404,7 +4456,7 @@ class graphics_deploy(Deploy):
                         ("2", menu["2"]),
                         ("3", menu["3"]), 
                         ("4", menu["4"]), 
-                        ("5", menu["5"])
+                        #("5", menu["5"])
                         ], 
                     title=title, 
                     width=40, 
@@ -4714,7 +4766,6 @@ class graphics_deploy(Deploy):
         msg="检测并配置dialog环境, 请稍等..."
         print(msg)
         self.log.logger.info(msg)
-        return True
         dialog_dir=f"{ext_dir}/dialog"
         result, msg=pkg_install(dialog_dir, self.log)
         if result:
