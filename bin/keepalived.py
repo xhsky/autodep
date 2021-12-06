@@ -2,10 +2,21 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, json, os
+import sys, json, os, psutil
 from libs import common
 from libs.env import log_remote_level, keepalived_src, keepalived_dst, keepalived_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
+
+def get_adapter_name(ip):
+    """根据ip获取其网卡名称
+    """
+    nic=psutil.net_if_addrs()
+    for adapter in nic:
+        for snic in nic[adapter]:
+            if snic.address==ip:
+                return adapter
+    else:
+        return ""
 
 def install():
     """安装
@@ -40,9 +51,13 @@ def install():
         priority=100
     else:
         priority=80
-    interface=keepalived_info_dict["interface"]
-    virtual_addr=keepalived_info_dict["virtual_addr"]
 
+    interface=get_adapter_name(ip)
+    if interface == "":
+        log.logger.error(f"无法根据IP({ip})获取其网卡名称")
+        return error_code
+
+    virtual_addr=keepalived_info_dict["virtual_addr"]
     memebers=keepalived_info_dict["members"]
     unicast_src_ip=""
     unicast_peer=""
@@ -163,6 +178,7 @@ if __name__ == "__main__":
     log=common.Logger({"remote": log_remote_level}, loggger_name="keepalived")
 
     located=conf_dict["located"]
+    ip=conf_dict["ip"]
     keepalived_dir=f"{located}/{keepalived_src}"
     keepalived_info_dict=conf_dict["keepalived_info"]
     pid_file="/run/keepalived.pid"
