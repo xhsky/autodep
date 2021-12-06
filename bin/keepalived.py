@@ -2,7 +2,7 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, json, os, psutil
+import sys, json, os, psutil, socket
 from libs import common
 from libs.env import log_remote_level, keepalived_src, keepalived_dst, keepalived_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
@@ -59,8 +59,22 @@ def install():
 
     virtual_addr=keepalived_info_dict["virtual_addr"]
     memebers=keepalived_info_dict["members"]
-    unicast_src_ip=""
-    unicast_peer=""
+    try:
+        for node in memebers:
+            src_ip=socket.gethostbyname(node)
+            if src_ip==ip:
+                local_node=node
+                break
+        else:
+            self.log.logger.error(f"当前主机{ip}不在{memebers}中")
+            return error_code
+
+        memebers.remove(local_node)
+        unicast_src_ip=ip
+        unicast_peer=socket.gethostbyname(memebers[0])
+    except Exception as e:
+        self.log.logger.error(str(e))
+        return error_code
 
     keepalived_conf_text=f"""\
             ! Configuration File for keepalived
@@ -81,10 +95,10 @@ def install():
                 virtual_router_id 55
                 priority {priority}
                 advert_int 1
-                ! unicast_src_ip {unicast_src_ip}
-                ! unicast_peer {{
-                !    {unicast_peer}
-                ! }}
+                unicast_src_ip {unicast_src_ip}
+                unicast_peer {{
+                   {unicast_peer}
+                }}
                 authentication {{
                     auth_type PASS
                     auth_pass 1234
