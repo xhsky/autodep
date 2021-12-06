@@ -18,10 +18,12 @@ support_os=["centos 7", "uos 20"]
 # 国产化软件及端口
 localization_soft_port={
         "autocheck": 0, 
+        "keepalived": 0, 
         "dameng": 5236, 
         "shentong": 2003, 
         "kingbase": 54321
         }
+localization_test_soft=list(localization_soft_port.keys())[-3:]
 
 # 配置文件
 #program_file="./config/program.json"
@@ -97,7 +99,7 @@ g_term_cols=80
 # 测试模式, 正式环境关闭
 test_mode=False
 # 检测时是否开启资源校验
-resource_verify_mode=False
+resource_verify_mode=True
 
 portless_service_code=0     # 无端口有服务软件代码, 用于获取软件端口时的识别
 tool_service_code=1         # 工具类软件代码
