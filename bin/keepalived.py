@@ -66,14 +66,14 @@ def install():
                 local_node=node
                 break
         else:
-            self.log.logger.error(f"当前主机{ip}不在{memebers}中")
+            log.logger.error(f"当前主机{ip}不在{memebers}中")
             return error_code
 
         memebers.remove(local_node)
         unicast_src_ip=ip
         unicast_peer=socket.gethostbyname(memebers[0])
     except Exception as e:
-        self.log.logger.error(str(e))
+        log.logger.error(str(e))
         return error_code
 
     keepalived_conf_text=f"""\
