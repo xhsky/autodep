@@ -3848,24 +3848,28 @@ class graphics_deploy(Deploy):
             code, data_list = self.d.mixedform(msg, elements=elements, title=title, ok_label=ok_label, cancel_label=cancel_label, width=70)
             if code==self.d.OK:
                 self.log.logger.debug(f"{ok_label}: {data_list=}")
-                blank_flag=False
-                N=data_list.index(separator)+1
-                for index, node in enumerate(data_list):
-                    if index % N == 0:
-                        ip=data_list[index+1].strip()
-                        arch_dict[node]["ip"]=ip
-                        if located_is_show:
-                            located=data_list[index+2].strip()
-                            arch_dict[node]["located"]=located
-                            if located == "":
+                if not readonly:
+                    blank_flag=False
+                    separator_index_list=[]
+                    data_list.insert(0, separator)
+                    for i in range(data_list.count(separator)):
+                        separator_index_list.append(data_list.index(separator))
+                    for n in range(len(data_list)):
+                        if n in separator_index_list:
+                            node=data_list[n+1]
+                            ip=data_list[n+2].strip()
+                            arch_dict[node]["ip"]=ip
+                            if located_is_show:
+                                located=data_list[n+3].strip()
+                                arch_dict[node]["located"]=located
+                                if located == "":
+                                    blank_flag=True
+                            if ip == "":
                                 blank_flag=True
-                        if ip == "":
-                            blank_flag=True
-
-                if blank_flag:
-                    msg=f"{msg}\n警告: 有未填写信息!"
-                    self.log.logger.warning("有未填写信息")
-                    continue
+                    if blank_flag:
+                        msg=f"{msg}\n警告: 有未填写信息!"
+                        self.log.logger.warning("有未填写信息")
+                        continue
                 return True, arch_dict
             else:
                 self.log.logger.debug(f"{cancel_label}: {data_list=}")
