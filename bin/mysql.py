@@ -13,7 +13,8 @@ def init(db_info_dict, mysql_dir, init_password, cluster_info_dict, role, log):
     log.logger.debug(f"更改root密码: {change_pass_command=}")
     result, msg=common.exec_command(change_pass_command)
     if result:
-        if db_info_dict.get("business_db") is not None:
+        business_db_list=db_info_dict.get("business_db")
+        if business_db_list is not None and len(business_db_list)!=0:
             log.logger.debug("创建账号及数据库")
             init_sql_list=[]
             for db_name, user_name, user_password in zip(db_info_dict.get("business_db"), db_info_dict.get("business_user"), db_info_dict.get("business_password")):
