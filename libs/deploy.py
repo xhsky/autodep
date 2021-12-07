@@ -3137,7 +3137,7 @@ class graphics_deploy(Deploy):
             if child_pid == 0:          # 进入子进程
                 try:
                     os.close(read_fd)
-                    with os.fdopen(write_fd, mode="a", buffering=1) as wfile:
+                    with os.fdopen(write_fd, mode="w", buffering=1) as wfile:
                         self.log=Logger({"graphical": log_graphics_level}, wfile=wfile)
                         result, result_dict=func(self, title, **kwargs)
                         #status, dict_=super(graphics_deploy, self).init(init_dict, ext_dict)
