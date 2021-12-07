@@ -3,7 +3,7 @@
 # 2020-10-21 17:37:47
 # sky
 
-import locale, json, os, time, sys, tarfile, math, shutil, copy, psutil
+import locale, json, os, time, sys, tarfile, math, shutil, copy, psutil, socket
 from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_platform_level, log_graphics_level, \
         remote_python_transfer_dir, remote_python_install_dir,  remote_python_exec, \
         remote_code_dir, remote_pkgs_dir, ext_dir, autodep_dir, backup_dir, \
@@ -2915,10 +2915,10 @@ class graphics_deploy(Deploy):
         code, _ = self.d.mixedform(f"请确认集群主机信息:", elements=elements, ok_label="开始部署", cancel_label="终止部署")
         return code
 
-    def show_arch_summary(self, title, arch_dict):
+    def show_arch_summary(self, title, arch_dict, msg, ok_label, cancel_label):
         """显示arch_dict
         """
-        return self.edit_arch_ip_and_located(title, arch_dict, located_is_show=True, readonly=True)
+        return self.edit_arch_ip_and_located(title, arch_dict, located_is_show=True, readonly=True, msg=msg, ok_label=ok_label, cancel_label=cancel_label)
 
     def _show_non_resource(self, non_resource_dict):
         """显示资源不足的信息
@@ -3786,7 +3786,7 @@ class graphics_deploy(Deploy):
         else:
             return False, msg
 
-    def edit_arch_ip_and_located(self, title, arch_dict, located_is_show=True, readonly=False):
+    def edit_arch_ip_and_located(self, title, arch_dict, located_is_show=True, readonly=False, msg="", ok_label="确认", cancel_label="返回"):
         """编辑arch_dict
         return: 
             bool            # True: 确认, False: 取消/修改
@@ -3802,13 +3802,8 @@ class graphics_deploy(Deploy):
         separator="*"
         if readonly:
             ATTRIBUTE=READ_ONLY
-            ok_label="开始部署"
-            cancel_label="修改"
         else:
             ATTRIBUTE=SHOW
-            ok_label="确认"
-            cancel_label="返回"
-        msg="请填写集群IP:"
         while True:
             n=0
             elements=[]
@@ -3827,7 +3822,6 @@ class graphics_deploy(Deploy):
                 n=n+2
 
                 if located_is_show:  # 显示located
-                    msg="请确认安装架构:"
                     located=arch_dict[node].get("located")
                     if located is None:
                         located=""
@@ -3901,9 +3895,9 @@ class graphics_deploy(Deploy):
         """图形: init, install, run, generate_deploy_file
         """
         # get ext, arch config
-        result, config_list=self.read_config(["ext", "arch"])
+        result, config_list=self.read_config(["ext", "arch", "project"])
         if result:
-            ext_dict, arch_dict=config_list
+            ext_dict, arch_dict, project_dict=config_list
             result, config_list=self.read_config(["init"])
             if result:
                 init_dict=config_list[0]
@@ -3933,7 +3927,7 @@ class graphics_deploy(Deploy):
                 return
         elif deploy_type=="local":
             while True:
-                result, arch_dict=self.edit_arch_ip_and_located(title, arch_dict, located_is_show=False)
+                result, arch_dict=self.edit_arch_ip_and_located(title, arch_dict, located_is_show=False, msg="请填写集群IP", ok_label="确认", cancel_label="返回")
                 self.log.logger.debug(f"{arch_dict=}")
                 if result:
                     hosts_list=self.get_hosts_list(arch_dict)
@@ -3977,11 +3971,11 @@ class graphics_deploy(Deploy):
             if result:
                 self.log.logger.info(f"适配配置文件后的{arch_dict=}")
                 while True:
-                    result, _=self.show_arch_summary(title, arch_dict)
+                    result, _=self.show_arch_summary(title, arch_dict, msg="请确认安装架构", ok_label="开始部署", cancel_label="修改")
                     if result:
                         break
                     else:
-                        _, arch_dict=self.edit_arch_ip_and_located(title, arch_dict)
+                        _, arch_dict=self.edit_arch_ip_and_located(title, arch_dict, msg="集群修改", ok_label="确认", cancel_label="返回")
                         continue
             else:
                 self._show_non_resource(arch_dict)
@@ -4006,7 +4000,7 @@ class graphics_deploy(Deploy):
 
         result, returncode=self.g_deploy(title)
         if result and returncode==normal_code:
-            self.show_project_url()
+            self.show_project_url(project_dict)
             self.show_menu()
         else:
             self.d.msgbox("集群部署失败, 将返回菜单", width=35, height=5)
@@ -4026,14 +4020,14 @@ class graphics_deploy(Deploy):
             menu={
                     "1": "部署", 
                     "2": "管理", 
-                    #"3": "查看", 
+                    "3": "查看", 
                     #"4": "更新" 
                     }
             code,tag=self.d.menu(f"若是首次进行部署, 请从\'{menu['1']}\'依次开始:", 
                     choices=[
                         ("1", menu["1"]), 
                         ("2", menu["2"]),
-                        #("3", menu["3"]), 
+                        ("3", menu["3"]), 
                         #("4", menu["4"])
                         ], 
                     title="主菜单", 
@@ -4047,6 +4041,8 @@ class graphics_deploy(Deploy):
                 if tag=="2":
                     self.management(menu[tag])
                 if tag=="3":
+                    self.query(menu[tag])
+                if tag=="5":
                     self.info_query(menu[tag])
                 if tag=="4":
                     self.update_management(menu[tag])
@@ -4278,6 +4274,41 @@ class graphics_deploy(Deploy):
                     self.soft_choice(menu[tag], "start")
                 if tag=="3":
                     self.backup_choice(menu[tag], arch_dict)
+            else:
+                break
+
+    def query(self, title):
+        """
+        """
+        result, config_list=self.read_config(["arch", "project"])
+        if result:
+            arch_dict, project_dict=config_list
+        else:
+            self.log.logger.error(config_list)
+            self.d.msgbox(config_list)
+            return
+
+        while True:
+            menu={
+                    "1": "项目地址", 
+                    "2": "部署架构", 
+                    }
+
+            code,tag=self.d.menu("", choices=[
+                        ("1", menu["1"]), 
+                        ("2", menu["2"]),
+                        ], 
+                    title=title, 
+                    width=40, 
+                    height=6
+                    )
+            if code==self.d.OK:
+                self.log.logger.debug(f"{code=}, {tag=}")
+                self.log.logger.info(f"选择{menu[tag]}")
+                if tag=="1":
+                    self.show_project_url(project_dict)
+                if tag=="2":
+                    self.show_arch_summary(menu[tag], arch_dict, msg="", ok_label="确认", cancel_label="返回")
             else:
                 break
 
@@ -4802,22 +4833,25 @@ class graphics_deploy(Deploy):
         """
         self.d.msgbox(msg, title=title, width=width, height=height)
 
-    def show_project_url(self):
+    def show_project_url(self, project_dict):
         """显示首页地址
         """
-        result, config_list=self.read_config(["arch", "project"])
-        if result:
-            arch_dict, project_dict=config_list
-            project_url_list=project_dict.get("project_url")
-            if project_url_list is not None:
-                project_url_str=""
-                project_name=project_dict.get("project_name")
-                for project_url in project_url_list:
+        project_url_list=project_dict.get("project_url")
+        project_name=project_dict.get("project_name")
+        if project_url_list is None or project_name is None:
+            self.showmsg(f"未配置项目地址", f"警告", height=5)
+        else:
+            project_url_str=""
+            for project_url in project_url_list:
+                try:
                     node=project_url.split(":")[1][2:]
-                    if arch_dict.get(node):
-                        ip=arch_dict[node]["ip"]
-                        project_url_str=f"{project_url_str}\n{project_url.replace(node, ip)}"
-                self.showmsg(f"{project_url_str}", f"{project_name}项目地址", height=8)
+                    ip=socket.gethostbyname(node)
+                except Exception as e:
+                    self.log.logger.error(f"{node}: {str(e)}")
+                    node=""
+                    ip=""
+                project_url_str=f"{project_url_str}\n{project_url.replace(node, ip)}"
+            self.showmsg(f"{project_url_str}", f"{project_name}项目地址", height=8)
 
 class platform_deploy(Deploy):
     '''平台安装'''
