@@ -124,7 +124,7 @@ def run():
     else:
         start_command=f"bash -lc 'cd {nacos_dir} ; ./bin/startup.sh -m standalone'"
     log.logger.debug(f"{start_command=}")
-    result, msg=common.exec_command(start_command)
+    result, msg=common.exec_command(start_command, timeout=180)
     if result:
         log.logger.debug(f"检测端口: {port_list=}")
         if not common.port_exist(port_list):
