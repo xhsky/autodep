@@ -7,7 +7,13 @@
   }, 
   "python3": {
     "file": "python3.tar.gz",
-    "version": "3.9.7"
+    "version": "3.10"
+  }, 
+  "keepalived": {
+    "file": "keepalived-2.2.4-aarch64-UOS20.tar.gz", 
+    "version": "2.2.4", 
+    "py": "keepalived.py", 
+    "type": "platform"
   }, 
   "dps": {
     "file": "dreamProxyServer-1.20.1-aarch64-UOS20.tar.gz", 
@@ -82,8 +88,8 @@
     "type": "check"
   }, 
   "nacos": {
-    "file": "nacos-server-1.4.1.tar.gz", 
-    "version": "1.4.1", 
+    "file": "nacos-server-1.4.2.tar.gz", 
+    "version": "1.4.2", 
     "py": "nacos.py", 
     "type": "platform"
   }, 

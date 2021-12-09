@@ -9,38 +9,26 @@
     "file": "python3.tar.gz",
     "version": "3.10"
   }, 
-  "nginx": {
-    "file": "nginx-1.21.1-bin.tar.gz", 
-    "version": "1.21.1", 
-    "py": "nginx.py", 
-    "type": "env"
-  }, 
   "keepalived": {
-    "file": "keepalived-2.2.4-x64-Centos7.tar.gz", 
+    "file": "keepalived-2.2.4-aarch64-kylinV10.tar.gz", 
     "version": "2.2.4", 
     "py": "keepalived.py", 
     "type": "platform"
   }, 
   "dps": {
-    "file": "dreamProxyServer-1.20.1.tar.gz", 
+    "file": "dreamProxyServer-1.20.1-aarch64-kylinV10.tar.gz", 
     "version": "1.20.1", 
     "py": "dps.py", 
     "type": "env"
   }, 
   "jdk": {
-    "file": "jdk-8u271-linux-x64.tar.gz", 
+    "file": "jdk-8u271-linux-aarch64.tar.gz", 
     "version": "1.8.271", 
     "py": "jdk.py", 
     "type": "env"
   }, 
-  "tomcat": {
-    "file": "apache-tomcat-8.5.51.tar.gz", 
-    "version": "8.5.51", 
-    "py": "tomcat.py", 
-    "type": "program"
-  }, 
   "ffmpeg": {
-    "file": "ffmpeg-4.4-amd64-static.tar.gz", 
+    "file": "ffmpeg-4.4-arm64-static.tar.gz", 
     "version": "4.4", 
     "py": "ffmpeg.py", 
     "type": "env"
@@ -51,50 +39,32 @@
     "py": "backup_tool.py", 
     "type": "env"
   }, 
-  "redis": {
-     "file":"redis-5.0.7-bin.tar.gz", 
-     "version": "5.0.7", 
-     "py": "redis5.py", 
-     "type": "env"
-  }, 
   "dch": {
-     "file":"dreamCache-6.2.5.tar.gz", 
+     "file":"dreamCache-6.2.5-aarch64-kylinV10.tar.gz", 
      "version": "6.2.5", 
      "py": "dch.py", 
      "type": "env"
   }, 
-  "redis6": {
-     "file":"redis-6.2.5.tar.gz", 
-     "version": "6.2.5", 
-     "py": "redis6.py", 
-     "type": "env"
-  }, 
-  "mysql": {
-    "file": "mysql-8.0.27.tar.gz", 
-    "version": "8.0.27", 
-    "py": "mysql.py", 
-     "type": "env"
-  }, 
   "glusterfs-server": {
-    "file": "glusterfs-7.5-rpm.tar.gz", 
-    "version": "7.5", 
+    "file": "glusterfs-7.9-rpm-aarch64-kylinV10.tar.gz", 
+    "version": "7.9", 
     "py": "glusterfs.py", 
     "type": "env"
   }, 
   "glusterfs-client": {
-    "file": "glusterfs-7.5-rpm.tar.gz", 
-    "version": "7.5", 
+    "file": "glusterfs-7.9-rpm-aarch64-kylinV10.tar.gz", 
+    "version": "7.9", 
     "py": "glusterfs.py", 
     "type": "platform"
   }, 
   "elasticsearch": {
-    "file": "elasticsearch-7.14.1-linux-x86_64.tar.gz", 
+    "file": "elasticsearch-7.14.1-linux-aarch64.tar.gz", 
     "version": "7.14.1", 
     "py": "elasticsearch.py", 
     "type": "env"
   }, 
   "erlang": {
-    "file":"erlang-23.2.tar.gz", 
+    "file":"erlang-23.2-aarch64-kylinV10.tar.gz", 
     "version": "23.2", 
     "py": "erlang.py", 
     "type": "env"
@@ -118,16 +88,10 @@
     "type": "check"
   }, 
   "nacos": {
-    "file": "nacos-server-1.4.2-9050.tar.gz", 
+    "file": "nacos-server-1.4.2.tar.gz", 
     "version": "1.4.2", 
     "py": "nacos.py", 
     "type": "platform"
-  }, 
-  "nacos_mysql_sql": {
-    "file": "nacos-mysql-sql-1.4.2.tar.gz", 
-    "version": "1.4.2", 
-    "py": "sql.py", 
-    "type": "sql"
   }, 
   "dameng": {
     "py": "localization_db.py", 

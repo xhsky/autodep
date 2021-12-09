@@ -9,14 +9,8 @@
     "file": "python3.tar.gz",
     "version": "3.10"
   }, 
-  "nginx": {
-    "file": "nginx-1.21.1-bin.tar.gz", 
-    "version": "1.21.1", 
-    "py": "nginx.py", 
-    "type": "env"
-  }, 
   "keepalived": {
-    "file": "keepalived-2.2.4-x64-Centos7.tar.gz", 
+    "file": "keepalived-2.2.4-x64-kylinV10.tar.gz", 
     "version": "2.2.4", 
     "py": "keepalived.py", 
     "type": "platform"
@@ -33,12 +27,6 @@
     "py": "jdk.py", 
     "type": "env"
   }, 
-  "tomcat": {
-    "file": "apache-tomcat-8.5.51.tar.gz", 
-    "version": "8.5.51", 
-    "py": "tomcat.py", 
-    "type": "program"
-  }, 
   "ffmpeg": {
     "file": "ffmpeg-4.4-amd64-static.tar.gz", 
     "version": "4.4", 
@@ -51,22 +39,10 @@
     "py": "backup_tool.py", 
     "type": "env"
   }, 
-  "redis": {
-     "file":"redis-5.0.7-bin.tar.gz", 
-     "version": "5.0.7", 
-     "py": "redis5.py", 
-     "type": "env"
-  }, 
   "dch": {
      "file":"dreamCache-6.2.5.tar.gz", 
      "version": "6.2.5", 
      "py": "dch.py", 
-     "type": "env"
-  }, 
-  "redis6": {
-     "file":"redis-6.2.5.tar.gz", 
-     "version": "6.2.5", 
-     "py": "redis6.py", 
      "type": "env"
   }, 
   "mysql": {
@@ -94,7 +70,7 @@
     "type": "env"
   }, 
   "erlang": {
-    "file":"erlang-23.2.tar.gz", 
+    "file":"erlang-23.2-x64-kylinV10.tar.gz", 
     "version": "23.2", 
     "py": "erlang.py", 
     "type": "env"
