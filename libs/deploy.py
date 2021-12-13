@@ -3972,7 +3972,7 @@ class graphics_deploy(Deploy):
             soft_list=[]
             msg="选择软件:"
             for softname in ext_dict:
-                if ext_dict[softname].get("file") is not None and softname not in ("python3", "keepalived", "redis6", "glusterfs-server", "glusterfs-client", "autocheck", "nacos_mysql_sql"):
+                if ext_dict[softname].get("file") is not None and softname not in ("python3", "keepalived", "tomcat", "redis6", "glusterfs-server", "glusterfs-client", "autocheck", "nacos_mysql_sql"):
                     soft_list.append((softname, "", 0))
             while True:
                 code, choices_soft_list=self.d.checklist(msg, choices=soft_list, title=title, ok_label="确认", cancel_label="返回")
