@@ -29,6 +29,7 @@ localization_test_soft=list(localization_soft_port.keys())[-3:]
 #program_file="./config/program.json"
 init_file="./config/init.json"
 arch_file="./config/arch.json"
+stand_alone_file="./config/stand_alone.json"
 update_arch_file="./config/update_arch.json"
 update_init_file="./config/update_init.json"
 project_file="./config/project.json"
@@ -166,8 +167,8 @@ nginx_src="nginx-"
 nginx_dst="nginx"
 nginx_pkg_dir=None
 
-dps_src="dps-"
-dps_dst="dps"
+dps_src="dps"
+dps_dst=None
 dps_pkg_dir=None
 
 rabbitmq_src="rabbitmq_server-"
@@ -182,8 +183,8 @@ redis_src="redis-"
 redis_dst="redis"
 redis_pkg_dir=None
 
-dch_src="dch-"
-dch_dst="dch"
+dch_src="dch"
+dch_dst=None
 dch_pkg_dir=None
 
 autocheck_src="autocheck-"
