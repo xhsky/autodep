@@ -70,7 +70,7 @@
     "type": "env"
   }, 
   "rabbitmq": {
-    "file": "rabbitmq-server-generic-unix-3.8.9.tar.xz", 
+    "file": "rabbitmq-server-generic-unix-3.8.9.tar.gz", 
     "version": "3.8.9", 
     "py": "rabbitmq.py", 
     "type": "env"
@@ -88,7 +88,7 @@
     "type": "check"
   }, 
   "nacos": {
-    "file": "nacos-server-1.4.2.tar.gz", 
+    "file": "nacos-server-1.4.2-9050.tar.gz", 
     "version": "1.4.2", 
     "py": "nacos.py", 
     "type": "platform"
