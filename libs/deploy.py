@@ -13,7 +13,7 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         g_term_rows, g_term_cols, \
         tool_service_code, portless_service_code, \
         located_dir_name, located_dir_link, autocheck_dst, report_dir, report_file_list, \
-        init_file, arch_file, project_file, update_init_file, update_arch_file, start_file, stop_file, deploy_file, ext_file, localization_file, backup_version_file, \
+        init_file, arch_file, stand_alone_file, project_file, update_init_file, update_arch_file, start_file, stop_file, deploy_file, ext_file, localization_file, backup_version_file, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code, \
         local_license_path, node_license_path, \
         localization_soft_port, localization_test_soft
@@ -80,6 +80,8 @@ class Deploy(object):
                 config_file=local_file
             elif config=="hosts":
                 config_file=hosts_file
+            elif config=="stand_alone":
+                config_file=stand_alone_file
             result, config_json=self.read_json(config_file)
             if result:
                 config_dict_list.append(config_json)
@@ -3958,6 +3960,42 @@ class graphics_deploy(Deploy):
                             elif result and code!=normal_code:
                                 continue
                 return
+        elif deploy_type=="soft_install":
+            result, config_list=self.read_config(["stand_alone"])
+            if result:
+                arch_dict=config_list[0]
+            else:
+                self.log.logger.error(config_list)
+                self.showmsg(config_list, "Error")
+                return
+
+            soft_list=[]
+            msg="选择软件:"
+            for softname in ext_dict:
+                if ext_dict[softname].get("file") is not None and softname not in ("python3", "keepalived", "redis6", "glusterfs-server", "glusterfs-client", "autocheck", "nacos_mysql_sql"):
+                    soft_list.append((softname, "", 0))
+            while True:
+                code, choices_soft_list=self.d.checklist(msg, choices=soft_list, title=title, ok_label="确认", cancel_label="返回")
+                self.log.logger.debug(f"{code=}, {choices_soft_list=}")
+                if code==self.d.OK:
+                    if len(choices_soft_list) != 0:
+                        arch_dict["node"]["software"]=choices_soft_list
+                        result, init_dict=self.config_init(title, init_dict, local_flag=True)
+                        self.log.logger.debug(f"{init_dict=}")
+                        if result:
+                            result, localization_dict=self.manual_config(title, arch_dict)
+                            self.log.logger.debug(f"{localization_dict=}")
+                            if result:
+                                result, code=self.init("本机初始化", init_dict=init_dict, localization_dict=localization_dict, ext_dict=ext_dict, local_flag=True)
+                                if result and code==normal_code:
+                                    break
+                                elif result and code!=normal_code:
+                                    continue
+                    else:
+                        msg=f"{msg}\n未选择软件!"
+                        continue
+                elif code==self.d.CANCEL:
+                    return
 
         # get config
         result, config_list=self.read_config(["host"])
@@ -4004,8 +4042,9 @@ class graphics_deploy(Deploy):
 
         result, returncode=self.g_deploy(title)
         if result and returncode==normal_code:
-            self.show_project_url(project_dict)
-            self.show_menu()
+            if deploy_type!="soft_install":
+                self.show_project_url(project_dict)
+                self.show_menu()
         else:
             self.d.msgbox("集群部署失败, 将返回菜单", width=35, height=5)
             self.show_menu()
@@ -4062,11 +4101,13 @@ class graphics_deploy(Deploy):
             menu={
                     "1": "典型部署", 
                     "2": "自定义部署", 
+                    "3": "软件安装", 
                     }
             code,tag=self.d.menu(f"", 
                     choices=[
                         ("1", menu["1"]), 
-                        ("2", menu["2"])
+                        ("2", menu["2"]), 
+                        ("3", menu["3"])
                         ], 
                     title=title, 
                     height=6, 
@@ -4079,6 +4120,8 @@ class graphics_deploy(Deploy):
                     self.deploy(menu[tag], "remote")
                 if tag=="2":
                     self.deploy(menu[tag], "local")
+                if tag=="3":
+                    self.deploy(menu[tag], "soft_install")
             return
 
     def _get_check_info(self, arch_dict):

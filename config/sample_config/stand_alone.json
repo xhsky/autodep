@@ -1,82 +1,112 @@
 {
   "node":{
-    "software": ["elasticsearch", "ffmpeg", "mysql", "erlang", "rabbitmq", "redis", "nginx", "jdk", "tomcat", "rocketmq"], 
-    "located": "/data", 
-    "tomcat_info":{
-      "jvm_mem": "1G", 
-      "threads":[400, 1500],         
-      "max_connections": 10000,     
-      "port": {
-        "http_port": 8080,                
-        "shutdown_port": 8005, 
-        "ajp_port": 8009
-      }
-    },
-    "nginx_info":{                         
-      "worker_processes": 2,  
-      "vhost_info":{
-        "80":{
-          "config_file": "/path/file1",
-          "proxy_name": "backend1",
-          "proxy_hosts": ["web1:8080", "web2:8080"]
-        }
-    	}
+    "software": ["elasticsearch", "backup_tool", "ffmpeg", "mysql", "nacos", "erlang", "rabbitmq", "redis", "dch", "nginx", "dps",  "jdk", "rocketmq"], 
+		"nginx_info": {
+			"worker_processes": 2,
+			"vhosts_info": {
+				"80": {
+					"/": {
+						"mode": "proxy",
+						"proxy_name": "jar",
+						"proxy_hosts": ["node:8080"]
+					}
+				}
 		},
+		"dps_info": {
+			"worker_processes": 2,
+			"vhosts_info": {
+				"80": {
+					"/": {
+						"mode": "proxy",
+						"proxy_name": "jar",
+						"proxy_hosts": ["node:8080"]
+					}
+				}
+      }
+    }, 
+    "backup_tool_info":{                        
+      "mysql_backup":{
+        "type":"mysql", 
+        "dreamdb":{                              
+          "root_password": "DreamSoft_135", 
+          "backup_dir": "/dream/mysql_backup/dreamdb",
+          "timing": "0 1 * * *", 
+          "keep_days": 7
+        }
+      }
+    }, 
+    "redis_info":{
+       "db_info":{             
+         "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599",   
+         "redis_port": 6379,                                             
+         "redis_mem": "1G"                                            
+       }
+    }, 
+    "dch_info":{
+       "db_info":{                       
+         "dch_password": "b840fc02d524045429941cc15f59e41cb7be6c599", 
+         "dch_port": 6379,                                           
+         "dch_mem": "1G",                                         
+         "dch_io_threads": 4                                       
+       } 
+    }, 
     "elasticsearch_info":{
       "cluster_name": "es_cluster", 
-      "jvm_mem": "2G",  
+      "jvm_mem": "1G",   
       "port": {
-        "http_port": 9200,
-        "transport": 9300
+        "http_port": 9200, 
+        "transport": 9300 
       }, 
       "members":["node"]
     },  
     "mysql_info":{
-        "db_info":{
+        "db_info":{     
           "root_password": "DreamSoft_135", 
-          "server_id": 1, 
-          "mysql_port": 3306,  
-          "innodb_mem": "8G", 
-          "max_connections": 1500, 
-          "business_db": ["db1", "db2"], 
-          "business_user": ["user1", "user2"], 
-          "business_password": ["Dreamdb_111", "Dreamdb_222"]
-        } 
+          "mysql_port": 3306,              
+          "innodb_mem": "4G", 
+          "max_connections": 500,   
+          "server_id": 1,    
+          "business_db": ["dreamdb"],   
+          "business_user": ["dream"],
+          "business_password": ["Dreamdb_111"] 
+        }
+    }, 
+    "nacos_info":{
+      "web_port": 9050, 
+      "jvm_mem": "1G", 
+      "data_source":{
+        "mode": "derby"
+      }
     }, 
     "rabbitmq_info":{
-      "cluster_name": "mq_cluster", 
-      "node_type": "disc", 
+      "cluster_name": "mq_cluster",  
       "port":{
-        "rabbitmq_port": 5672,  
-        "epmd_port": 4369,     
-        "beam_port": 25672    
+        "rabbitmq_port": 5672,      
+        "epmd_port": 4369,         
+        "beam_port": 25672        
       }, 
-      "erlang_mem": "2G",    
-      "members": ["node"], 
-      "vhosts": ["/vhost"],                  
-      "users": ["a1"],                      
-      "passwords": ["111111"]
-     }, 
-    "redis_info":{
-       "db_info":{
-         "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599",
-         "redis_port": 6379,                                          
-         "redis_mem": "200M"                                         
-       }
+      "erlang_mem": "2G",        
+      "node_type": "disc",      
+      "members": ["node"],
+      "account": {
+        "vhosts": ["/vhost"],       
+        "users": ["dream"],        
+        "passwords": ["DreamSoft_111"]   
+      }
     }, 
     "rocketmq_info":{
       "cluster_name": "mq_cluster",
-      "replica_name": "node",
-      "replica_role": "master",
+      "replica_name": "node",      
+      "replica_role": "master",	
       "port":{
         "namesrv_port": 9876,  
-        "fast_remote_port": 10909,
-        "remote_port": 10911,
-        "ha_port": 10912    
+        "fast_remote_port": 10909, 
+        "remote_port": 10911, 
+        "ha_port": 10912
       }, 
-      "namesrv_mem": "1G",        
-      "broker_mem": "2G",              
-      "namesrvs": ["node:9876"]      
+      "namesrv_mem": "256M",       
+      "broker_mem": "1G",       
+      "namesrvs": ["node:9876"] 
     }
   }
 }
