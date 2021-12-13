@@ -6,14 +6,16 @@
       "members": ["keep1", "keep2"],        // 主备成员, 用于配置单播
       "virtual_addr": "192.168.1.42/24",    // 虚拟ip, 24为子网掩码, 必填. 程序自动补充
       "check_process": "nginx"              // 监控进程名称(dps-server|nginx), 通过命令 ps -C nginx --no-header | wc -l 获取
-  }, 
-  "keep1":{
+    } 
+  },
+  "keep2":{
     "software": ["keepalived"],
     "keepalived_info":{
       "state": "backup",                    // 主备, MASTER|BACKUP
       "members": ["keep1", "keep2"],        // 主备成员
       "virtual_addr": "192.168.1.42/24",    // 虚拟ip, 24为子网掩码, 必填. 程序自动填充
       "check_process": "nginx"              // 监控进程名称, 通过命令 ps -C nginx --no-header | wc -l 获取
+    }
   }
 }
 
