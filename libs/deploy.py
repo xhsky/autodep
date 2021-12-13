@@ -3852,10 +3852,8 @@ class graphics_deploy(Deploy):
                 self.log.logger.debug(f"{ok_label}: {data_list=}")
                 if not readonly:
                     blank_flag=False
-                    separator_index_list=[]
-                    data_list.insert(0, separator)
-                    for i in range(data_list.count(separator)):
-                        separator_index_list.append(data_list.index(separator))
+                    data_list.insert(0, data_list.pop())
+                    separator_index_list=[i for i, j in enumerate(data_list) if j == separator]
                     for n in range(len(data_list)):
                         if n in separator_index_list:
                             node=data_list[n+1]
