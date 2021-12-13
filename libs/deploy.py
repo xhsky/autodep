@@ -796,7 +796,7 @@ class Deploy(object):
         result, info=self.ssh_client.scp(local_python3_file, remote_python3_file, ip=node, port=port)
         if result:
             self.log.logger.info(f"配置Python环境")
-            command=f"tar -xf {remote_python3_file} -C {remote_python_install_dir} && echo 'export LD_LIBRARY_PATH={remote_python_dir}/lib:$LD_LIBRARY_PATH' >> /etc/profile.d/python.sh"
+            command=f"tar -xf {remote_python3_file} -C {remote_python_install_dir} && echo 'export LD_LIBRARY_PATH={remote_python_dir}/lib:$LD_LIBRARY_PATH' > /etc/profile.d/python.sh"
             obj, status=self.ssh_client.exec(command, ip=node, port=port)
             if port==0:
                 local_flag=True
