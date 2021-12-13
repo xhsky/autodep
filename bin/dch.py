@@ -382,7 +382,10 @@ if __name__ == "__main__":
     located=conf_dict.get("located")
     log=common.Logger({"remote": log_remote_level}, loggger_name="dch")
 
-    dch_dir=f"{located}/{dch_dst}"
+    if dch_dst is None:
+        dch_dir=f"{located}/{dch_src}"
+    else:
+        dch_dir=f"{located}/{dch_dst}"
     dch_info_dict=conf_dict[f"{softname}_info"]
     dch_port=dch_info_dict["db_info"]["dch_port"]
     dch_password=dch_info_dict["db_info"].get("dch_password")

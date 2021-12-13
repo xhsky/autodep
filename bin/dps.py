@@ -226,7 +226,10 @@ if __name__ == "__main__":
     log=common.Logger({"remote": log_remote_level}, loggger_name="dps")
 
     located=conf_dict["located"]
-    dps_dir=f"{located}/{dps_dst}"
+    if dps_dst is None:
+        dps_dir=f"{located}/{dps_src}"
+    else:
+        dps_dir=f"{located}/{dps_dst}"
     dps_info_dict=conf_dict["dps_info"]
     vhosts_info_dict=dps_info_dict["vhosts_info"]
     port_list=[int(port) for port in vhosts_info_dict]
