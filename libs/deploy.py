@@ -865,7 +865,7 @@ class Deploy(object):
                     self.log.logger.info(f"配置Python3环境完成")
                 else:
                     err_msg=Exception(err_msg)
-                    raise msg
+                    raise err_msg
 
                 # 执行init.py
                 init_py=self.get_soft_info("init", ext_dict, "py")
