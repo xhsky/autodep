@@ -28,7 +28,7 @@ def install():
         return error_code
 
     os.makedirs("/etc/keepalived", exist_ok=1)
-    command=f"mkdir -p /etc/keepalived && \cp {keepalived_dir}/share/keepalived.service /usr/lib/systemd/system/ && systemctl daemon-reload"
+    command=f"mkdir -p /etc/keepalived && \cp {keepalived_dir}/share/keepalived.service /lib/systemd/system/ && systemctl daemon-reload"
     log.logger.debug(f"{command=}")
     result, msg=common.exec_command(command)
     if not result:
