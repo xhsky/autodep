@@ -121,7 +121,13 @@ def run():
 def glusterd_start():
     """glusterd启动
     """
-    command="systemctl enable glusterd && systemctl start glusterd"
+    if os.path.exists("/lib/systemd/system/glusterd.service"):
+        command="systemctl enable glusterd && systemctl start glusterd"
+    elif os.path.exists("/etc/init.d/glusterfs-server"):
+        command="systemctl start glusterfs-server"
+    else:
+        log.logger.error(f"找不到glusterd启动文件") 
+        return error_code
     log.logger.debug(f"启动: {command=}")
     result, msg=common.exec_command(command)
     if result:
