@@ -46,20 +46,20 @@
      "type": "env"
   }, 
   "glusterfs-server": {
-    "file": "glusterfs-7.9-rpm-aarch64-kylinV10.tar.gz", 
-    "version": "7.9", 
+    "file": "glusterfs-7.0-rpm-aarch64-kylinV10.tar.gz", 
+    "version": "7.0", 
     "py": "glusterfs.py", 
     "type": "env"
   }, 
   "glusterfs-client": {
-    "file": "glusterfs-7.9-rpm-aarch64-kylinV10.tar.gz", 
-    "version": "7.9", 
+    "file": "glusterfs-7.0-rpm-aarch64-kylinV10.tar.gz", 
+    "version": "7.0", 
     "py": "glusterfs.py", 
     "type": "platform"
   }, 
   "elasticsearch": {
-    "file": "elasticsearch-7.14.1-linux-aarch64.tar.gz", 
-    "version": "7.14.1", 
+    "file": "elasticsearch-7.16.1-linux-aarch64.tar.gz", 
+    "version": "7.16.1", 
     "py": "elasticsearch.py", 
     "type": "env"
   }, 
@@ -70,7 +70,7 @@
     "type": "env"
   }, 
   "rabbitmq": {
-    "file": "rabbitmq-server-generic-unix-3.8.9.tar.xz", 
+    "file": "rabbitmq-server-generic-unix-3.8.9.tar.gz", 
     "version": "3.8.9", 
     "py": "rabbitmq.py", 
     "type": "env"
@@ -88,7 +88,7 @@
     "type": "check"
   }, 
   "nacos": {
-    "file": "nacos-server-1.4.2.tar.gz", 
+    "file": "nacos-server-1.4.2-9050.tar.gz", 
     "version": "1.4.2", 
     "py": "nacos.py", 
     "type": "platform"

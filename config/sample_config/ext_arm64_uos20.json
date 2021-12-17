@@ -58,8 +58,8 @@
     "type": "platform"
   }, 
   "elasticsearch": {
-    "file": "elasticsearch-7.14.1-linux-aarch64.tar.gz", 
-    "version": "7.14.1", 
+    "file": "elasticsearch-7.16.1-linux-aarch64.tar.gz", 
+    "version": "7.16.1", 
     "py": "elasticsearch.py", 
     "type": "env"
   }, 
