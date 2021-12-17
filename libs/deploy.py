@@ -882,7 +882,7 @@ class Deploy(object):
                 if self.ssh_client.returncode(obj, local_flag)!=normal_code:
                     error_info=f"{node}初始化失败"
                     err_msg=Exception(err_msg)
-                    raise msg
+                    raise err_msg
                 else:
                     self.log.logger.info(f"{node}初始化完成")
             except Exception as e:
