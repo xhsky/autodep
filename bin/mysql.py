@@ -57,7 +57,7 @@ def install():
     """
     return_value=normal_code
     pkg_file=conf_dict["pkg_file"]
-    command=f"id -u {mysql_user} &> /dev/null || useradd -r -s /bin/false {mysql_user}"
+    command=f"id -u {mysql_user} > /dev/null 2>&1 || useradd -r -s /bin/false {mysql_user}"
     log.logger.debug(f"创建用户: {command=}")
     result, msg=common.exec_command(command)
     if not result:
