@@ -145,7 +145,8 @@ def stop():
     """停止
     """
     return_value=normal_code
-    command=f"su elastic --session-command 'cd {es_dir} && kill `cat elasticsearch.pid`'" 
+    #command=f"su elastic --session-command 'cd {es_dir} && kill `cat elasticsearch.pid`'" 
+    command=f"su elastic -c 'cd {es_dir} && kill `cat elasticsearch.pid`'" 
     log.logger.debug(f"{command=}")
 
     result, msg=common.exec_command(command)
