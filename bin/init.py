@@ -41,9 +41,15 @@ def main():
             log.logger.info(f"关闭SELinux")
             with open(selinux_conf_file, "w") as f:
                 f.writelines(text)
-            result, msg=exec_command("setenforce 0")
-            if not result:
-                log.logger.error(f"关闭SELinux失败: {msg}")
+            result, msg=exec_command("getenforce")
+            if result:
+                if msg.lower().strip()!="disabled":
+                    result, msg=exec_command("setenforce 0")
+                    if not result:
+                        log.logger.error(f"关闭SELinux失败: {msg}")
+                        return_value=error_code
+            else:
+                log.logger.error(f"获取SELinux状态失败: {msg}")
                 return_value=error_code
 
     # 更改nofile, nproc
