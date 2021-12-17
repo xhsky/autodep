@@ -70,7 +70,7 @@ def install():
         sys.exit(error_code)
 
     # 配置
-    mk_dirs_commands=f"mkdir -p {mysql_dir}/{{{my_data},{my_logs}}} && mkdir -p {mysql_dir}/{my_logs}/{{binlog,redolog,undolog,relay}} && chown -R {mysql_user}:{mysql_user} {located}/{mysql_src}* && ln -snf {located}/{mysql_src}* /usr/local/mysql && \cp -f {mysql_dir}/support-files/mysql.server /etc/init.d/mysqld && systemctl daemon-reload"
+    mk_dirs_commands=f"mkdir -p {mysql_dir}/{my_data} && mkdir -p {mysql_dir}/{my_logs}/binlog && mkdir -p {mysql_dir}/{my_logs} && mkdir -p {mysql_dir}/{my_logs}/redolog && mkdir -p {mysql_dir}/{my_logs}/undolog && mkdir -p {mysql_dir}/{my_logs}/relay && chown -R {mysql_user}:{mysql_user} {located}/{mysql_src}* && ln -snf {located}/{mysql_src}* /usr/local/mysql && \cp -f {mysql_dir}/support-files/mysql.server /etc/init.d/mysqld && systemctl daemon-reload"
     log.logger.debug(f"建立目录, 授权: {mk_dirs_commands=}")
     result, msg=common.exec_command(mk_dirs_commands)
     if not result:
