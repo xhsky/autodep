@@ -4,6 +4,7 @@
 
 1. 下载时注意CPU架构不同(x86, arm)
 2. 基于不同CPU架构编译不同的CPU架构软件
+3. 编译打包的文件名格式为 `<softname>-<version>-<arch>-<os_relase>.tar.gz`. 下载打包的文件名保持不变
 
 
 
