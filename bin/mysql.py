@@ -209,6 +209,16 @@ def install():
                             }
                         }
                     )
+    else:
+        config_dict.update(
+                {
+                    "my_client_cnf": {
+                        "config_file": my_client_cnf_file,
+                        "config_context": "",
+                        "mode": "w"
+                        }
+                    }
+                )
     log.logger.debug(f"写入配置文件: {json.dumps(config_dict)}")
     result, msg=common.config(config_dict)
     if not result:
@@ -241,6 +251,7 @@ def run():
             return error_code
 
         mysql_plugin_context="""\
+                [mysqld]
                 # plugin
                 plugin-load-add=connection_control.so
                 connection_control_failed_connections_threshold=10
