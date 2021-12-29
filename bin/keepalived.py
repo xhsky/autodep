@@ -2,7 +2,7 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, json, os, psutil, socket
+import sys, json, os, psutil, socket, textwrap
 from libs import common
 from libs.env import log_remote_level, keepalived_src, keepalived_dst, keepalived_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
@@ -42,11 +42,12 @@ def install():
 
             count=`ps -C {check_process} --no-header | wc -l`
             if [ $count -eq 0 ];then
-                systemctl stop keepalived
+                exit 1
             fi
     """
 
     state=keepalived_info_dict["state"].upper()
+    weight=-30
     if state=="MASTER":
         priority=100
     else:
@@ -71,7 +72,11 @@ def install():
 
         memebers.remove(local_node)
         unicast_src_ip=ip
-        unicast_peer=socket.gethostbyname(memebers[0])
+        unicast_peer=""
+        for i in memebers:
+            unicast_peer=f"{unicast_peer}\n{socket.gethostbyname(i)}"
+        else:
+            unicast_peer=textwrap.indent(unicast_peer, '                     ')
     except Exception as e:
         log.logger.error(str(e))
         return error_code
@@ -80,24 +85,25 @@ def install():
             ! Configuration File for keepalived
 
             global_defs {{
-                router_id node
+                router_id {local_node}
+                max_auto_priority 2
             }}
 
             vrrp_script check_sh {{
                 script "bash {check_file}"
                 interval 2
-                weight 2
+                weight {weight}
+                user root
             }}
 
-            vrrp_instance VI_1 {{
+            vrrp_instance HA {{
                 state {state}
                 interface {interface}
                 virtual_router_id 55
                 priority {priority}
                 advert_int 1
                 unicast_src_ip {unicast_src_ip}
-                unicast_peer {{
-                   {unicast_peer}
+                unicast_peer {{ {unicast_peer}
                 }}
                 authentication {{
                     auth_type PASS
