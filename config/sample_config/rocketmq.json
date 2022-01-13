@@ -1,11 +1,12 @@
+// 分片2台master模式
 {
   "mq1":{
     "software": ["jdk", "rocketmq"], 
     "located": "/data1/", 
     "rocketmq_info":{
       "cluster_name": "mq_cluster",
-      "replica_name": "mq1",      
-      "replica_role": "master",	
+      "replica_role": "master",	            // 集群模式 master|slave|dledger
+      "replica_name": "mq1",                // 当集群中所有replica_role为master时, 该值唯一. 当集群中replica_role为master和slave混合时, 相同值为同一套主从. 当集群中replica_role为dldger时, 相同值为高可用主从(至少三台)
       "port":{
         "namesrv_port": 9876,  
         "fast_remote_port": 10909,    // 根据remote_port端口-2获取, 无法自定义
@@ -14,7 +15,7 @@
       }, 
       "namesrv_mem": "1G",       
       "broker_mem": "4G",       
-      "namesrvs": ["mq1:9876", "mq2:9876"] 
+      "namesrvs": ["mq1:9876", "mq2:9876"]  // namesrv成员
     }
   }, 
   "mq2":{
@@ -37,3 +38,66 @@
   }
 }
 
+// 高可用模式
+{
+  "mq1":{
+    "software": ["jdk", "rocketmq"], 
+    "located": "/data1/", 
+    "rocketmq_info":{
+      "cluster_name": "mq_cluster",
+      "replica_role": "dledger",	            // 集群模式 master|slave|dledger
+      "replica_name": "mq",                 // 当集群中所有replica_role为master时, 该值唯一. 当集群中replica_role为master和slave混合时, 相同值为同一套主从. 当集群中replica_role为dldger时, 相同值为高可用主从(至少三台)
+      "port":{
+        "namesrv_port": 9876,  
+        "fast_remote_port": 10909,    // 根据remote_port端口-2获取, 无法自定义
+        "remote_port": 10911, 
+        "ha_port": 40911                    // dledger内部通信端口, 非ha_port, 只是为了兼容
+      }, 
+      "namesrv_mem": "1G",       
+      "broker_mem": "4G",       
+      "namesrvs": ["mq1:9876", "mq2:9876", "mq3:9876"],                 // namesrv成员
+      "dledger_id": "n1",                                               // 当replica_role为dledger时填写该参数, 该值唯一, 且参数值必须为n1, n2, n3等
+      "members": ["n1-mq1:40911", "n2-mq2:40911", "n3-mq3:40911"]       // 当replica_role为dledger时填写该参数, dledger成员, 格式必须为dledger-host:port
+    }
+  }, 
+  "mq2":{
+    "software": ["jdk", "rocketmq"], 
+    "located": "/data1/", 
+    "rocketmq_info":{
+      "cluster_name": "mq_cluster",
+      "replica_role": "dledger",	            // 集群模式 master|slave|dledger
+      "replica_name": "mq",                 // 当集群中所有replica_role为master时, 该值唯一. 当集群中replica_role为master和slave混合时, 相同值为同一套主从. 当集群中replica_role为dldger时, 相同值为高可用主从(至少三台)
+      "port":{
+        "namesrv_port": 9876,  
+        "fast_remote_port": 10909,    // 根据remote_port端口-2获取, 无法自定义
+        "remote_port": 10911, 
+        "ha_port": 40911                    // dledger内部通信端口, 非ha_port, 只是为了兼容
+      }, 
+      "namesrv_mem": "1G",       
+      "broker_mem": "4G",       
+      "namesrvs": ["mq1:9876", "mq2:9876", "mq3:9876"],                 // namesrv成员
+      "dledger_id": "n2",                                               // 当replica_role为dledger时填写该参数, 该值唯一, 且参数值必须为n1, n2, n3等
+      "members": ["n1-mq1:40911", "n2-mq2:40911", "n3-mq3:40911"]       // 当replica_role为dledger时填写该参数, dledger成员, 格式必须为dledger-host:port
+    }
+  }, 
+  "mq3":{
+    "software": ["jdk", "rocketmq"], 
+    "located": "/data1/", 
+    "rocketmq_info":{
+      "cluster_name": "mq_cluster",
+      "replica_role": "dledger",	            // 集群模式 master|slave|dledger
+      "replica_name": "mq",                 // 当集群中所有replica_role为master时, 该值唯一. 当集群中replica_role为master和slave混合时, 相同值为同一套主从. 当集群中replica_role为dldger时, 相同值为高可用主从(至少三台)
+      "port":{
+        "namesrv_port": 9876,  
+        "fast_remote_port": 10909,    // 根据remote_port端口-2获取, 无法自定义
+        "remote_port": 10911, 
+        "ha_port": 40911                    // dledger内部通信端口, 非ha_port, 只是为了兼容
+      }, 
+      "namesrv_mem": "1G",       
+      "broker_mem": "4G",       
+      "namesrvs": ["mq1:9876", "mq2:9876", "mq3:9876"],                 // namesrv成员
+      "dledger_id": "n3",                                               // 当replica_role为dledger时填写该参数, 该值唯一, 且参数值必须为n1, n2, n3等
+      "members": ["n1-mq1:40911", "n2-mq2:40911", "n3-mq3:40911"]       // 当replica_role为dledger时填写该参数, dledger成员, 格式必须为dledger-host:port
+    }
+  }
+}
