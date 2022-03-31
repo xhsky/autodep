@@ -77,6 +77,28 @@ def main():
     else:
         log.logger.error(f"获取nproc失败: {msg}")
         return_value=error_code
+
+    # 调整内核参数
+    sys_net_file="/etc/sysctl.d/user.conf"
+    net_config="""\
+            net.ipv4.tcp_max_syn_backlog=8192
+            net.core.somaxconn=8192
+            net.core.netdev_max_backlog=10240
+            net.ipv4.tcp_max_tw_buckets = 5000
+            net.ipv4.tcp_tw_reuse = 1
+            net.ipv4.tcp_syncookies = 1
+            net.ipv4.tcp_abort_on_overflow = 1
+            net.ipv4.tcp_fin_timeout = 30
+            net.ipv4.tcp_slow_start_after_idle = 0
+            vm.swappiness = 5
+    """
+    with open(sys_net_file, "w") as f:
+        f.write(net_config)
+    result, msg=exec_command(f"sysctl -p {sys_net_file}")
+    if not result:
+        log.logger.error(f"内核优化调整失败: {msg}")
+        return_value=error_code
+
     sys.exit(return_value)
 
 if __name__ == "__main__":
