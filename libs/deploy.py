@@ -233,6 +233,16 @@ class Deploy(object):
         str_=f"{characters}{str_}{characters}"
         return str_
 
+    def get_hosts_list(self, arch_dict):
+        """ 获取所有hosts
+        return:
+            hosts_list: ["ip node", "ip node"]
+        """
+        hosts_list=[]
+        for node in arch_dict:
+            hosts_list.append(f"{arch_dict[node].get('ip')} {node}")
+        return hosts_list
+
     def _format_size(self, size):
         """将字符串大小转为数字
         """
@@ -1533,9 +1543,17 @@ class text_deploy(Deploy):
     '''文本安装'''
 
     def __init__(self, conf_file, init_file, arch_file, project_file):
-        super(text_deploy, self).__init__(conf_file, init_file, arch_file, project_file)
+        super(text_deploy, self).__init__()
         self.log=Logger({"file": log_file_level, "console": log_console_level}, log_file=log_file)
-        self.ssh_client=ssh()
+
+        # get ext, arch config
+        self.log.logger.info("读取配置文件中...\n")
+        result, config_list=self.read_config(["init", "ext", "arch", "project"])
+        if result:
+            self.init_dict, self.ext_dict, self.arch_dict, self.project_dict=config_list
+        else:
+            self.log.logger.error(config_list)
+            return error_code
 
     def check(self):
         '''
@@ -1544,78 +1562,82 @@ class text_deploy(Deploy):
         return True, msg
 
     def init(self):
-        with open(self.init_file, "r", encoding="utf8") as f:
-            init_dict=json.load(f)
-
-        self.log.logger.info("监测主机配置, 请稍后...\n")
-        flag, connect_msg=self.connect_test(init_dict)
-        if flag==1:
-            self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
-            for ip in connect_msg:
-                self.log.logger.info(f"{ip}:\t{connect_msg[ip]['msg']}")
-            sys.exit()
-
-        local_python3_file=self.conf_dict["location"].get("python3")
-        status=super(text_deploy, self).init(init_dict, local_python3_file)
-        if status is True:
-            self.log.logger.info("初始化完成\n")
-            self.log.logger.info("获取主机信息...")
-            all_host_info=self.get_host_msg(init_dict)
-            self.init_stats_dict["host_info"]=self.json_to_init_dict(all_host_info)
-
-            for node in all_host_info:
-                if all_host_info[node][0] == 0:
-                    node_info=all_host_info[node][1]
-                    self.log.logger.debug(f"{node_info=}")
-                    node_info=node_info[node_info.index("{"):]
-                    #self.log.logger.debug(f"{node_info=}")
-                    node_info_dict=json.loads(node_info)
-                    node_info=dedent(f"""
-                    主机: {node}
-                    发行版本: \t{node_info_dict['os_name']}
-                    内核版本: \t{node_info_dict['kernel_version']}
-                    CPU:      \t{node_info_dict['CPU'][0]}({node_info_dict['CPU'][1]}%)
-                    内存:     \t{node_info_dict['Mem'][0]}({node_info_dict['Mem'][1]}%)""")
-                    for disk in node_info_dict["Disk"]:
-                        node_info=f"{node_info}\n磁盘({disk}): \t{node_info_dict['Disk'][disk][0]}({node_info_dict['Disk'][disk][1]}%)"
-                    for port in node_info_dict["Port"]:
-                        node_info=f"{node_info}\n端口({port}): \t{node_info_dict['Port'][port][1]}/{node_info_dict['Port'][port][0]}"
-                    self.log.logger.info(node_info)
-                else:
-                    self.log.logger.error(all_host_info[node][1])
+        "text init"
+        ip_list=list(self.init_dit.keys())
+        if len(ip_list) == 1 and (ip_list[0] == "localhost" or ip_list[0] == "127.0.0.1"):
+            local_flag=True
+            self.log.logger.debug("local部署, 不检测主机配置信息")
         else:
-            self.log.logger.error(f"初始化失败: {status}")
+            local_flag=False
+            self.log.logger.info("检测主机配置, 请稍后...\n")
+            result, connect_test_result=self.connect_test(self.init_dict)
+            if not result:
+                self.log.logger.error("主机信息配置有误, 请根据下方显示信息修改:")
+                for node in connect_test_result:
+                    if connect_test_result[node]["result"] != normal_code:
+                        self.log.logger.error(f"{node}:\t{connect_test_result[node]['err_msg']}")
+                return False, {}
 
-        # 生成初始化信息至文件
-        self.generate_info("file", self.init_stats_dict, stats_file=init_stats_file)
+        result, dict_=super(text_deploy, self).init(self.init_dict, self.ext_dict, local_flag)
+        if result:
+            self.log.logger.info("初始化完成\n")
+            get_result, all_host_info_dict=self.get_host_msg(init_dict)
+            if get_result:
+                time.tzset()                                    # 主机信息获取过程中会重置时区, 程序内重新获取时区信息
+                init_result=True
+                self.log.logger.debug(f"主机信息: {all_host_info_dict}")
+            else:
+                init_result=False
+                self.log.logger.error(f"主机信息获取失败: {all_host_info_dict}")
+        else:
+            self.log.logger.error(f"初始化失败: {dict_}")
+            init_result=False
+        return init_result, {}
 
     def install(self):
-        with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
-            init_dict=json.load(init_f)
-            arch_dict=json.load(arch_f)
         self.log.logger.info("集群安装...")
-        result=super(text_deploy, self).install(init_dict, arch_dict)
+        hosts_list=self.get_hosts_list(self.arch_dict)
+        result, dict_=super(text_deploy, self).install(self.init_dict, self.arch_dict, self.ext_dict, hosts_list)
         if result:
             self.log.logger.info("集群安装完成")
         else:
             self.log.logger.error("集群安装失败")
-        self.generate_info("file", self.install_stats_dict, stats_file=install_stats_file)
+        return result, dict_
 
-        return result
-
-    def start(self):
-        with open(self.arch_file, "r", encoding="utf8") as arch_f, open(self.init_file, "r", encoding="utf8") as init_f:
-            init_dict=json.load(init_f)
-            arch_dict=json.load(arch_f)
+    def run(self):
         self.log.logger.info("集群启动...")
-        result=super(text_deploy, self).start(init_dict, arch_dict)
+        result, dict_=super(text_deploy, self).run(self.init_dict, self.arch_dict, self.ext_dict)
         if result:
             self.log.logger.info("集群启动完成")
         else:
             self.log.logger.error("集群启动失败")
-        self.generate_info("file", self.start_stats_dict, stats_file=start_stats_file)
+        return result, dict_
 
-        return result
+    def get_control_node(self):
+        """
+        """
+        control_dict={}
+        for node in self.arch_dict:
+            control_dict[node]=self.arch_dict["software"]
+        return control_dict
+
+    def start(self):
+        self.log.logger.info("集群启动...")
+        control_dict=self.get_control_node()
+        result, dict_=super(text_deploy, self).start(control_dict, self.init_dict, self.arch_dict, self.ext_dict)
+        if result:
+            self.log.logger.info("集群启动完成")
+        else:
+            self.log.logger.error(f"集群启动失败: {dict_}")
+
+    def stop(self):
+        self.log.logger.info("集群关闭...")
+        control_dict=self.get_control_node()
+        result, dict_=super(text_deploy, self).stop(control_dict, self.init_dict, self.arch_dict, self.ext_dict)
+        if result:
+            self.log.logger.info("集群关闭完成")
+        else:
+            self.log.logger.error(f"集群关闭失败: {dict_}")
 
     def update(self, package_list=[]):
         self.log.logger.info("开始更新...")
@@ -1629,14 +1651,14 @@ class text_deploy(Deploy):
 
     def deploy(self):
         """
-        install, start, update
+        init, install, run
         """
 
-        stage_all=["install", "start", "update"]
+        stage_all=["init", "install", "run"]
         stage_method={
+                "init": self.init, 
                 "install": self.install, 
-                "start": self.start, 
-                "update": self.update
+                "run": self.run 
                 }
         for stage in stage_all:
             if stage_method[stage]():
@@ -3024,16 +3046,6 @@ class graphics_deploy(Deploy):
         init_list=self._trans_init_fields_to_init_list(init_fields)
         init_dict=self._trans_init_list_to_init_dict(init_list)
         return init_dict
-
-    def get_hosts_list(self, arch_dict):
-        """ 获取所有hosts
-        return:
-            hosts_list: ["ip node", "ip node"]
-        """
-        hosts_list=[]
-        for node in arch_dict:
-            hosts_list.append(f"{arch_dict[node].get('ip')} {node}")
-        return hosts_list
 
     def check_local_node(self, local_ip, arch_dict):
         """校验本机ip是否在arch中
