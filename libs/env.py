@@ -100,7 +100,7 @@ g_term_cols=80
 # 测试模式, 正式环境关闭
 test_mode=False
 # 检测时是否开启资源校验
-resource_verify_mode=True
+resource_verify_mode=False
 
 portless_service_code=0     # 无端口有服务软件代码, 用于获取软件端口时的识别
 tool_service_code=1         # 工具类软件代码
@@ -153,6 +153,10 @@ glusterfs_volume_name="g_data"
 jdk_src="jdk"
 jdk_dst="jdk"
 jdk_pkg_dir=None
+
+python_src="python"
+python_dst=None
+python_pkg_dir=None
 
 erl_src="erlang-"
 erl_dst="erlang"
