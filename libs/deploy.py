@@ -963,6 +963,11 @@ class Deploy(object):
         install_result, install_stats_dict=self.nodes_control(control_dict, "install", "安装", \
                 init_dict, arch_dict, ext_dict)
 
+        # 删除主机域名
+        for node in arch_dict:
+            arch_dict[node]["software"].remove("set_hosts")
+            arch_dict[node].pop("hosts_info")
+
         return install_result, install_stats_dict
 
     def run(self, init_dict, arch_dict, ext_dict):
@@ -1542,7 +1547,7 @@ class Deploy(object):
 class text_deploy(Deploy):
     '''文本安装'''
 
-    def __init__(self, conf_file, init_file, arch_file, project_file):
+    def __init__(self):
         super(text_deploy, self).__init__()
         self.log=Logger({"file": log_file_level, "console": log_console_level}, log_file=log_file)
 
@@ -1563,7 +1568,7 @@ class text_deploy(Deploy):
 
     def init(self):
         "text init"
-        ip_list=list(self.init_dit.keys())
+        ip_list=list(self.init_dict.keys())
         if len(ip_list) == 1 and (ip_list[0] == "localhost" or ip_list[0] == "127.0.0.1"):
             local_flag=True
             self.log.logger.debug("local部署, 不检测主机配置信息")
@@ -1581,7 +1586,7 @@ class text_deploy(Deploy):
         result, dict_=super(text_deploy, self).init(self.init_dict, self.ext_dict, local_flag)
         if result:
             self.log.logger.info("初始化完成\n")
-            get_result, all_host_info_dict=self.get_host_msg(init_dict)
+            get_result, all_host_info_dict=self.get_host_msg(self.init_dict)
             if get_result:
                 time.tzset()                                    # 主机信息获取过程中会重置时区, 程序内重新获取时区信息
                 init_result=True
@@ -1660,12 +1665,16 @@ class text_deploy(Deploy):
                 "install": self.install, 
                 "run": self.run 
                 }
+
         for stage in stage_all:
-            if stage_method[stage]():
+            result, dict_ = stage_method[stage]()
+            self.log.logger.debug(f"'{stage}': {result}, {dict_}")
+            if result:
                 continue
             else:
-                self.log.logger.error(f"'{stage}'阶段执行失败")
-                sys.exit(1)
+                self.log.logger.error(f"'{stage}'阶段执行失败: {dict_}")
+                break
+                sys.exit(error_code)
 
 class graphics_deploy(Deploy):
     '''文本图形化安装'''
@@ -3982,7 +3991,7 @@ class graphics_deploy(Deploy):
             soft_list=[]
             msg="选择软件:"
             for softname in ext_dict:
-                if ext_dict[softname].get("file") is not None and softname not in ("python3", "keepalived", "tomcat", "redis6", "glusterfs-server", "glusterfs-client", "autocheck", "nacos_mysql_sql"):
+                if ext_dict[softname].get("file") is not None and softname not in ("python3", "keepalived", "redis6", "glusterfs-server", "glusterfs-client", "autocheck", "nacos_mysql_sql"):
                     soft_list.append((softname, "", 0))
             while True:
                 code, choices_soft_list=self.d.checklist(msg, choices=soft_list, title=title, ok_label="确认", cancel_label="返回")
