@@ -27,16 +27,14 @@ def main():
     if args.t is not None:
         d=deploy.text_deploy()
         arg=args.t
-        if arg=="init":
-            d.init(args[0])
-        elif arg=="install":
-            d.install()
+        if arg=="stop":
+            d.stop()
         elif arg=="start":
             d.start()
         elif arg=="update":
             d.update(args)
         elif arg=="deploy":
-            d.deploy(args[0])
+            d.deploy()
     elif args.p is not None:
         program_id=args.i
         d=deploy.platform_deploy(program_id)
