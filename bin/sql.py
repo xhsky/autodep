@@ -27,7 +27,7 @@ def run():
         db_name=sql_info_dict["db_name"]
         root_password=sql_info_dict["root_password"]
         db_port=sql_info_dict["db_port"]
-        source_db_command=f"mysql -uroot -p{root_password} -P {db_port} {db_name} < {db_abs_file}"
+        source_db_command=f"/dream/mysql/bin/mysql -uroot -p{root_password} -P {db_port} {db_name} < {db_abs_file}"
         log.logger.debug(f"{source_db_command=}")
         log.logger.info(f"{softname}: 数据导入中, 请稍后...")
         result, msg=common.exec_command(source_db_command, timeout=3600)
