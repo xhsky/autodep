@@ -237,14 +237,21 @@ def install():
             jemalloc-bg-thread yes
             ignore-warnings ARM64-COW-BUG
             """
+
+    dch_enabled_text=dch_start_command
     config_dict.update(
             {
                 "dch_conf": {
                     "config_file": f"{dch_dir}/conf/dch.conf",
                     "config_context": dch_conf_text,
                     "mode": "w"
+                    },
+                "dch_enabled": {
+                    "config_file": "/etc/rc.local",
+                    "config_context": dch_enabled_text, 
+                    "mode": "r+"
                     }
-                }
+                } 
             )
 
     # Sentinel配置
@@ -281,12 +288,19 @@ def install():
                 sentinel resolve-hostnames yes
                 sentinel announce-hostnames no
         """
+
+        sentinel_enabled_text=dch_start_command
         config_dict.update(
                 {
                     "sentinel_conf": {
                         "config_file": f"{dch_dir}/conf/sentinel.conf",
                         "config_context": sentinel_conf_text,
                         "mode": "w"
+                        }, 
+                    "dch_sentinel_enabled": {
+                        "config_file": "/etc/rc.local",
+                        "config_context": sentinel_enabled_text, 
+                        "mode": "r+"
                         }
                     }
                 )
@@ -309,7 +323,6 @@ def run():
     """运行
     """
     return_value=normal_code
-    dch_start_command=f"cd {dch_dir} && bin/dch-server conf/dch.conf"
     log.logger.debug(f"dch启动: {dch_start_command=}")
     result, msg=common.exec_command(dch_start_command)
     if result:
@@ -321,7 +334,6 @@ def run():
         return_value=error_code
 
     if sentinel_flag:
-        sentinel_start_command=f"cd {dch_dir} && bin/dch-sentinel conf/sentinel.conf"
         log.logger.debug(f"sentinel启动: {sentinel_start_command=}")
         result, msg=common.exec_command(sentinel_start_command)
         if result:
@@ -342,7 +354,7 @@ def stop():
     """停止
     """
     return_value=normal_code
-    dch_stop_command=f"cd {dch_dir} && bin/dch-cli -a {dch_password} shutdown"
+    dch_stop_command=f"cd {dch_dir} && bin/dch-cli -p {dch_port} -a {dch_password} shutdown "
     log.logger.debug(f"dch停止: {dch_stop_command=}")
     result, msg=common.exec_command(dch_stop_command)
     if result:
@@ -391,12 +403,15 @@ if __name__ == "__main__":
     dch_password=dch_info_dict["db_info"].get("dch_password")
     port_list=[dch_port]
 
+    dch_start_command=f"cd {dch_dir} && bin/dch-server conf/dch.conf"
+
     # 是否启用sentinel
     sentinel_info=dch_info_dict.get("sentinel_info")
     if  sentinel_info is None:
         sentinel_flag=0
     else:
         sentinel_flag=1
+        sentinel_start_command=f"cd {dch_dir} && bin/dch-sentinel conf/sentinel.conf"
         sentinel_port=sentinel_info.get("sentinel_port")
         port_list.append(sentinel_port)
         sentinel_password=sentinel_info.get("sentinel_password")
