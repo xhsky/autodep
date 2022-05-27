@@ -19,35 +19,6 @@ def main():
     return_value=normal_code
 
     try:
-        hostname=hosts_info_dict["hostname"]
-        hosts_list=hosts_info_dict["hosts"]
-
-        # 设置主机名
-        log.logger.info(f"设置主机名为{hostname}")
-        hostname_cmd=f"hostnamectl set-hostname {hostname}"
-        log.logger.debug(f"{hostname_cmd=}")
-        result, msg=exec_command(hostname_cmd)
-        if not result:
-            log.logger.error(f"设置主机名失败: {msg}")
-            return_value=error_code
-
-        # 配置hosts
-        hosts_file="/etc/hosts"
-
-        config_dict={
-                "hosts":{
-                    "config_file": hosts_file,
-                    "config_context": "\n".join(hosts_list), 
-                    "mode": "r+"
-                    }
-                }
-        result, msg=config(config_dict)
-        if result:
-            log.logger.info(f"hosts配置完成")
-        else:
-            log.logger.error(msg)
-            return_value=error_code
-
         # 建立安装目录
         log.logger.info(f"建立安装目录: {located}")
         os.makedirs(located, exist_ok=1)
