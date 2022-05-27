@@ -1,0 +1,44 @@
+{
+  "node": {
+    "software": [
+      "jdk",
+      "dch",
+      "python", 
+      "program_standalone_main", 
+      "program_standalone_sql", 
+      "mysql"
+    ],
+    "ip": "127.0.0.1",
+    "located": "/dream",
+    "dch_info": {
+      "db_info": {
+        "dch_password": "b840fc02d524045429941cc15f59e41cb7be6c599",
+        "dch_port": 16379,
+        "dch_mem": "512M",
+        "dch_io_threads": 1
+      }
+    }, 
+		"mysql_info": {
+			"db_info": {
+				"root_password": "DreamSoft_135",
+				"mysql_port": 13306,
+				"innodb_mem": "2G",
+				"max_connections": 500,
+				"server_id": 1,
+				"business_db": ["dsfa_zhpt"],
+				"business_user": ["zhpt"],
+				"business_password": ["Study_111111"]
+			}
+		}, 
+    "program_standalone_sql_info":{
+      "db_type": "mysql", 
+      "db_port": 13306, 
+      "db_name": "dsfa_zhpt", 
+      "root_password": "DreamSoft_135"
+    }, 
+    "program_standalone_main_info":{
+      "program_dir": "/dream/standalone", 
+      "port": 18008
+    }
+  }
+}
