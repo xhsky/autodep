@@ -1623,7 +1623,7 @@ class text_deploy(Deploy):
         """
         control_dict={}
         for node in self.arch_dict:
-            control_dict[node]=self.arch_dict["software"]
+            control_dict[node]=self.arch_dict[node]["software"]
         return control_dict
 
     def start(self):
@@ -1654,16 +1654,39 @@ class text_deploy(Deploy):
         self.generate_info("file", self.update_stats_dict, stats_file=update_stats_file)
         return result
 
+    def show_project_url(self):
+        """显示首页地址
+        """
+        project_url_list=self.project_dict.get("project_url")
+        project_name=self.project_dict.get("project_name")
+        if project_url_list is None or project_name is None:
+            self.log.logger.warning(f"未配置项目地址")
+        else:
+            project_url_str=""
+            for project_url in project_url_list:
+                try:
+                    node=project_url.split(":")[1][2:]
+                    ip=socket.gethostbyname(node)
+                except Exception as e:
+                    self.log.logger.error(f"{node}: {str(e)}")
+                    node=""
+                    ip=""
+                project_url_str=f"{project_url_str}\n{project_url.replace(node, ip)}"
+            self.log.logger.info(f"{project_name}项目地址:")
+            self.log.logger.info(f"{project_url_str}")
+        return True, {}
+
     def deploy(self):
         """
         init, install, run
         """
 
-        stage_all=["init", "install", "run"]
+        stage_all=["init", "install", "run", "show_project_url"]
         stage_method={
                 "init": self.init, 
                 "install": self.install, 
-                "run": self.run 
+                "run": self.run, 
+                "show_project_url": self.show_project_url
                 }
 
         for stage in stage_all:

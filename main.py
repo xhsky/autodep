@@ -9,7 +9,7 @@ from textwrap import dedent
 from libs import deploy
 
 def main():
-    choices=["init", "install", "run", "start", "stop", "update", "deploy", "monitor", "check"]
+    choices=["init", "install", "run", "start", "stop", "update", "deploy", "monitor", "check", "show_project_url"]
     parser=argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("-t", type=str, choices=choices, help="阶段")
@@ -35,6 +35,8 @@ def main():
             d.update(args)
         elif arg=="deploy":
             d.deploy()
+        elif arg=="show_project_url":
+            d.show_project_url()
     elif args.p is not None:
         program_id=args.i
         d=deploy.platform_deploy(program_id)
