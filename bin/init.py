@@ -2,7 +2,7 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, os, json, shutil
+import sys, os, stat, json, shutil
 from libs.common import Logger
 from libs.env import log_remote_level, normal_code, error_code, deps_dir
 
@@ -41,6 +41,10 @@ def main():
         except Exception as e:
             log.logger.error(str(e))
             return_value=error_code
+    else:
+        with open(rc_local, "w", encoding="utf-8") as f:
+            f.write("#!/bin/sh -e\n")
+        os.chmod(rc_local, 0o755)
 
     sys.exit(return_value)
 
