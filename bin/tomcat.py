@@ -47,6 +47,10 @@ def install():
 
     log.logger.debug("配置server.xml")
     result, msg = common.config(config_dict)
+    if not result:
+        log.logger.error(msg)
+        return_value=error_code
+    return return_value
 
 
 def run():
@@ -67,17 +71,28 @@ def start():
     return run()
 
 def stop():
-    pass
+    return_value = normal_code
+    start_command = f"{located}/{tomcat_dst}/bin/shutdown.sh"
+    result, msg = common.exec_command(start_command)
+    if result:
+        log.logger.debug(f"检测端口: {port_list=}")
+        if not common.port_exist(port_list, exist_or_not=False):
+            return_value = error_code
+    else:
+        log.logger.error(msg)
+        return_value = error_code
+    return return_value
+
 
 def monitor():
-    pass
+    return common.soft_monitor("localhost", port_list)
 
 
 if __name__ == "__main__":
-    # softname, action, conf_json=sys.argv[1:]
-    softname = "tomcat"
-    action = "run"
-    conf_json = '{"ip": "127.0.0.1","software": ["tomcat"], "located": "/dream/", "tomcat_info":{"jvm_mem": "1G","threads":[400, 1500],"max_connections": 10000,"port":{"http_port": 8080,"shutdown_port": 8005, "ajp_port": 8009}},"pkg_file": "/opt/python3/pkgs/apache-tomcat-8.5.51.tar.gz"}'
+    softname, action, conf_json=sys.argv[1:]
+    # softname = "tomcat"
+    # action = "run"
+    # conf_json = '{"ip": "127.0.0.1","software": ["tomcat"], "located": "/dream/", "tomcat_info":{"jvm_mem": "1G","threads":[400, 1500],"max_connections": 10000,"port":{"http_port": 8080,"shutdown_port": 8005, "ajp_port": 8009}},"pkg_file": "/opt/python3/pkgs/apache-tomcat-8.5.51.tar.gz"}'
     conf_dict=json.loads(conf_json)
     located=conf_dict.get("located")
 
