@@ -1,0 +1,24 @@
+{
+  "web1":{
+    "ip": "127.0.0.1",
+    "located": "/dream",
+    "software": ["program_teas_dsf5"],
+    "program_teas_dsf5_info": {
+            "db_type": "mysql", 
+            "program_dir": "/dream/program_teas_dsf5", 
+            "port": 8083, 
+            "upload_dir": "/dream/upload", 
+            "jvm_mem": "1G", 
+            "nacos_config": {
+                "file-extension": "yaml", 
+                "nacos_namespace": "teas", 
+                "service_name": "dsf5", 
+                "nacos_group": "teas", 
+                "active": "prod", 
+                "nacos_port": 9050, 
+                "nacos_host": "web"
+            }
+     }
+  }
+}
+

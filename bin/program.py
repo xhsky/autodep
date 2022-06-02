@@ -3,7 +3,7 @@
 # sky
 
 import sys, json, os, requests, yaml, tarfile, shutil
-from libs import common
+from libs import common, tools
 from libs.env import log_remote_level, program_sh_name, backup_dir, program_license_file, node_license_path, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
@@ -204,83 +204,8 @@ def generate_sh(jar_file):
     #jar_file=f"{program_dir}/{pkg_file.split('/')[-1]}"
     jar_file=f"{program_dir}/{jar_file}"
     log_file=f"{program_dir}/{service_name}.log"
-    program_sh_text=f"""\
-            #!/bin/bash
-            # sky
-
-            action=$1
-            jar_file={jar_file}
-            jar_name=`echo $jar_file | rev | cut -d "/" -f 1 | rev`
-            nacos_addr={nacos_addr}
-            nacos_namespace={namespace_name}
-            nacos_group={group_name}
-            nacos_config_file_extension={config_file_type}
-            nacos_application_name={service_name}         # 须同jar_name配套
-            nacos_profiles_active={config_active}         # 须同jar_name配套
-
-            if [ -z "$1" ]; then
-              echo "Usage: $0 start|stop|publish"
-              exit {error_code}
-            elif [ "$action" == "start" ]; then
-              jvm_mem={jvm_mem}
-              accept_count=1000
-              threads=500
-              max_connections=8192
-
-
-              log_file={log_file}
-
-              nohup java -jar -Xms${{jvm_mem}} -Xmx${{jvm_mem}} ${{jar_file}} \\
-                --spring.cloud.nacos.server-addr=$nacos_addr \\
-                --spring.cloud.nacos.config.namespace=$nacos_namespace \\
-                --spring.cloud.nacos.config.group=$nacos_group \\
-                --spring.cloud.nacos.config.file-extension=$nacos_config_file_extension \\
-                --spring.cloud.nacos.config.enabled=True \\
-                --spring.cloud.nacos.discovery.enabled=True \\
-                --spring.cloud.nacos.discovery.namespace=$nacos_namespace \\
-                --spring.cloud.nacos.discovery.group=$nacos_group \\
-                --spring.application.name=$nacos_application_name \\
-                --spring.profiles.active=$nacos_profiles_active \\
-                --server.tomcat.accept-count=$accept_count \\
-                --server.tomcat.min-spare-threads=$threads \\
-                --server.tomcat.max-threads=$threads \\
-                --server.tomcat.max-connections=$max_connections \\
-                &> $log_file &
-              echo "$jar_name启动中, 详细请查看日志文件($log_file)."
-              exit {normal_code}
-            elif [ "$action" == "stop" ]; then
-              N=0
-              while : ;do
-                N=$((N+1))
-                Pid=`ps ax | grep java | grep "$jar_name" |  grep -v grep | awk '{{print $1}}'`
-                if [ -z "$Pid" ]; then
-                  if [ $N == 1 ]; then
-                    echo "${{jar_name}}未运行. "
-                    exit {stopped_code}
-                  else
-                    echo "${{jar_name}}已关闭."
-                    exit {normal_code}
-                  fi
-                else
-                  if [ $N == 1 ]; then
-                    echo "Pid: $Pid"
-                    echo "${{jar_name}}关闭中..."
-                    kill $Pid
-                  fi
-
-                  if [ $N == 30 ]; then
-                    kill -9 $Pid
-                  fi
-                fi
-                sleep 1
-              done
-            elif [ "$action" == "publish" ]; then
-              content=`cat {program_dir}/app.${{nacos_config_file_extension}}`
-              curl -X POST "http://${{nacos_addr}}{configs_path}" -d tenant=${{nacos_namespace}} -d dataId=${{nacos_application_name}}-${{nacos_profiles_active}}.${{nacos_config_file_extension}} -d group=${{nacos_group}} --data-urlencode content="${{content}}" -d type=${{nacos_config_file_extension}}
-            else
-              echo "Usage: $0 start|stop|publish"
-            fi
-    """
+    program_sh_text=tools.render("../config/templates/program/program.sh.tem", program_info_dict=program_info_dict, normal_code=normal_code,\
+                  stopped_code=stopped_code,error_code=error_code, jar_file=jar_file, configs_path=configs_path)
     config_dict={
             "program_sh": {
                 "config_file": program_sh_file, 
@@ -521,7 +446,10 @@ def backup():
         return error_code
 
 if __name__ == "__main__":
-    softname, action, conf_json=sys.argv[1:]
+    # softname, action, conf_json=sys.argv[1:]
+    softname = "program_teas_dsf5"
+    action = "install"
+    conf_json = '{"ip": "127.0.0.1", "located": "/dream", "software": ["program_teas_dsf5"], "program_teas_dsf5_info": {"db_type": "mysql", "program_dir": "/dream/program_teas_dsf5", "port": 8083, "upload_dir": "/dream/upload", "jvm_mem": "1G", "nacos_config": {"file-extension": "yaml", "nacos_namespace": "teas", "service_name": "dsf5", "nacos_group": "teas", "active": "prod", "nacos_port": 9050, "nacos_host": "web"}}, "pkg_file": "/opt/python3/pkgs/dream-dsfa5-teas3.0.tar.gz"}'
     conf_dict=json.loads(conf_json)
     #located=conf_dict.get("located")
     log=common.Logger({"remote": log_remote_level}, loggger_name="jar")

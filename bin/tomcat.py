@@ -101,7 +101,7 @@ if __name__ == "__main__":
     tomcat_info_dict=conf_dict["tomcat_info"]
     http_port=tomcat_info_dict["port"].get("http_port")
     shutdown_port=tomcat_info_dict["port"].get("shutdown_port")
-    #ajp_port=tomcat_info_dict["port"].get("ajp_port")
+    ajp_port=tomcat_info_dict["port"].get("ajp_port")
     # ajp_port=8009
     port_list=[
             http_port, 

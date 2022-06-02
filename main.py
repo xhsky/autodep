@@ -71,4 +71,6 @@ def main():
         d.show()
 
 if __name__ == "__main__":
-    main()
+    # main()
+    d = deploy.text_deploy()
+    d.deploy()

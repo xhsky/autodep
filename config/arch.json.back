@@ -1,0 +1,15 @@
+{
+  "web1":{
+    "ip": "127.0.0.1",
+    "software": ["jdk", "nacos"],
+    "located": "/dream/", 
+    "nacos_info":{
+      "web_port": 8848, 
+      "jvm_mem": "1G", 
+      "data_source":{
+        "mode": "derby" 
+      } 
+    }
+  }
+}
+
