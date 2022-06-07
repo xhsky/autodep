@@ -446,11 +446,11 @@ def backup():
         return error_code
 
 if __name__ == "__main__":
-    # softname, action, conf_json=sys.argv[1:]
-    softname = "program_teas_dsf5"
-    action = "install"
-    conf_json = '{"ip": "127.0.0.1", "located": "/dream", "software": ["program_teas_dsf5"], "program_teas_dsf5_info": {"db_type": "mysql", "program_dir": "/dream/program_teas_dsf5", "port": 8083, "upload_dir": "/dream/upload", "jvm_mem": "1G", "nacos_config": {"file-extension": "yaml", "nacos_namespace": "teas", "service_name": "dsf5", "nacos_group": "teas", "active": "prod", "nacos_port": 9050, "nacos_host": "web"}}, "pkg_file": "/opt/python3/pkgs/dream-dsfa5-teas3.0.tar.gz"}'
-    conf_dict=json.loads(conf_json)
+    softname, action, conf_json=sys.argv[1:]
+    # softname = "program_teas_dsf5"
+    # action = "install"
+    # conf_json = '{"ip": "127.0.0.1", "located": "/dream", "software": ["program_teas_dsf5"], "program_teas_dsf5_info": {"db_type": "mysql", "program_dir": "/dream/program_teas_dsf5", "port": 8083, "upload_dir": "/dream/upload", "jvm_mem": "1G", "nacos_config": {"file-extension": "yaml", "nacos_namespace": "teas", "service_name": "dsf5", "nacos_group": "teas", "active": "prod", "nacos_port": 9050, "nacos_host": "web"}}, "pkg_file": "/opt/python3/pkgs/dream-dsfa5-teas3.0.tar.gz"}'
+    # conf_dict=json.loads(conf_json)
     #located=conf_dict.get("located")
     log=common.Logger({"remote": log_remote_level}, loggger_name="jar")
 

@@ -163,10 +163,10 @@ def monitor():
     return common.soft_monitor("localhost", port_list)
 
 if __name__ == "__main__":
-    # softname, action, conf_json=sys.argv[1:]
-    softname = "nacos"
-    action = "start"
-    conf_json = '{"ip": "127.0.0.1", "software": ["set_hosts", "jdk", "nacos"], "located": "/dream/", "nacos_info": {"web_port": 8848, "jvm_mem": "1G", "data_source": {"mode": "derby"}}, "hosts_info": {"hostname": "web1", "hosts": ["127.0.0.1 web1"]}, "pkg_file": "/opt/python3/pkgs/nacos-server-1.4.2-9050.tar.gz"}'
+    softname, action, conf_json=sys.argv[1:]
+    # softname = "nacos"
+    # action = "start"
+    # conf_json = '{"ip": "127.0.0.1", "software": ["set_hosts", "jdk", "nacos"], "located": "/dream/", "nacos_info": {"web_port": 8848, "jvm_mem": "1G", "data_source": {"mode": "derby"}}, "hosts_info": {"hostname": "web1", "hosts": ["127.0.0.1 web1"]}, "pkg_file": "/opt/python3/pkgs/nacos-server-1.4.2-9050.tar.gz"}'
     conf_dict=json.loads(conf_json)
     log=common.Logger({"remote": log_remote_level}, loggger_name="nacos")
 
