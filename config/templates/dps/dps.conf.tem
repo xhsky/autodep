@@ -1,5 +1,5 @@
 user  dps;
-worker_processes  {worker_processes};
+worker_processes  {{worker_processes}};
 
 #error_log  logs/error.log;
 #error_log  logs/error.log  notice;
@@ -8,12 +8,12 @@ error_log  logs/error.log  info;
 pid        logs/dps.pid;
 worker_rlimit_nofile 65535;
 
-events {{
+events {
     use epoll;
     worker_connections  65535;
-}}
+}
 
-http {{
+http {
     include       mime.types;
     default_type  application/octet-stream;
     charset utf-8;
@@ -65,4 +65,5 @@ http {{
     #send_timeout  60;
     #proxy_request_buffering off;
 
-    include {vhosts_file};
+    include {{vhosts_file}};
+ }

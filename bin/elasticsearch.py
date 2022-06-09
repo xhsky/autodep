@@ -4,7 +4,7 @@
 # sky
 
 import sys, json
-from libs import common
+from libs import common, tools
 from libs.env import log_remote_level, elasticsearch_src, elasticsearch_dst, elasticsearch_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
@@ -30,22 +30,7 @@ def install():
     cluster_name=conf_dict["elasticsearch_info"]["cluster_name"]
     members_list=conf_dict["elasticsearch_info"]["members"]
 
-    es_config_text=f"""\
-        cluster.name: {cluster_name}
-        #"node.name: es_node
-        node.master: true
-        node.voting_only: false
-        node.data: true
-        node.ingest: true
-        bootstrap.memory_lock: true
-        network.host: 0.0.0.0
-        http.port: {http_port}
-        discovery.seed_hosts: {members_list}
-        transport.tcp.port: {transport}
-        cluster.initial_master_nodes: {members_list}
-        gateway.recover_after_nodes: 1
-        action.destructive_requires_name: true
-    """
+    es_config_text=tools.render("../config/templates/elasticsearch/es.config.tem", conf_dict=conf_dict)
 
     jvm_config_file=f"{es_dir}/config/jvm.options.d/jvm_mem.options"
     jvm_context=f"""\

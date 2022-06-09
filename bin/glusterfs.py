@@ -3,7 +3,7 @@
 # sky
 
 import sys, os, json, time
-from libs import common
+from libs import common, tools
 from libs.env import log_remote_level, glusterfs_src, glusterfs_dst, \
         glusterfs_all_pkg_dir, glusterfs_client_pkg_dir, glusterfs_volume_name, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
@@ -16,24 +16,7 @@ def install():
         return error_code
 
     if server_flag == 1:
-        glusterd_conf_context=f"""\
-                volume management
-                    type mgmt/glusterd
-                    option working-directory /var/lib/glusterd
-                    option transport-type socket,rdma
-                    option transport.socket.keepalive-time 10
-                    option transport.socket.keepalive-interval 2
-                    option transport.socket.read-fail-log off
-                    option transport.socket.listen-port {glusterd_port}
-                    option transport.rdma.listen-port 24008
-                    option ping-timeout 0
-                    option event-threads 1
-                #   option lock-timer 180
-                #   option transport.address-family inet6
-                    option base-port {volume_port}
-                    option max-port  60999
-                end-volume
-                """
+        glusterd_conf_context=tools.render("../config/templates/glusterfs/glusterd.conf.tem", glusterfs_info_dict=glusterfs_info_dict)
         glusterd_conf_file="/etc/glusterfs/glusterd.vol"
         config_dict={
                 "glusterd_conf":{

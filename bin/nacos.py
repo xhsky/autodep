@@ -3,7 +3,7 @@
 # sky
 
 import sys, json, os
-from libs import common
+from libs import common,tools
 from libs.env import log_remote_level, nacos_src, nacos_dst, nacos_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
@@ -22,47 +22,7 @@ def install():
     jvm_mem=nacos_info_dict["jvm_mem"]
     jvm_command=f"sed 's/-Xms512m -Xmx512m -Xmn256m/-Xms{jvm_mem} -Xmx{jvm_mem}/' {nacos_dir}/bin/startup.sh"
 
-    nacos_conf_text=f"""\
-            # Spring Boot 
-            server.servlet.contextPath=/nacos
-            server.port={web_port}
-
-            # Network 
-            nacos.inetutils.prefer-hostname-over-ip=True
-            # nacos.inetutils.ip-address=
-
-            # Connection pool 
-            db.pool.config.connectionTimeout=30000
-            db.pool.config.validationTimeout=10000
-            db.pool.config.maximumPoolSize=20
-            db.pool.config.minimumIdle=2
-
-            nacos.naming.empty-service.auto-clean=true
-            nacos.naming.empty-service.clean.initial-delay-ms=50000
-            nacos.naming.empty-service.clean.period-time-ms=30000
-
-            # Metrics 
-            management.metrics.export.elastic.enabled=false
-            management.metrics.export.influx.enabled=false
-
-            # Access Log 
-            server.tomcat.accesslog.enabled=true
-            server.tomcat.accesslog.pattern=%h %l %u %t "%r" %s %b %D %{{User-Agent}}i %{{Request-Source}}i
-            server.tomcat.basedir=
-
-            # Access Control
-            #spring.security.enabled=false
-            nacos.security.ignore.urls=/,/error,/**/*.css,/**/*.js,/**/*.html,/**/*.map,/**/*.svg,/**/*.png,/**/*.ico,/console-ui/public/**,/v1/auth/**,/v1/console/health/**,/actuator/**,/v1/console/server/**
-            nacos.core.auth.system.type=nacos
-            nacos.core.auth.enabled=false
-            nacos.core.auth.default.token.expire.seconds=18000
-            nacos.core.auth.default.token.secret.key=SecretKey012345678901234567890123456789012345678901234567890123456789
-            nacos.core.auth.caching.enabled=true
-            nacos.core.auth.server.identity.key=111
-            nacos.core.auth.server.identity.value=222
-
-            nacos.istio.mcp.server.enabled=false
-            """
+    nacos_conf_text=tools.render("../config/templates/nacos/nacos.conf.tem", nacos_info_dict=nacos_info_dict)
     mode=nacos_info_dict["data_source"]["mode"]
     if mode=="mysql":
         db_host=nacos_info_dict["data_source"]["mysql_info"]["db_host"]

@@ -3,7 +3,7 @@
 # sky
 
 import sys, json
-from libs import common
+from libs import common,tools
 from libs.env import log_remote_level, mysql_user, mysql_src, mysql_dst, mysql_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
@@ -85,86 +85,7 @@ def install():
         export MySQL_HOME={mysql_dir}
         export PATH=$MySQL_HOME/bin:$PATH
     """
-    my_cnf_context=f"""\
-        [mysqld]
-        # dir
-        datadir={mysql_dir}/{my_data}
-        #secure_file_priv=/var/lib/mysql-files
-        pid_file={mysql_dir}/{my_data}/mysqld.pid
-
-        # network
-        #socket=/tmp/mysql.sock
-        port={mysql_port}
-        max_connections={max_connections}
-
-        # general set
-        lower_case_table_names=1
-        default_authentication_plugin=mysql_native_password
-        default-time-zone='+08:00'
-        wait_timeout=600
-        default_password_lifetime=90
-
-        # Log 
-        ## Error Log
-        log_error={mysql_dir}/{my_logs}/mysqld.log
-        log_timestamps=system
-        ## Slow log
-        log_output=file
-        slow_query_log=1
-        long_query_time=2
-
-        # bin log
-        server_id={server_id}
-        log_bin={mysql_dir}/{my_logs}/binlog/binlog
-        binlog_format=row
-        binlog_row_event_max_size=8192
-        binlog_checksum=crc32
-        max_binlog_size=512M
-
-        binlog_cache_size=128K
-        binlog_stmt_cache_size=32K
-        max_binlog_cache_size=8G
-        max_binlog_stmt_cache_size=2G
-
-        binlog_error_action=abort_server
-        binlog_expire_logs_seconds=0
-
-        sync_binlog=1
-        binlog_group_commit_sync_delay=0
-
-        default_storage_engine=innodb
-
-        # innodb
-        gtid_mode=on
-        enforce_gtid_consistency=1
-        ## buffer pool
-        innodb_buffer_pool_size={mem}
-        innodb_change_buffer_max_size=25
-        innodb_buffer_pool_instances=16
-
-        ## redo log
-        innodb_log_group_home_dir={mysql_dir}/{my_logs}/redolog
-        innodb_log_file_size=256M
-        innodb_log_files_in_group=4
-
-        ## log buffer
-        innodb_log_buffer_size=16M
-        innodb_flush_log_at_trx_commit=1
-
-        ## tablespace
-        ### system tablespace
-        innodb_file_per_table=1
-        ### undo tablespace
-        innodb_undo_directory={mysql_dir}/{my_logs}/undolog
-        innodb_rollback_segments=128
-        innodb_max_undo_log_size=1G
-
-        !include {my_plugin_cnf_file}
-        !include {my_client_cnf_file}
-
-        log_replica_updates=1
-        [client]
-    """
+    my_cnf_context=tools.render("../config/templates/mysql/my.cnf.tem", db_info_dict=db_info_dict, mysql_dir=mysql_dir)
     my_cnf_file=f"/etc/my.cnf"
 
     config_dict={
