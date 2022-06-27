@@ -1,0 +1,32 @@
+brokerClusterName={{rocketmq_info_dict.get("cluster_name")}}
+brokerName={{rocketmq_info_dict.get("replica_name")}}
+listenPort={{rocketmq_info_dict["port"].get("remote_port")}}
+namesrvAddr={{namesrv_list}}
+
+{% if rocketmq_info_dict.get("replica_role").lower()=="master" or rocketmq_info_dict.get("replica_role").lower()=="slave" %}
+{% if rocketmq_info_dict.get("replica_role").lower()=="master" %}
+brokerId=0
+brokerRole="ASYNC_MASTER"
+{% else %}
+brokerId=1
+brokerRole="SLAVE"
+{% endif %}
+{% if rocketmq_info_dict["port"].get("ha_port") != None %}
+haListenPort={{rocketmq_info_dict["port"].get("ha_port")}}
+{% endif %}
+deleteWhen=04
+fileReservedTime=48
+flushDiskType=ASYNC_FLUSH
+{% elif rocketmq_info_dict.get("replica_role").lower()=="dledger" %}
+enableDLegerCommitLog=true
+dLegerGroup={{rocketmq_info_dict.get("replica_name")}}
+dLegerSelfId={{rocketmq_info_dict.get("dledger_id")}}
+dLegerPeers={dLegerPeers}
+sendMessageThreadPoolNums=4
+{% endif %}
+
+storePathRootDir={{store_dir['storePathRootDir']}}
+storePathCommitLog={{store_dir['storePathCommitLog']}}
+storePathConsumerQueue={{store_dir['storePathConsumerQueue']}}
+storePathIndex={{store_dir['storePathIndex']}}
+mapedFileSizeCommitLog=1G

@@ -1,0 +1,34 @@
+{% for port in vhosts_info_dict %}
+{% for name in vhosts_info_dict[port] %}
+{% if vhosts_info_dict[port][name]["mode"]=="proxy" %}
+upstream {{ vhosts_info_dict[port][name]["proxy_name"] }} {
+    {% for proxy_host in vhosts_info_dict[port][name]["proxy_hosts"] %}
+	server {{ proxy_host }};
+	{% endfor %}
+}
+{% endif %}
+server {
+    listen  {{port}};
+	server_name localhost;
+	access_log logs/{{port}}.access.log  main;
+	error_page 500 502 503 504 /50x.html;
+	location = /50x.html {
+        root   html;
+    }
+
+    location = /favicon.ico {
+        return 200;     		# 忽略浏览器的title前面的图标
+    }
+	{% if vhosts_info_dict[port][name]["mode"]=="proxy" %}
+	location {{name}} {
+	    proxy_pass http://{{vhosts_info_dict[port][name]["proxy_name"]}};
+	}
+	{% endif %}
+	{% if vhosts_info_dict[port][name]["mode"]=="location" %}
+	location {{name}} {
+	    root {{vhosts_info_dict[port][name]['frontend_dir']}};
+	}
+	{% endif %}
+}
+{% endfor %}
+{% endfor %}

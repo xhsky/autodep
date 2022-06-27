@@ -1,0 +1,12 @@
+#!/bin/bash
+# sky
+
+service_type=$1
+
+if [ "$service_type" == 'namesrv' ]; then
+    nohup bash ./bin/mqnamesrv -c {{rocketmq_dir}}/conf/nameserver.conf &> namesrv.log &
+elif [ "$service_type" == 'broker' ]; then
+    nohup bash ./bin/mqbroker -c {{rocketmq_dir}}/conf/broker.conf &> broker.log &
+else
+    echo "Usage: bash $0 namesrv|broker"
+fi
