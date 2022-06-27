@@ -46,6 +46,9 @@ local_file=f"{data_dir}/local.json"
 deploy_file=f"{data_dir}/deploy.json"
 backup_version_file=f"{data_dir}/backup_version.json"
 rollback_version_file=f"{data_dir}/rollback_version.json"
+# 配置模板
+local_config_templates_path="./config/templates"
+remote_config_templates_path=f"{remote_code_dir}/{local_config_templates_path}"
 
 # ext路径
 ext_dir="../ext"
