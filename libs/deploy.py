@@ -16,7 +16,7 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         init_file, arch_file, stand_alone_file, project_file, update_init_file, update_arch_file, start_file, stop_file, deploy_file, ext_file, localization_file, backup_version_file, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code, \
         local_license_path, node_license_path, \
-        localization_soft_port, localization_test_soft
+        localization_soft_port, localization_test_soft, remote_config_templates_path
 
 for dir_ in autodep_dir:
     if not os.path.exists(dir_):
