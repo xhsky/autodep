@@ -46,9 +46,7 @@ local_file=f"{data_dir}/local.json"
 deploy_file=f"{data_dir}/deploy.json"
 backup_version_file=f"{data_dir}/backup_version.json"
 rollback_version_file=f"{data_dir}/rollback_version.json"
-# 配置模板
-local_config_templates_path="./config/templates"
-remote_config_templates_path=f"{remote_code_dir}/{local_config_templates_path}"
+
 
 # ext路径
 ext_dir="../ext"
@@ -119,6 +117,10 @@ remote_code_dir=f"{remote_python_dir}/code"
 remote_pkgs_dir=f"{remote_python_dir}/pkgs"
 
 update_package_dir=remote_pkgs_dir
+
+# 配置模板
+local_config_templates_path="./config/templates"
+remote_config_templates_path=f"{remote_code_dir}/{local_config_templates_path}"
 
 #program_unzip_dir="./program_pkg"
 # program控制脚本名称
