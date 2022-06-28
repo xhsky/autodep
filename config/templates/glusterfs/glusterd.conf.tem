@@ -1,0 +1,20 @@
+volume management
+    type mgmt/glusterd
+    option working-directory /var/lib/glusterd
+    option transport-type socket,rdma
+    option transport.socket.keepalive-time 10
+    option transport.socket.keepalive-interval 2
+    option transport.socket.read-fail-log off
+    {% if glusterfs_info_dict["port"].get("glusterd_port") != None %}
+    option transport.socket.listen-port {{glusterfs_info_dict["port"].get("glusterd_port")}}
+    {% endif %}
+    option transport.rdma.listen-port 24008
+    option ping-timeout 0
+    option event-threads 1
+#   option lock-timer 180
+#   option transport.address-family inet6
+    {% if glusterfs_info_dict["port"].get("volume_port") != None %}
+    option base-port {{glusterfs_info_dict["port"].get("volume_port")}}
+    {% endif %}
+    option max-port  60999
+end-volume

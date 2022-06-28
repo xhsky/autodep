@@ -47,11 +47,9 @@ deploy_file=f"{data_dir}/deploy.json"
 backup_version_file=f"{data_dir}/backup_version.json"
 rollback_version_file=f"{data_dir}/rollback_version.json"
 
+
 # ext路径
 ext_dir="../ext"
-
-# deps路径
-deps_dir=f"{ext_dir}/deps"
 
 # 安装目录名称
 located_dir_name="dream"
@@ -120,13 +118,23 @@ remote_pkgs_dir=f"{remote_python_dir}/pkgs"
 
 update_package_dir=remote_pkgs_dir
 
+# 配置模板
+local_config_templates_path="./config/templates"
+remote_config_templates_path=f"{remote_code_dir}/{local_config_templates_path}"
+
 #program_unzip_dir="./program_pkg"
 # program控制脚本名称
 program_sh_name="program.sh"
 # 测试数据库连通的SQL文件. %s为数据库软件名称
 test_sql_file="/tmp/%s_test.sql"
 
-interface={}
+interface={
+        "mail": ["smtp.dreamdt.cn", 25, None],                              # 邮件接口
+        "sms": ["smartone.10690007.com", 80, "/proxysms/mt"],               # 短信接口
+        "platform_log": ["125.69.82.54", 14206, "/project/deploy/sendLog"],  # 公司平台日志接口
+        "platform_info": ["125.69.82.54", 14206, "/project/deploy/sendDetection"],  # 公司平台信息接口
+        "platform_check": ["125.69.82.54", 14206, "/project/deploy/uploadXjText"],  # 公司平台巡检文件接口
+        }
 
 # link
 ffmpeg_src="ffmpeg-"
@@ -204,3 +212,62 @@ keepalived_src="keepalived"
 keepalived_dst=None
 keepalived_pkg_dir=None
 
+'''
+## nginx配置/代码模块转发配置
+nginx_server_config="""
+server {
+        listen       %s;
+        server_name  localhost;
+
+        #charset koi8-r;
+
+        #access_log  logs/host.access.log  main;
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+
+        location = /favicon.ico {
+            return 200;     		# 忽略浏览器的title前面的图标
+        }
+        
+        %s
+}
+"""
+
+nginx_module_dict={
+        "智慧党校(含网络培训)-大教务4.0": """
+            location /dsfa {
+                %s                                # 前端代码目录, 配置到dsfa上级目录 
+                if (!-e $request_filename) {
+                    proxy_pass http://%s;
+                    }
+                #try_files $uri $uri/ /index.html;
+            }
+        """, 
+        "智慧党校(含网络培训)-大教务5.0": """
+            location /dsf5/ {
+	        %s                               # 配置到dsf5的上级目录, (pages, 改为dsf5)
+                if (!-e $request_filename) {
+                    rewrite ^/dsf5/(.*)$ /$1 break;   # 后端代码无前缀
+                    proxy_pass http://%s;
+                  }
+	      
+	        error_page 404 = @rewrite_dsfa;
+                }
+	    
+	    location @rewrite_dsfa {
+                rewrite ^(.*)$ /dsfa$1 last;
+	    }
+        """, 
+        "智慧党校(含网络培训)-科研": """
+            location / {
+                %s
+                if (!-e $request_filename) {
+                    proxy_pass http://%s;
+                  }
+            }
+        """
+  '     }
+'''

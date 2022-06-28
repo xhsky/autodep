@@ -883,6 +883,7 @@ class Deploy(object):
                 trans_files_dict={
                         "lib_file": ["./libs/common.py", f"{remote_code_dir}/libs/common.py"],
                         "env_file": ["./libs/env.py", f"{remote_code_dir}/libs/env.py"],
+                        "tool_file": ["./libs/tools.py", f"{remote_code_dir}/libs/tools.py"],
                         "py_file": [init_py, remote_py_file]
                         }
                 obj, status=self.remote_exec(node, port, "init", remote_py_file, "init", trans_files_dict, None)
@@ -1558,7 +1559,7 @@ class text_deploy(Deploy):
             self.init_dict, self.ext_dict, self.arch_dict, self.project_dict=config_list
         else:
             self.log.logger.error(config_list)
-            return error_code
+            sys.exit(error_code)
 
     def check(self):
         '''

@@ -1,0 +1,25 @@
+protected-mode no
+{% if sentinel_info.get("sentinel_port") != None %}
+port {sentinel_port}
+{% endif %}
+daemonize yes
+dir "{{dch_dir}}/data"
+logfile "{{dch_dir}}/logs/sentinel.log"
+pidfile {{dch_dir}}/sentinel.pid
+{% if sentinel_info.get("sentinel_password") != None %}
+requirepass {{sentinel_info.get("sentinel_password")}}
+{% endif %}
+#sentinel sentinel-user <username>
+#sentinel sentinel-pass <password>
+{% if sentinel_info.get("monitor_host") != None and sentinel_info.get("monitor_port") != None %}
+sentinel monitor mymaster {{sentinel_info.get("monitor_host")}} {{sentinel_info.get("monitor_port")}} {{quorum}}
+{% endif %}
+{% if dch_info_dict["db_info"].get("dch_password") != None %}
+sentinel auth-pass mymaster {{dch_info_dict["db_info"].get("dch_password")}}
+{% endif %}
+sentinel deny-scripts-reconfig yes
+sentinel down-after-milliseconds mymaster 5000
+sentinel failover-timeout mymaster 180000
+
+sentinel resolve-hostnames yes
+sentinel announce-hostnames no
