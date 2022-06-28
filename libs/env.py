@@ -120,6 +120,11 @@ remote_pkgs_dir=f"{remote_python_dir}/pkgs"
 
 update_package_dir=remote_pkgs_dir
 
+# 配置模板
+local_config_templates_path="./config/templates"
+remote_config_templates_path=f"{remote_code_dir}/{local_config_templates_path}"
+
+
 #program_unzip_dir="./program_pkg"
 # program控制脚本名称
 program_sh_name="program.sh"
