@@ -23,7 +23,7 @@
   }, 
   "tomcat":{
 	"file": "apache-tomcat-8.5.40.tar.gz",
-	"version": "8.5.40"
+	"version": "8.5.40",
 	"py": "tomcat.py",
 	"type": "program"
   }
