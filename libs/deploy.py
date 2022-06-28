@@ -884,6 +884,7 @@ class Deploy(object):
                         "lib_file": ["./libs/common.py", f"{remote_code_dir}/libs/common.py"],
                         "env_file": ["./libs/env.py", f"{remote_code_dir}/libs/env.py"],
                         "tool_file": ["./libs/tools.py", f"{remote_code_dir}/libs/tools.py"],
+                        "template_file": ["./config/templates", f"{remote_config_templates_path}"],
                         "py_file": [init_py, remote_py_file]
                         }
                 obj, status=self.remote_exec(node, port, "init", remote_py_file, "init", trans_files_dict, None)

@@ -5,7 +5,7 @@
 
 import paramiko
 import os, json
-from shutil import copy
+from shutil import copy, copytree
 import subprocess
 from libs.common import Logger
 from libs.env import log_file, log_file_level, remote_python_exec, \
@@ -182,19 +182,48 @@ class ssh(object):
         sftp_file.close()
         sftp.close()
 
-    def scp(self, local_file, remote_file, ip="127", port=0, user="root"):
+    def _get_listdir(self, path, file_path_list=[]):
+        """
+        获取目录下所有文件的路径
+
+        return [file1, file2]
+        """
+        for file_path in os.listdir(path):
+            file_path=os.path.join(path, file_path)
+            if os.path.isfile(file_path):
+                file_path_list.append(file_path)
+            else:
+                self._get_listdir(file_path, file_path_list)
+        return file_path_list
+
+    def scp(self, local_path, remote_path, ip="127", port=0, user="root"):
         """本地/远程拷贝
         return
             bool:  成功/失败
             result: 
         """
         try:
+            if os.path.isfile(local_path):
+                is_file=1
+            else:
+                is_file=0  # is dir
+
             if port==0:
-                result=copy(local_file, remote_file)
+                if is_file:
+                    result=copy(local_path, remote_path)
+                else:
+                    result=copytree(local_path, remote_path)
             else:
                 self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
                 sftp=self.ssh.open_sftp()
-                result=sftp.put(local_file, remote_file, confirm=True)
+                for local_file in self._get_listdir(local_path):
+                    remote_file=os.path.join(remote_path, local_file)
+                    remote_dir=os.path.dirname(remote_file)
+                    try:
+                        sftp.stat(remote_dir)
+                    except:
+                        self.ssh.exec_command(f"mkdir -p {remote_dir}", get_pty=get_pty)
+                    result=sftp.put(local_file, remote_file, confirm=True)
                 sftp.close()
             return True, result
         except Exception as e:
