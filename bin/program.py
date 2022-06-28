@@ -204,7 +204,7 @@ def generate_sh(jar_file):
     #jar_file=f"{program_dir}/{pkg_file.split('/')[-1]}"
     jar_file=f"{program_dir}/{jar_file}"
     log_file=f"{program_dir}/{service_name}.log"
-    program_sh_text=tools.render("../config/templates/program/program.sh.tem", program_info_dict=program_info_dict, normal_code=normal_code,\
+    program_sh_text=tools.render("config/templates/program/program.sh.tem", program_info_dict=program_info_dict, normal_code=normal_code,\
                   stopped_code=stopped_code,error_code=error_code, jar_file=jar_file, configs_path=configs_path)
     config_dict={
             "program_sh": {
