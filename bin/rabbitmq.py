@@ -4,7 +4,7 @@
 # sky
 
 import sys, os, json
-from libs import common
+from libs import common, tools
 from libs.env import log_remote_level, rabbitmq_src, rabbitmq_dst, rabbitmq_pkg_dir, erl_dst, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
@@ -34,17 +34,7 @@ def install():
             ERL_EPMD_PORT={epmd_port}
     """
     mq_env_file=f"{rabbitmq_dir}/etc/rabbitmq/rabbitmq-env.conf"
-    mq_config_text=f"""\
-        listeners.tcp.default = {rabbitmq_port}
-        vm_memory_high_watermark.absolute = {erlang_mem}
-        vm_memory_high_watermark_paging_ratio = 0.5
-        log.file.level = info
-        mnesia_table_loading_retry_timeout = 10000
-        mnesia_table_loading_retry_limit = 3
-        cluster_name={cluster_name}
-        cluster_formation.peer_discovery_backend = classic_config
-        cluster_formation.node_type = {node_type}
-        """
+    mq_config_text=tools.render("../config/templates/rabbitmq/mq.config.tem", rabbitmq_info_dict=rabbitmq_info_dict)
     mq_config_file=f"{rabbitmq_dir}/etc/rabbitmq/rabbitmq.conf"
 
     members_nodes=""
