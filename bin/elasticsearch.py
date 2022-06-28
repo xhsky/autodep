@@ -30,7 +30,7 @@ def install():
     cluster_name=conf_dict["elasticsearch_info"]["cluster_name"]
     members_list=conf_dict["elasticsearch_info"]["members"]
 
-    es_config_text=tools.render("../config/templates/elasticsearch/es.config.tem", conf_dict=conf_dict)
+    es_config_text=tools.render("config/templates/elasticsearch/es.config.tem", conf_dict=conf_dict)
 
     jvm_config_file=f"{es_dir}/config/jvm.options.d/jvm_mem.options"
     jvm_context=f"""\

@@ -97,7 +97,7 @@ def install():
             quorum=replicas_num/2
         else:
             quorum=int(replicas_num/2)+1
-        sentinel_conf_text=tools.render("../config/templates/dch/sentinel.conf.tem", sentinel_info=sentinel_info, dch_dir=dch_dir, quorum=quorum)
+        sentinel_conf_text=tools.render("config/templates/dch/sentinel.conf.tem", sentinel_info=sentinel_info, dch_dir=dch_dir, quorum=quorum)
 
         sentinel_enabled_text=dch_start_command
         config_dict.update(

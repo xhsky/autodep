@@ -21,12 +21,12 @@ def install():
     jvm_mem = tomcat_info_dict.get("jvm_mem")
     min_threads, max_threads = tomcat_info_dict.get("threads")
     max_connections = tomcat_info_dict.get("max_connections")
-    server_xml_context = tools.render("../config/templates/tomcat/server.xml.tem", shutdown_port=shutdown_port,
+    server_xml_context = tools.render("config/templates/tomcat/server.xml.tem", shutdown_port=shutdown_port,
                                       http_port=http_port, \
                                       min_threads=min_threads, max_threads=max_threads, \
                                       ajp_port=ajp_port, max_connections=max_connections)
-    tomcat_sh_context = tools.render("../config/templates/tomcat/tomcat.sh.tem", tomcat_dir=tomcat_dir)
-    setenv_sh_context = tools.render("../config/templates/tomcat/setenv.sh.tem", jvm_mem=jvm_mem)
+    tomcat_sh_context = tools.render("config/templates/tomcat/tomcat.sh.tem", tomcat_dir=tomcat_dir)
+    setenv_sh_context = tools.render("config/templates/tomcat/setenv.sh.tem", jvm_mem=jvm_mem)
 
     config_dict = {
         "server_xml": {

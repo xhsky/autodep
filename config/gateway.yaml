@@ -1,0 +1,163 @@
+dsfa:
+ gateway:
+  debug: true
+server:
+ port: 8080
+ servlet:
+  session:
+   timeout: 720m
+spring:
+ datasource:
+  monitor:
+   loginUsername: _admin2
+   loginPassword: dreamsoft
+  druids:
+   - url: jdbc:mysql://na:3306/dream?zeroDateTimeBehavior=CONVERT_TO_NULL&serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&useOldAliasMetadataBehavior=true&useSSL=false
+     username: dream
+     password: Dream_Soft@2022
+ redis:
+  host: na
+  database: 1
+  port: 6379
+  password: aafcc2313938019abfcdb840fc02d524045429941cc15f59e41cb7be6c599
+  jedis:
+   pool:
+    max-idle: 200
+    min-idle: 10
+ cloud:
+        gateway:
+            httpclient: 
+                max-initial-line-length: 2MB
+            discovery:
+            default-filters:
+            - RemoveResponseHeader=X-Frame-Options
+            - DedupeResponseHeader=Vary, RETAIN_UNIQUE
+            - PreserveHostHeader
+            routes:
+            - id: UserSuffixRoute
+              uri: lb://dsf5
+              predicates:
+              - Path=/dsf5/user/**
+              filters:
+              - StripPrefix=1
+              - PreserveHostHeader
+            - id: UserSuffixRoute
+              uri: lb://dsf5
+              predicates:
+              - Path=/user/**
+              filters:
+              - StripPrefix=1
+              - PreserveHostHeader
+            - id: Dsf5previewRoute
+              uri: http://192.168.0.42 # 预览换成项目组配置的预览
+              predicates:
+              - Path=/preview/**
+            - id: plan
+              uri: lb://dsf5/
+              predicates:
+              - Path=/plan/**
+              filters:
+              - StripPrefix=1
+              - RouteVersion
+            - id: examStaticRoute
+              uri: lb://exam/
+              predicates:
+              - Path=/exam/**
+              - Suffix=all
+              filters:
+              - StripPrefix=1
+              - RouteVersion    
+            - id: examRoute
+              uri: lb://exam/
+              predicates:
+              - Path=/exam/**
+              filters:
+              - StripPrefix=1
+            - id: Dsf5SuffixRoute
+              uri: lb://dsf5
+              predicates:
+              - Suffix=all
+              - Path=/dsf5/**
+              filters:
+              - PreserveHostHeader
+              - StripPrefix=1
+              - RouteVersion
+            - id: sms
+              uri: lb://dsf5/
+              predicates:
+              - Path=/sms/getCode
+              filters:
+              - StripPrefix=0
+              - RouteVersion
+            - id: sms
+              uri: lb://dsf5/
+              predicates:
+              - Path=/sms/checkCode
+              filters:
+              - StripPrefix=0
+              - RouteVersion  
+            - id: sms
+              uri: lb://dsf5/
+              predicates:
+              - Path=/sms/**
+              filters:
+              - StripPrefix=1
+              - RouteVersion
+            - id: Dsf5SuffixRoute
+              uri: lb://dsf5
+              predicates:
+              - Path=/dsf5/**
+              filters:
+              - PreserveHostHeader
+              - StripPrefix=1
+            - id: dormServiceRoute
+              uri: lb://dorm/
+              predicates:
+              - Path=/dorm/**
+              filters:
+              - StripPrefix=1
+              - RouteVersion
+            - id: dormServiceRoute
+              uri: http://na:8080
+              predicates:
+              - Path=/dorm/**
+              - Suffix=all
+              filters:
+              - PreserveHostHeader
+              - StripPrefix=1
+              - RouteVersion
+            - id: bbsServiceRoute
+              uri: lb://dsf5
+              predicates:
+              - Path=/bbs/**
+              filters:
+              - StripPrefix=1
+              - PreserveHostHeader
+            - id: emailServiceRoute
+              uri: lb://dsf5
+              predicates:
+              - Path=/email/**
+              filters:
+              - StripPrefix=1
+              - PreserveHostHeader
+            - id: asqServiceRoute
+              uri: lb://dsf5
+              predicates:
+              - Path=/asq/**
+              filters:
+              - StripPrefix=1
+              - PreserveHostHeader
+            - id: AllSuffixRoute
+              uri: lb://dsf5
+              predicates:
+              - Suffix=all
+              - Path=/**
+              filters:
+              - PreserveHostHeader
+              - RouteVersion  
+            - id: mainService
+              uri: lb://dsf5/
+              predicates:
+              - Path=/**
+              filters:
+              - PreserveHostHeader

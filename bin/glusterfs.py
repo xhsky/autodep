@@ -16,7 +16,7 @@ def install():
         return error_code
 
     if server_flag == 1:
-        glusterd_conf_context=tools.render("../config/templates/glusterfs/glusterd.conf.tem", glusterfs_info_dict=glusterfs_info_dict)
+        glusterd_conf_context=tools.render("config/templates/glusterfs/glusterd.conf.tem", glusterfs_info_dict=glusterfs_info_dict)
         glusterd_conf_file="/etc/glusterfs/glusterd.vol"
         config_dict={
                 "glusterd_conf":{

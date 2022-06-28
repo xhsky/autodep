@@ -1,0 +1,84 @@
+server:
+ port: 8081
+ servlet:
+  session:
+   timeout: 720m
+ max-http-header-size: 10240
+spring:
+ datasource:
+  monitor:
+   loginUsername: _admin2
+   loginPassword: dreamsoft
+  druids:
+   - url: jdbc:mysql://na:3306/dream?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&useOldAliasMetadataBehavior=true&useSSL=false
+     username: dream
+     password: Dream_Soft@2022
+ redis:
+  host: na
+  database: 1
+  port: 6379
+  password: aafcc2313938019abfcdb840fc02d524045429941cc15f59e41cb7be6c599
+  jedis:
+   pool:
+    max-idle: 200
+    min-idle: 10
+ servlet:
+  multipart:
+   max-file-size: 1024MB
+   max-request-size: 1024MB
+dsfa:
+ job:
+   enabled: true
+ meta:
+  file:
+   max-temp-blob-size: 100KB
+   path: /dream/program_teas_teas5/pages/
+ session:
+  authIgnore: false
+  rule:
+   valiRepeat: false
+dsf:
+ file:
+  upload-virtual-path: /dream/upload
+  allow: txt,doc,docx,pdf,pptx,ppt,xls,xlsx,wps,jpg,png,gif,mp4,jpeg,mp3
+dubbo:
+ scan:
+  base-packages: com.dsfa
+ protocol:
+  name: dubbo
+  port: -1  #自动寻找可用端口
+ registry:
+  address: nacos://${spring.cloud.nacos.server-addr}
+  parameters[namespace]: ${spring.profiles.active}
+  parameters[group]: ${spring.profiles.active}
+ cloud:
+  subscribed-services: ${spring.application.name}
+rocketmq:
+ name-server: na:9876
+ producer:
+  group: dream
+bbs:
+  server-address: ""
+  rocketmq:
+    topic:
+      submit-comment: comment
+      concern: concern
+    group:
+      bbs-comment-status: bbsCommentStatus
+      bbs-comment-add: bbsCommentAdd
+      bbs-comment-del: bbsCommentDel
+      bbs-concern-add: BbsConcernAdd
+      bbs-concern-del: BbsConcernDel
+  sync:
+    userIdentity:
+      url: ""
+      type:
+        id: ""
+    userInfo:
+      url: ""    
+  audit: 123
+asq:
+  server-address: /
+  rocketmq:
+    topic:
+      submit-paper: submitAsq

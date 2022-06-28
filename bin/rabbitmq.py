@@ -34,7 +34,7 @@ def install():
             ERL_EPMD_PORT={epmd_port}
     """
     mq_env_file=f"{rabbitmq_dir}/etc/rabbitmq/rabbitmq-env.conf"
-    mq_config_text=tools.render("../config/templates/rabbitmq/mq.config.tem", rabbitmq_info_dict=rabbitmq_info_dict)
+    mq_config_text=tools.render("config/templates/rabbitmq/mq.config.tem", rabbitmq_info_dict=rabbitmq_info_dict)
     mq_config_file=f"{rabbitmq_dir}/etc/rabbitmq/rabbitmq.conf"
 
     members_nodes=""

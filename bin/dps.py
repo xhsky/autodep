@@ -79,7 +79,7 @@ def install():
 
     # 配置
     worker_processes=dps_info_dict.get("worker_processes")
-    dps_conf_text=tools.render("../config/templates/dps/dps.conf.tem", worker_processes=worker_processes, vhosts_file=vhosts_file)
+    dps_conf_text=tools.render("config/templates/dps/dps.conf.tem", worker_processes=worker_processes, vhosts_file=vhosts_file)
     dps_conf_file=f"{dps_dir}/conf/dps.conf"
     config_dict={
             "dps_conf":{

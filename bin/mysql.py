@@ -85,7 +85,7 @@ def install():
         export MySQL_HOME={mysql_dir}
         export PATH=$MySQL_HOME/bin:$PATH
     """
-    my_cnf_context=tools.render("../config/templates/mysql/my.cnf.tem", db_info_dict=db_info_dict, mysql_dir=mysql_dir)
+    my_cnf_context=tools.render("config/templates/mysql/my.cnf.tem", db_info_dict=db_info_dict, mysql_dir=mysql_dir)
     my_cnf_file=f"/etc/my.cnf"
 
     config_dict={

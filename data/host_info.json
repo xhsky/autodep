@@ -1,0 +1,110 @@
+{
+  "127.0.0.1": {
+    "os_name": "CentOS Linux 7.9.2009 (Core)-(Supported)",
+    "kernel_version": "Linux-3.10.0-862.el7.x86_64-x86_64-with-glibc2.17",
+    "cpu_arch": "x86_64",
+    "adapter": {
+      "lo": {
+        "127.0.0.1": "00:00:00:00:00:00"
+      },
+      "ens192": {
+        "192.168.0.181": "00:0c:29:1a:7b:74"
+      }
+    },
+    "Disk": {
+      "/": [
+        100989353984,
+        25.5
+      ],
+      "/boot": [
+        2136997888,
+        9.8
+      ]
+    },
+    "CPU": [
+      8,
+      0.3
+    ],
+    "Mem": [
+      8201433088,
+      71.7
+    ],
+    "Port": {
+      "6942": [
+        13589,
+        "java"
+      ],
+      "22": [
+        12200,
+        "sshd"
+      ],
+      "3350": [
+        12400,
+        "xrdp-sesman"
+      ],
+      "63343": [
+        13475,
+        "java"
+      ],
+      "25": [
+        18792,
+        "master"
+      ],
+      "3389": [
+        12401,
+        "xrdp"
+      ],
+      "8080": [
+        24786,
+        "java"
+      ],
+      "8005": [
+        24786,
+        "java"
+      ],
+      "5353": [
+        12730,
+        "avahi-daemon"
+      ],
+      "5910": [
+        12410,
+        "Xvnc"
+      ],
+      "63342": [
+        13589,
+        "java"
+      ],
+      "323": [
+        18841,
+        "chronyd"
+      ],
+      "46710": [
+        16978,
+        "java"
+      ],
+      "6943": [
+        13475,
+        "java"
+      ],
+      "51866": [
+        12730,
+        "avahi-daemon"
+      ],
+      "8848": [
+        16978,
+        "java"
+      ]
+    },
+    "Interface": {
+      "mail": true,
+      "sms": true,
+      "platform_log": true,
+      "platform_info": true,
+      "platform_check": true
+    },
+    "NTP": {
+      "result": false,
+      "msg": "No response received from ntp.ntsc.ac.cn."
+    }
+  }
+}

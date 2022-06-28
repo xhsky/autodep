@@ -16,7 +16,9 @@ from libs.env import logs_dir, log_file, log_file_level, log_console_level, log_
         init_file, arch_file, stand_alone_file, project_file, update_init_file, update_arch_file, start_file, stop_file, deploy_file, ext_file, localization_file, backup_version_file, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code, \
         local_license_path, node_license_path, \
-        localization_soft_port, localization_test_soft
+        localization_soft_port, localization_test_soft,\
+        local_config_templates_path, remote_config_templates_path
+
 
 for dir_ in autodep_dir:
     if not os.path.exists(dir_):
@@ -884,6 +886,7 @@ class Deploy(object):
                         "lib_file": ["./libs/common.py", f"{remote_code_dir}/libs/common.py"],
                         "env_file": ["./libs/env.py", f"{remote_code_dir}/libs/env.py"],
                         "tool_file": ["./libs/tools.py", f"{remote_code_dir}/libs/tools.py"],
+                        "template_file": ["./config/templates", f"{remote_config_templates_path}"],
                         "py_file": [init_py, remote_py_file]
                         }
                 obj, status=self.remote_exec(node, port, "init", remote_py_file, "init", trans_files_dict, None)

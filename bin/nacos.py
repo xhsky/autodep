@@ -22,7 +22,7 @@ def install():
     jvm_mem=nacos_info_dict["jvm_mem"]
     jvm_command=f"sed 's/-Xms512m -Xmx512m -Xmn256m/-Xms{jvm_mem} -Xmx{jvm_mem}/' {nacos_dir}/bin/startup.sh"
 
-    nacos_conf_text=tools.render("../config/templates/nacos/nacos.conf.tem", nacos_info_dict=nacos_info_dict)
+    nacos_conf_text=tools.render("config/templates/nacos/nacos.conf.tem", nacos_info_dict=nacos_info_dict)
     mode=nacos_info_dict["data_source"]["mode"]
     if mode=="mysql":
         db_host=nacos_info_dict["data_source"]["mysql_info"]["db_host"]
