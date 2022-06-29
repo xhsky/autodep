@@ -26,7 +26,7 @@ def install():
                                       min_threads=min_threads, max_threads=max_threads, \
                                       ajp_port=ajp_port, max_connections=max_connections)
     tomcat_sh_context = tools.render("config/templates/tomcat/tomcat.sh.tem", tomcat_dir=tomcat_dir)
-    setenv_sh_context = tools.render("config/templates/tomcat/setenv.sh.tem", jvm_mem=jvm_mem)
+    setenv_sh_context = tools.render("config/templates/tomcat/setenv.sh.tem", jvm_mem=jvm_mem, located=located)
 
     config_dict = {
         "server_xml": {
