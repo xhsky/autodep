@@ -16,7 +16,7 @@
     "type": "env"
   }, 
   "mysql": {
-    "file": "mysql-8.0.28-aarch64-ky10-desktop.tar.gz", 
+    "file": "mysql-8.0.21-arm64-kylinV10-desktop-5.tar.gz", 
     "version": "8.0.21", 
     "py": "mysql.py", 
     "type": "env"
