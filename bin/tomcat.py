@@ -57,6 +57,7 @@ def install():
 def run():
     return_value = normal_code
     start_command = f"{located}/{tomcat_dst}/bin/startup.sh"
+    log.logger.debug(f"{start_command=}")
     result, msg = common.exec_command(start_command)
     if result:
         log.logger.debug(f"检测端口: {port_list=}")
