@@ -35,7 +35,8 @@
 	      "db_type": "mysql", 
           "db_port": 13306, 
           "db_name": "dsfa_rstb", 
-          "root_password": "DreamSoft_135"
+          "root_password": "DreamSoft_135",
+		  "sql_dir": "/dream/renshe"
 		}
     }
 }
