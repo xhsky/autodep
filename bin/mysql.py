@@ -162,7 +162,7 @@ def install():
         !include {my_plugin_cnf_file}
         !include {my_client_cnf_file}
 
-        log_replica_updates=1
+        #log_replica_updates=1
         [client]
     """
     my_cnf_file=f"/etc/my.cnf"
