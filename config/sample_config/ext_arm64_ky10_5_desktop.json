@@ -21,6 +21,12 @@
     "py": "mysql.py", 
     "type": "env"
   }, 
+  "sql": {
+        "file": "standalone-sql.tar.gz", 
+        "version": "1.0.0", 
+        "py": "sql.py", 
+        "type": "sql"
+    },
   "tomcat":{
 	"file": "apache-tomcat-8.5.40.tar.gz",
 	"version": "8.5.40",
