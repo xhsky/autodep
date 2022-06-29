@@ -17,7 +17,7 @@
   }, 
   "mysql": {
     "file": "mysql-8.0.28-aarch64-ky10-desktop.tar.gz", 
-    "version": "8.0.28", 
+    "version": "8.0.21", 
     "py": "mysql.py", 
     "type": "env"
   }, 
