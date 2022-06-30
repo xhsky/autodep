@@ -4,6 +4,7 @@
       "jdk", 
       "mysql",
 	  "program_renshe_sql",
+      "program_renshe_sql2",
 	  "tomcat"
     ],
     "ip": "127.0.0.1",
@@ -15,9 +16,9 @@
 				"innodb_mem": "2G",
 				"max_connections": 500,
 				"server_id": 1,
-				"business_db": ["dsfa_rstb"],
-				"business_user": ["rstb"],
-				"business_password": ["Study_111111"]
+				"business_db": ["dsfa_rstb", "temp"],
+				"business_user": ["rstb", "rstb"],
+				"business_password": ["Study_111111", "Study_111111"]
 			}
 		}, 
 		
@@ -37,6 +38,13 @@
           "db_name": "dsfa_rstb", 
           "root_password": "DreamSoft_135",
 		  "sql_dir": "/dream/renshe"
+		},
+        "program_renshe_sql2_info": {
+	      "db_type": "mysql",
+          "db_port": 13306,
+          "db_name": "temp",
+          "root_password": "DreamSoft_135",
+		  "sql_dir": "/dream/temp"
 		}
     }
 }
