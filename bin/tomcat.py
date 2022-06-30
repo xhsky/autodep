@@ -64,6 +64,19 @@ def install():
     if not result:
         log.logger.error(msg)
         return_value = error_code
+
+    kysec_set_command = "kysec_set -n exectl -v verified /etc/rc.local;\
+                         kysec_set -n exectl -v verified /etc/profile.d/;\
+                         kysec_set -r -n exectl -v verified /data/dream/tomcat/bin/;\
+                         kysec_set -r -n exectl -v verified /data/dream/jdk/bin/;"
+    log.logger.debug(f"{kysec_set_command=}")
+    result, msg = common.exec_command(kysec_set_command)
+    if result:
+        log.logger.debug(f"已执行kysec_set相关操作")
+    else:
+        log.logger.error(msg)
+        return_value = error_code
+
     return return_value
 
 

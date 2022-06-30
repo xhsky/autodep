@@ -46,19 +46,6 @@ def main():
             f.write("#!/bin/sh -e\n")
         os.chmod(rc_local, 0o755)
 
-    kysec_set_command = "kysec_set -n exectl -v verified /etc/rc.local;\
-                         kysec_set -n exectl -v verified /etc/profile.d/;\
-                         kysec_set -r -n exectl -v verified /data/dream/tomcat/bin/;\
-                         kysec_set -r -n exectl -v verified /data/dream/jdk/bin/;\
-                         kysec_set -r -n exectl -v verified /data/dream/mysql/bin/"
-    log.logger.debug(f"{kysec_set_command=}")
-    result, msg = exec_command(kysec_set_command)
-    if result:
-        log.logger.debug(f"已执行kysec_set相关操作")
-    else:
-        log.logger.error(msg)
-        return_value = error_code
-
     sys.exit(return_value)
 
 if __name__ == "__main__":
