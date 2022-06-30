@@ -47,6 +47,7 @@ def main():
         os.chmod(rc_local, 0o755)
 
     kysec_set_command = "kysec_set -n exectl -v verified /etc/rc.local;\
+                         kysec_set -n exectl -v verified /etc/profile.d/;\
                          kysec_set -r -n exectl -v verified /data/dream/tomcat/bin/;\
                          kysec_set -r -n exectl -v verified /data/dream/jdk/bin/;\
                          kysec_set -r -n exectl -v verified /data/dream/mysql/bin/"
