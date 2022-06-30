@@ -28,16 +28,14 @@
                "version": "1.0.0", 
                "py": "sql.py", 
                "type": "sql"
-	     }
-	  },
-    "temp": {
-         "sql": {
+	     },
+         "sql2": {
                "file": "temp-sql.tar.gz",
                "version": "1.0.0",
                "py": "sql.py",
                "type": "sql"
 	     }
-    }
+	  }
   },
   "tomcat":{
 	"file": "apache-tomcat-8.5.40.tar.gz",

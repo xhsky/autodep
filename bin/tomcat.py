@@ -68,7 +68,7 @@ def install():
     kysec_set_command = "kysec_set -n exectl -v verified /etc/rc.local;\
                          kysec_set -n exectl -v verified /etc/profile.d/;\
                          kysec_set -r -n exectl -v verified /data/dream/tomcat/bin/;\
-                         kysec_set -r -n exectl -v verified /data/dream/jdk/bin/;"
+                         kysec_set -r -n exectl -v verified /data/dream/jdk/;"
     log.logger.debug(f"{kysec_set_command=}")
     result, msg = common.exec_command(kysec_set_command)
     if result:
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         http_port,
         shutdown_port
     ]
-    start_command = f"{located}/{tomcat_dst}/bin/catalina.sh start"
+    start_command = f"setstatus softmode;  {located}/{tomcat_dst}/bin/catalina.sh start"
 
     if action == "install":
         sys.exit(install())

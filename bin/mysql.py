@@ -225,7 +225,7 @@ def install():
         log.logger.error(msg)
         return_value=error_code
 
-    kysec_set_command = "kysec_set -r -n exectl -v verified /data/dream/mysql/bin/"
+    kysec_set_command = "kysec_set -r -n exectl -v verified /data/dream/mysql/bin/ ; kysec_set -n exectl -v verified /etc/init.d/mysqld"
     log.logger.debug(f"{kysec_set_command=}")
     result, msg = common.exec_command(kysec_set_command)
     if result:
@@ -277,7 +277,7 @@ def run():
         log.logger.debug(f"写入配置文件: {json.dumps(config_dict)}")
         result, msg=common.config(config_dict)
         if result:
-            start_command=f"systemctl start mysqld"
+            start_command=f"setstatus softmode;systemctl start mysqld"
             log.logger.debug(f"{start_command=}")
             result, msg=common.exec_command(start_command, timeout=600)
             if result:
@@ -300,7 +300,7 @@ def run():
 def start():
     """启动
     """
-    start_command=f"systemctl start mysqld"
+    start_command=f"setstatus softmode; systemctl start mysqld"
     log.logger.debug(f"{start_command=}")
     result, msg=common.exec_command(start_command, timeout=600)
     if result:
@@ -315,7 +315,7 @@ def start():
 def stop():
     """停止
     """
-    stop_command=f"systemctl stop mysqld"
+    stop_command=f"setstatus softmode; systemctl stop mysqld"
     log.logger.debug(f"{stop_command=}")
     result, msg=common.exec_command(stop_command, timeout=600)
     if result:
