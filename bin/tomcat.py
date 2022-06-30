@@ -124,7 +124,7 @@ if __name__ == "__main__":
         http_port,
         shutdown_port
     ]
-    start_command = f"{located}/{tomcat_dst}/bin/startup.sh"
+    start_command = f"{located}/{tomcat_dst}/bin/catalina.sh start"
 
     if action == "install":
         sys.exit(install())
