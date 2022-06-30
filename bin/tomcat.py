@@ -26,7 +26,9 @@ def install():
                                       min_threads=min_threads, max_threads=max_threads, \
                                       ajp_port=ajp_port, max_connections=max_connections)
     tomcat_sh_context = tools.render("config/templates/tomcat/tomcat.sh.tem", tomcat_dir=tomcat_dir)
-    setenv_sh_context = tools.render("config/templates/tomcat/setenv.sh.tem", jvm_mem=jvm_mem)
+    setenv_sh_context = tools.render("config/templates/tomcat/setenv.sh.tem", jvm_mem=jvm_mem, located=located)
+
+
 
     config_dict = {
         "server_xml": {
@@ -46,6 +48,17 @@ def install():
         }
     }
 
+    tomcat_enabled_text = start_command
+    config_dict.update(
+        {
+            "dch_sentinel_enabled": {
+                "config_file": "/etc/rc.local",
+                "config_context": tomcat_enabled_text,
+                "mode": "r+"
+            }
+        }
+    )
+
     log.logger.debug("配置server.xml")
     result, msg = common.config(config_dict)
     if not result:
@@ -56,7 +69,8 @@ def install():
 
 def run():
     return_value = normal_code
-    start_command = f"{located}/{tomcat_dst}/bin/startup.sh"
+
+    log.logger.debug(f"{start_command=}")
     result, msg = common.exec_command(start_command)
     if result:
         log.logger.debug(f"检测端口: {port_list=}")
@@ -110,6 +124,7 @@ if __name__ == "__main__":
         http_port,
         shutdown_port
     ]
+    start_command = f"{located}/{tomcat_dst}/bin/startup.sh"
 
     if action == "install":
         sys.exit(install())
