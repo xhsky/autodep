@@ -4,7 +4,7 @@
 # sky
 
 import sys, os, json
-from libs import common, tools
+from libs import common
 from libs.env import log_remote_level, rocketmq_src, rocketmq_dst, rocketmq_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
@@ -156,8 +156,20 @@ def install():
                 sendMessageThreadPoolNums=4
                 """
 
-    broker_config_text=tools.render("config/templates/rocketmq/broker.config.tem", rocketmq_info_dict=rocketmq_info_dict, namesrv_list=namesrv_list,\
-                                    store_dir=store_dir, dLegerPeers=dLegerPeers)
+    broker_config_text=f"""\
+                brokerClusterName={cluster_name}
+                brokerName={broker_name}
+                listenPort={remote_port}
+                namesrvAddr={namesrv_list}
+
+                {broker_mode_config}
+
+                storePathRootDir={store_dir['storePathRootDir']}
+                storePathCommitLog={store_dir['storePathCommitLog']}
+                storePathConsumerQueue={store_dir['storePathConsumerQueue']}
+                storePathIndex={store_dir['storePathIndex']}
+                mapedFileSizeCommitLog=1G
+        """
 
     rocketmq_sh_text=f"""\
             export ROCKETMQ_HOME={rocketmq_dir}
