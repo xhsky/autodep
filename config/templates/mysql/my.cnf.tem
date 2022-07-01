@@ -11,6 +11,7 @@ port={{db_info_dict.get("mysql_port")}}
 {% endif %}
 {% if db_info_dict.get("max_connections") != None %}
 max_connections={{db_info_dict.get("max_connections")}}
+{% endif %}
 
 # general set
 lower_case_table_names=1
