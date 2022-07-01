@@ -1,6 +1,12 @@
+{% if rocketmq_info_dict.get("cluster_name") != null %}
 brokerClusterName={{rocketmq_info_dict.get("cluster_name")}}
+{% endif %}
+{% if rocketmq_info_dict.get("replica_name") != null %}
 brokerName={{rocketmq_info_dict.get("replica_name")}}
+{% endif %}
+{% if rocketmq_info_dict["port"].get("remote_port")!= null %}
 listenPort={{rocketmq_info_dict["port"].get("remote_port")}}
+{% endif %}
 namesrvAddr={{namesrv_list}}
 
 {% if rocketmq_info_dict.get("replica_role").lower()=="master" or rocketmq_info_dict.get("replica_role").lower()=="slave" %}
@@ -21,7 +27,7 @@ flushDiskType=ASYNC_FLUSH
 enableDLegerCommitLog=true
 dLegerGroup={{rocketmq_info_dict.get("replica_name")}}
 dLegerSelfId={{rocketmq_info_dict.get("dledger_id")}}
-dLegerPeers={dLegerPeers}
+dLegerPeers={{dLegerPeers}}
 sendMessageThreadPoolNums=4
 {% endif %}
 
