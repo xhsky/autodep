@@ -31,7 +31,7 @@ long_query_time=2
 
 # bin log
 {% if db_info_dict.get("server_id") != None %}
-server_id={server_id}
+server_id={{server_id}}
 {% endif %}
 log_bin={{mysql_dir}}/mylogs/binlog/binlog
 binlog_format=row
