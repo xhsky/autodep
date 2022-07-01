@@ -2,14 +2,14 @@
 listeners.tcp.default = {{rabbitmq_info_dict["port"].get("rabbitmq_port")}}
 {% endif %}
 {% if rabbitmq_info_dict.get("erlang_mem") != None %}
-vm_memory_high_watermark.absolute = {{erlang_mem=rabbitmq_info_dict.get("erlang_mem")}}
+vm_memory_high_watermark.absolute = {{rabbitmq_info_dict.get("erlang_mem")}}
 {% endif %}
 vm_memory_high_watermark_paging_ratio = 0.5
 log.file.level = info
 mnesia_table_loading_retry_timeout = 10000
 mnesia_table_loading_retry_limit = 3
 {% if rabbitmq_info_dict.get("cluster_name") != None %}
-cluster_name={{cluster_name=rabbitmq_info_dict.get("cluster_name")}}
+cluster_name={{rabbitmq_info_dict.get("cluster_name")}}
 {% endif %}
 cluster_formation.peer_discovery_backend = classic_config
 {% if rabbitmq_info_dict.get("node_type") != None %}
