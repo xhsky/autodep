@@ -3,4 +3,4 @@
 
 setstatus softmode
 sudo ./main.py -t deploy
-sleep 100
+sleep 1000

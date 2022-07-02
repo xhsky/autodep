@@ -123,8 +123,8 @@ def install():
 
         binlog_cache_size=128K
         binlog_stmt_cache_size=32K
-        max_binlog_cache_size=8G
-        max_binlog_stmt_cache_size=2G
+        max_binlog_cache_size=512M
+        max_binlog_stmt_cache_size=128M
 
         binlog_error_action=abort_server
         binlog_expire_logs_seconds=0
@@ -144,7 +144,7 @@ def install():
 
         ## redo log
         innodb_log_group_home_dir={mysql_dir}/{my_logs}/redolog
-        innodb_log_file_size=256M
+        innodb_log_file_size=128M
         innodb_log_files_in_group=4
 
         ## log buffer
@@ -227,7 +227,7 @@ def install():
 
     kysec_set_command = "kysec_set -r -n exectl -v verified /data/dream/mysql/bin/ ; kysec_set -n exectl -v verified /etc/init.d/mysqld"
     log.logger.debug(f"{kysec_set_command=}")
-    result, msg = common.exec_command(kysec_set_command)
+    result, msg = common.exec_command(kysec_set_command, timeout=180)
     if result:
         log.logger.debug(f"已执行kysec_set相关操作")
     else:

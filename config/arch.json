@@ -16,14 +16,14 @@
 				"innodb_mem": "2G",
 				"max_connections": 500,
 				"server_id": 1,
-				"business_db": ["dsfa_rstb", "temp"],
+				"business_db": ["rsj", "temp"],
 				"business_user": ["rstb", "rstb"],
 				"business_password": ["Study_111111", "Study_111111"]
 			}
 		}, 
 		
         "tomcat_info":{
-          "jvm_mem": "1G",                             
+          "jvm_mem": "2G",                             
           "threads":[400, 1500],                       
           "max_connections": 10000,                    
           "port": {
@@ -35,7 +35,7 @@
 		"program_renshe_sql_info": {
 	      "db_type": "mysql", 
           "db_port": 13306, 
-          "db_name": "dsfa_rstb", 
+          "db_name": "rsj", 
           "root_password": "DreamSoft_135",
 		  "sql_dir": "/dream/renshe"
 		},

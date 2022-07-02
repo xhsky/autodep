@@ -1,1 +1,46 @@
-sample_config/ext_arm64_ky10_5_desktop.json
+{
+  "init": {
+    "py": "init.py"
+  }, 
+  "set_hosts": {
+    "py": "set_hosts.py"
+  }, 
+  "python3": {
+    "file": "python3.tar.gz",
+    "version": "3.10"
+  }, 
+  "jdk": {
+    "file": "jdk-8u271-linux-aarch64.tar.gz", 
+    "version": "1.8.271", 
+    "py": "jdk.py", 
+    "type": "env"
+  }, 
+  "mysql": {
+    "file": "mysql-8.0.21-arm64-kylinV10-desktop-5.tar.gz", 
+    "version": "8.0.21", 
+    "py": "mysql.py", 
+    "type": "env"
+  }, 
+  "program": {
+	  "renshe": {
+         "sql": {
+               "file": "standalone-sql.tar.gz", 
+               "version": "1.0.0", 
+               "py": "sql.py", 
+               "type": "sql"
+	     },
+         "sql2": {
+               "file": "temp-sql.tar.gz",
+               "version": "1.0.0",
+               "py": "sql.py",
+               "type": "sql"
+	     }
+	  }
+  },
+  "tomcat":{
+	"file": "apache-tomcat-8.5.40.tar.gz",
+	"version": "8.5.40",
+	"py": "tomcat.py",
+	"type": "program"
+  }
+} 
