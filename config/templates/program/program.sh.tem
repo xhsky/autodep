@@ -72,6 +72,61 @@ function stop() {
 }
 
 
+function restart() {
+      N=0
+      while : ;do
+        N=$((N+1))
+        Pid=`ps ax | grep java | grep "$jar_name" |  grep -v grep | awk '{print $1}'`
+        if [ -z "$Pid" ]; then
+          if [ $N == 1 ]; then
+            echo "${jar_name}未运行. "
+            break
+          else
+            echo "${jar_name}已关闭."
+            break
+          fi
+        else
+          if [ $N == 1 ]; then
+            echo "Pid: $Pid"
+            echo "${jar_name}关闭中..."
+            kill $Pid
+          fi
+
+          if [ $N == 30 ]; then
+            kill -9 $Pid
+          fi
+        fi
+        sleep 1
+      done
+
+      jvm_mem={{program_info_dict["jvm_mem"]}}
+      accept_count=1000
+      threads=500
+      max_connections=8192
+
+      log_file={{program_info_dict['program_dir']}}/{{program_info_dict["nacos_config"]["service_name"]}}.log
+
+      nohup java -jar -Xms${jvm_mem} -Xmx${jvm_mem} ${jar_file} \
+        --spring.cloud.nacos.server-addr=$nacos_addr \
+        --spring.cloud.nacos.config.namespace=$nacos_namespace \
+        --spring.cloud.nacos.config.group=$nacos_group \
+        --spring.cloud.nacos.config.file-extension=$nacos_config_file_extension \
+        --spring.cloud.nacos.config.enabled=True \
+        --spring.cloud.nacos.discovery.enabled=True \
+        --spring.cloud.nacos.discovery.namespace=$nacos_namespace \
+        --spring.cloud.nacos.discovery.group=$nacos_group \
+        --spring.application.name=$nacos_application_name \
+        --spring.profiles.active=$nacos_profiles_active \
+        --server.tomcat.accept-count=$accept_count \
+        --server.tomcat.min-spare-threads=$threads \
+        --server.tomcat.max-threads=$threads \
+        --server.tomcat.max-connections=$max_connections \
+        &> $log_file &
+      echo "$jar_name启动中, 详细请查看日志文件($log_file)."
+      exit {{normal_code}}
+}
+
+
 if [ -z "$1" ]; then
   echo "Usage: $0 start|restart|stop|publish"
   exit {{error_code}}
@@ -80,8 +135,7 @@ elif [ "$action" == "start" ]; then
 elif [ "$action" == "stop" ]; then
   stop
 elif [ "$action" == "restart" ]; then
-  stop
-  start
+  restart
 elif [ "$action" == "publish" ]; then
   content=`cat {{program_info_dict['program_dir']}}/app.${nacos_config_file_extension}`
   curl -X POST "http://${nacos_addr}{{configs_path}}" -d tenant=${nacos_namespace} -d dataId=${nacos_application_name}-${nacos_profiles_active}.${nacos_config_file_extension} -d group=${nacos_group} --data-urlencode content="${content}" -d type=${nacos_config_file_extension}
