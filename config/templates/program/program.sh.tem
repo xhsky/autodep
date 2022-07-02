@@ -2,7 +2,7 @@
 # sky
 
 action=$1
-jar_file={{program_info_dict['program_dir']}}/{{jar_file}}
+jar_file={{jar_file}}
 jar_name=`echo $jar_file | rev | cut -d "/" -f 1 | rev`
 nacos_addr={{program_info_dict["nacos_config"]["nacos_host"]}}:{{program_info_dict["nacos_config"]["nacos_port"]}}
 nacos_namespace={{program_info_dict["nacos_config"]["nacos_namespace"]}}
@@ -21,21 +21,21 @@ function start() {
 
       log_file={{program_info_dict['program_dir']}}/{{program_info_dict["nacos_config"]["service_name"]}}.log
 
-      nohup java -jar -Xms${jvm_mem} -Xmx${jvm_mem} ${jar_file} \\
-        --spring.cloud.nacos.server-addr=$nacos_addr \\
-        --spring.cloud.nacos.config.namespace=$nacos_namespace \\
-        --spring.cloud.nacos.config.group=$nacos_group \\
-        --spring.cloud.nacos.config.file-extension=$nacos_config_file_extension \\
-        --spring.cloud.nacos.config.enabled=True \\
-        --spring.cloud.nacos.discovery.enabled=True \\
-        --spring.cloud.nacos.discovery.namespace=$nacos_namespace \\
-        --spring.cloud.nacos.discovery.group=$nacos_group \\
-        --spring.application.name=$nacos_application_name \\
-        --spring.profiles.active=$nacos_profiles_active \\
-        --server.tomcat.accept-count=$accept_count \\
-        --server.tomcat.min-spare-threads=$threads \\
-        --server.tomcat.max-threads=$threads \\
-        --server.tomcat.max-connections=$max_connections \\
+      nohup java -jar -Xms${jvm_mem} -Xmx${jvm_mem} ${jar_file} \
+        --spring.cloud.nacos.server-addr=$nacos_addr \
+        --spring.cloud.nacos.config.namespace=$nacos_namespace \
+        --spring.cloud.nacos.config.group=$nacos_group \
+        --spring.cloud.nacos.config.file-extension=$nacos_config_file_extension \
+        --spring.cloud.nacos.config.enabled=True \
+        --spring.cloud.nacos.discovery.enabled=True \
+        --spring.cloud.nacos.discovery.namespace=$nacos_namespace \
+        --spring.cloud.nacos.discovery.group=$nacos_group \
+        --spring.application.name=$nacos_application_name \
+        --spring.profiles.active=$nacos_profiles_active \
+        --server.tomcat.accept-count=$accept_count \
+        --server.tomcat.min-spare-threads=$threads \
+        --server.tomcat.max-threads=$threads \
+        --server.tomcat.max-connections=$max_connections \
         &> $log_file &
       echo "$jar_name启动中, 详细请查看日志文件($log_file)."
       exit {{normal_code}}
