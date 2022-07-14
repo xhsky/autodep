@@ -12,3 +12,5 @@ transport.tcp.port: {{conf_dict["elasticsearch_info"]["port"]["transport"]}}
 cluster.initial_master_nodes: {{conf_dict["elasticsearch_info"]["members"]}}
 gateway.recover_after_nodes: 1
 action.destructive_requires_name: true
+xpack.security.enabled: true
+xpack.security.transport.ssl.enabled: true

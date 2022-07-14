@@ -3,7 +3,7 @@
 # Date: 2020年 08月 11日 星期二 15:28:06 CST
 # sky
 
-import sys, json
+import sys, json, pexpect, time, requests
 from libs import common, tools
 from libs.env import log_remote_level, elasticsearch_src, elasticsearch_dst, elasticsearch_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
@@ -106,25 +106,46 @@ def install():
 def run():
     """运行
     """
-    return_value=normal_code
-    #command=f"su elastic --session-command 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'" 
-    command=f"su elastic -lc 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'" 
-    log.logger.debug(f"{command=}")
+    return_value=start()
 
-    result, msg=common.exec_command(command, timeout=80)
-    if result:
-        log.logger.debug(f"检测端口: {port_list=}")
-        if not common.port_exist(port_list):
-            return_value=error_code
-    else:
-        log.logger.error(msg)
-        return_value=error_code
+    password = conf_dict["password"]
+    req = requests.get("http://127.0.0.1:9200", auth=('elastic', password))
+    if req.status_code != 200:
+        child = pexpect.spawn(f"{es_dir}/bin/elasticsearch-setup-passwords interactive", maxread=100000, timeout=60)
+        # print(f"{child=}")
+        index = child.expect(["confirm that you would like to continue \[y/N\]$", pexpect.TIMEOUT, pexpect.EOF])
+        if index == 0:
+            child.sendline('y')
+            for i in range(12):
+                index1 = child.expect(['nter password for \[.*\]: ', pexpect.TIMEOUT, pexpect.EOF])
+                if index1 == 0:
+                    child.sendline(password)
+            time.sleep(10)
+        elif index == 1:
+            log.logger.error("pexpect timeout!!")
+            return_value = error_code
+        else:
+            log.logger.error("初始化es集群密码未成功!")
+            return_value = error_code
+
     return return_value
 
 def start():
     """启动
     """
-    return run()
+    return_value = normal_code
+    # command=f"su elastic --session-command 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'"
+    command = f"su elastic -lc 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'"
+    log.logger.debug(f"{command=}")
+
+    result, msg = common.exec_command(command, timeout=80)
+    if result:
+        log.logger.debug(f"检测端口: {port_list=}")
+        if not common.port_exist(port_list):
+            return_value = error_code
+    else:
+        log.logger.error(msg)
+        return_value = error_code
 
 def stop():
     """停止
