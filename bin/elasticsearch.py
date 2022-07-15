@@ -30,7 +30,7 @@ def install():
     cluster_name=conf_dict["elasticsearch_info"]["cluster_name"]
     members_list=conf_dict["elasticsearch_info"]["members"]
 
-    es_config_text=tools.render("config/templates/elasticsearch/es.config.tem", conf_dict=conf_dict)
+    es_config_text=tools.render("../config/templates/elasticsearch/es.config.tem", conf_dict=conf_dict)
 
     jvm_config_file=f"{es_dir}/config/jvm.options.d/jvm_mem.options"
     jvm_context=f"""\
@@ -107,26 +107,22 @@ def run():
     """运行
     """
     return_value=start()
+    # return_value = normal_code
 
-    password = conf_dict["password"]
+    password = conf_dict["elasticsearch_info"]["password"]
     req = requests.get("http://127.0.0.1:9200", auth=('elastic', password))
     if req.status_code != 200:
-        child = pexpect.spawn(f"{es_dir}/bin/elasticsearch-setup-passwords interactive", maxread=100000, timeout=60)
-        # print(f"{child=}")
-        index = child.expect(["confirm that you would like to continue \[y/N\]$", pexpect.TIMEOUT, pexpect.EOF])
-        if index == 0:
-            child.sendline('y')
-            for i in range(12):
-                index1 = child.expect(['nter password for \[.*\]: ', pexpect.TIMEOUT, pexpect.EOF])
-                if index1 == 0:
-                    child.sendline(password)
-            time.sleep(10)
-        elif index == 1:
-            log.logger.error("pexpect timeout!!")
-            return_value = error_code
-        else:
-            log.logger.error("初始化es集群密码未成功!")
-            return_value = error_code
+        child = pexpect.spawn(f"{es_dir}/bin/elasticsearch-setup-passwords interactive", maxread=100000, timeout=120)
+        for i in range(13):
+            index = child.expect(["\[y/N\]$", 'nter password for \[.*\]: ', pexpect.TIMEOUT, pexpect.EOF])
+            if index == 0:
+                child.sendline('y')
+            elif index == 1:
+                child.sendline(password)
+        time.sleep(10)
+        req = requests.get("http://127.0.0.1:9200", auth=('elastic', password))
+        if req.status_code != 200:
+            log.logger.warning("初始化es集群密码未成功!")
 
     return return_value
 
@@ -146,6 +142,7 @@ def start():
     else:
         log.logger.error(msg)
         return_value = error_code
+    return return_value
 
 def stop():
     """停止
@@ -173,7 +170,11 @@ def monitor():
     return common.soft_monitor("localhost", port_list)
 
 if __name__ == "__main__":
-    softname, action, conf_json=sys.argv[1:]
+    # softname, action, conf_json=sys.argv[1:]
+    softname = "elasticsearch"
+    action = "run"
+    conf_json = '{"ip": "127.0.0.1","pkg_file": "/opt/python3/pkgs/elasticsearch-7.17.5-linux-x86_64.tar.gz", "software": ["elasticsearch"],"located": "/dream/","elasticsearch_info":{"cluster_name": "es_cluster","jvm_mem": "2G", "password":"DreamSoft_123","port": {"http_port": 9200, "transport": 9300},"members":["elk101"]}}'
+
     conf_dict=json.loads(conf_json)
     log=common.Logger({"remote": log_remote_level}, loggger_name="es")
 
