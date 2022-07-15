@@ -1,5 +1,5 @@
 cluster.name: {{conf_dict["elasticsearch_info"]["cluster_name"]}}
-#"node.name: es_node
+node.name: {{conf_dict["elasticsearch_info"]["node_name"]}}
 node.master: true
 node.voting_only: false
 node.data: true
