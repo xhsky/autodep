@@ -1,0 +1,56 @@
+{
+  "logstash":{
+    "software": ["logstash"],
+    "located": "/data/",
+    "logstash_info":{
+	  "api_http_port": 9600,
+	  "pipeline_workers": 4, //并发进程数
+      "jvm_mem": "2G",
+      "confs":{
+        "index_nc":{
+		  "input":{
+		    "jdbc":{
+			  "jdbc_connection_string":"jdbc:mysql://192.168.0.178:3306/nc_xxb?characterEncoding=UTF-8&useSSL=false&autoReconnect=true&serverTimezone=UTC",
+              "jdbc_user":"dsfa",
+              "jdbc_password":"DreamSoft_456",
+              "jdbc_driver_library":"/usr/local/logstash/jdbcDriver/mysql-connector-java-8.0.19.jar",
+              "jdbc_driver_classzone":"Asia/Shanghai",
+              "jdbc_paging_enabled":"true",
+              "jdbc_page_size":"1000",
+              "statement_filepath":"/usr/local/logstash/config/dsfa_nc.sql",
+              "schedule":"*/2 * * * *",
+              "use_column_value":"false",
+              "tracking_column":"update_date"
+			}
+		  },
+		  "filter":{},
+		  "output":{
+		    "elasticsearch":{
+			  "hosts":"127.0.0.1:9200",
+			  "index":"dsfa_syslog_operate_%{+YYYY-MM-dd}"
+			},
+			"stdout":{
+			  "codec":"json_lines"
+			}
+		  }
+		},
+        "web_log":{
+		  "input":{
+		    "tcp":{"port": 9400}
+		  },
+		  "filter":{
+		    "kv":{"field_split_pattern":"&{3}"}
+		  },
+		  "output":{
+		    "elasticsearch":{
+			  "hosts":"127.0.0.1:9200",
+			  "index":"dsfa_syslog_operate_%{+YYYY-MM-dd}",
+			  "user":"elastic",
+               "password":"mypassword"
+			}
+		  }
+		}
+      }
+    }
+  }
+}
