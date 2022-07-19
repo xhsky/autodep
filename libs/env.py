@@ -145,6 +145,10 @@ elasticsearch_src="elasticsearch-"
 elasticsearch_dst="elasticsearch"
 elasticsearch_pkg_dir=None
 
+logstash_src="logstash-"
+logstash_dst="logstash"
+logstash_pkg_dir=None
+
 tomcat_src="apache-tomcat-"
 tomcat_dst="tomcat"
 tomcat_pkg_dir=None
