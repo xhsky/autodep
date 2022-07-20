@@ -1,0 +1,1 @@
+api.http.port: {{ conf_dict["logstash_info"]["api_http_port"] }}

@@ -1,0 +1,16 @@
+-Xms{{ conf_dict["logstash_info"]["jvm_mem"] }}
+-Xmx{{ conf_dict["logstash_info"]["jvm_mem"] }}
+8-13:-XX:+UseConcMarkSweepGC
+8-13:-XX:CMSInitiatingOccupancyFraction=75
+8-13:-XX:+UseCMSInitiatingOccupancyOnly
+-Djava.awt.headless=true
+-Dfile.encoding=UTF-8
+-Djdk.io.File.enableADS=true
+-Djruby.compile.invokedynamic=true
+-Djruby.jit.threshold=0
+-Djruby.regexp.interruptible=true
+-XX:+HeapDumpOnOutOfMemoryError
+-Djava.security.egd=file:/dev/urandom
+-Dlog4j2.isThreadContextMapInheritable=true
+17-:--add-opens java.base/sun.nio.ch=ALL-UNNAMED
+17-:--add-opens java.base/java.io=ALL-UNNAMED

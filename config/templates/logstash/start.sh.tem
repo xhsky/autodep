@@ -1,0 +1,5 @@
+#!/bin/bash
+
+mkdir -p ./logs
+nohup ./bin/logstash -f ./config/logstash.conf > ./logs/logstash.log 2>&1 &
+sleep 10
