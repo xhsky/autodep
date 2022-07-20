@@ -1,7 +1,7 @@
 input{
 {% for type in conf_dict["logstash_info"]["confs"] %}
 {% for plugin in conf_dict["logstash_info"]["confs"][type]["input"] %}
-  {{ plugin }}: {
+  {{ plugin }}{
 	{% for key in conf_dict["logstash_info"]["confs"][type]["input"][plugin] %}
 	{{ key }}=>"{{ conf_dict["logstash_info"]["confs"][type]["input"][plugin][key] }}"
 	{% endfor %}
@@ -16,7 +16,7 @@ filter{
 {% if conf_dict["logstash_info"]["confs"][type].get("filter") != None %}
   if [type] == "{{ type }}" {
   {% for plugin in conf_dict["logstash_info"]["confs"][type]["filter"] %}
-	{{ plugin }}: {
+	{{ plugin }}{
 	  {% for key in conf_dict["logstash_info"]["confs"][type]["filter"][plugin] %}
 	  {{ key }}=>"{{ conf_dict["logstash_info"]["confs"][type]["filter"][plugin][key] }}"
 	  {% endfor %}
@@ -31,7 +31,7 @@ output{
 {% for type in conf_dict["logstash_info"]["confs"] %}
   if [type] == "{{ type }}" {
   {% for plugin in conf_dict["logstash_info"]["confs"][type]["output"] %}
-	{{ plugin }}: {
+	{{ plugin }}{
 	  {% for key in conf_dict["logstash_info"]["confs"][type]["output"][plugin] %}
 	  {{ key }}=>"{{ conf_dict["logstash_info"]["confs"][type]["output"][plugin][key] }}"
 	  {% endfor %}
