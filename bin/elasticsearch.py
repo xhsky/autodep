@@ -30,7 +30,7 @@ def install():
     cluster_name=conf_dict["elasticsearch_info"]["cluster_name"]
     members_list=conf_dict["elasticsearch_info"]["members"]
 
-    es_config_text=tools.render("../config/templates/elasticsearch/es.config.tem", conf_dict=conf_dict)
+    es_config_text=tools.render("config/templates/elasticsearch/es.config.tem", conf_dict=conf_dict)
 
     jvm_config_file=f"{es_dir}/config/jvm.options.d/jvm_mem.options"
     jvm_context=f"""\
@@ -170,10 +170,10 @@ def monitor():
     return common.soft_monitor("localhost", port_list)
 
 if __name__ == "__main__":
-    # softname, action, conf_json=sys.argv[1:]
-    softname = "elasticsearch"
-    action = "run"
-    conf_json = '{"ip": "127.0.0.1","pkg_file": "/opt/python3/pkgs/elasticsearch-7.17.5-linux-x86_64.tar.gz", "software": ["elasticsearch"],"located": "/dream/","elasticsearch_info":{"cluster_name": "es_cluster","jvm_mem": "2G", "password":"DreamSoft_123", "node_name": "elk101","port": {"http_port": 9200, "transport": 9300},"members":["elk101"]}}'
+    softname, action, conf_json=sys.argv[1:]
+    # softname = "elasticsearch"
+    # action = "run"
+    # conf_json = '{"ip": "127.0.0.1","pkg_file": "/opt/python3/pkgs/elasticsearch-7.17.5-linux-x86_64.tar.gz", "software": ["elasticsearch"],"located": "/dream/","elasticsearch_info":{"cluster_name": "es_cluster","jvm_mem": "2G", "password":"DreamSoft_123", "node_name": "elk101","port": {"http_port": 9200, "transport": 9300},"members":["elk101"]}}'
 
     conf_dict=json.loads(conf_json)
     log=common.Logger({"remote": log_remote_level}, loggger_name="es")
