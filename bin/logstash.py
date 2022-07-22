@@ -20,6 +20,13 @@ def install():
         return error_code
 
     # 配置
+    add_java_file = f"{logstash_dir}/bin/logstash.lib.sh"
+    with open(add_java_file, "r+") as f:
+        raw_text = f.readlines()
+        java_home = f"export LS_JAVA_HOME={logstash_dir}/jdk\n"
+        raw_text.insert(2, java_home)
+        f.seek(0)
+        f.writelines(raw_text)
 
     logstash_conf_context = tools.render("../config/templates/logstash/logstash.conf.tem", conf_dict=conf_dict)
     logstash_yml_context = tools.render("../config/templates/logstash/logstash.yml.tem", conf_dict=conf_dict)
