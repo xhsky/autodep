@@ -1425,6 +1425,14 @@ class Deploy(object):
             self.log.logger.warning(f"未识别的类型: {type_}")
         return backup_info_dict
 
+    def merge_update_arch(self, arch_dict, update_arch_dict):
+        """将更新的arch合并到arch
+        """
+        return update_arch_dict
+
+    def update(self, update_arch_dict):
+        arch_dict=
+
     def tar_report(self, init_dict, arch_dict, check_stats_dict):
         """获取巡检报告并打包发送
         """
@@ -1644,14 +1652,56 @@ class text_deploy(Deploy):
         else:
             self.log.logger.error(f"集群关闭失败: {dict_}")
 
-    def update(self, package_list=[]):
+    def program_stop(self):
+        result, dict_=super(text_deploy, self).program_stop(self.init_dict, self.arch_dict, self.ext_dict)
+        if result:
+            self.log.logger.info("项目关闭完成")
+        else:
+            self.log.logger.error("项目关闭失败")
+
+    def program_start(self):
+        result, dict_=super(text_deploy, self).program_start(self.init_dict, self.arch_dict, self.ext_dict)
+        if result:
+            self.log.logger.info("项目关闭完成")
+        else:
+            self.log.logger.error("项目关闭失败")
+
+    def program_update(self):
+        result, dict_=super(text_deploy, self).program_update(self.init_dict, self.arch_dict, self.ext_dict, self.update_arch_dict, False)
+        if result:
+            self.log.logger.info("项目更新完成")
+        else:
+            self.log.logger.error("项目更新失败")
+
+    def update(self):
         self.log.logger.info("开始更新...")
-        result=super(text_deploy, self).update(package_list)
+        result, config_list=self.read_config(["update_arch"])
+        if result:
+            self.update_arch_dict=config_list[0]
+        else:
+            self.log.logger.error(config_list)
+            sys.exit(error_code)
+
+        #self.arch_dict=self.merge_update_arch(self.arch_dict, self.update_arch_dict)
+
+        stage_method={
+                "program_stop": self.program_stop, 
+                "program_update": self.program_update, 
+                "program_start": self.program_start, 
+                }
+        for stage in stage_method:
+            result, dict_=stage_method[stage]()
+            self.log.logger.debug(f"{stage}: {result}, {dict_}")
+            if result:
+                continue
+            else:
+                self.log.logger.error(f"'{stage}'阶段执行失败: {dict_}")
+                break
+
         if result:
             self.log.logger.info("更新完成")
         else:
             self.log.logger.error("更新失败")
-        self.generate_info("file", self.update_stats_dict, stats_file=update_stats_file)
         return result
 
     def show_project_url(self):
