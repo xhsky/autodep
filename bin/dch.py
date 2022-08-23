@@ -66,7 +66,7 @@ def install():
     log.logger.debug(f"{slaveof_master_port=}")
 
     dch_io_threads=dch_info_dict["db_info"]["dch_io_threads"]
-    dch_conf_text=tools.render("../config/templates/dch/dch.conf.tem", dch_info_dict=dch_info_dict, dch_dir=dch_dir)
+    dch_conf_text=tools.render("config/templates/dch/dch.conf.tem", dch_info_dict=dch_info_dict, dch_dir=dch_dir)
 
     dch_enabled_text=dch_start_command
     config_dict.update(
