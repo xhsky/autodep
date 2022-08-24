@@ -102,7 +102,7 @@ def install():
         default_authentication_plugin=mysql_native_password
         default-time-zone='+08:00'
         wait_timeout=600
-        default_password_lifetime=90
+        #default_password_lifetime=90
 
         # Log 
         ## Error Log
