@@ -2,7 +2,7 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, json
+import sys, json, pexpect, time
 from libs import common
 from libs.env import log_remote_level, test_sql_file, normal_code, error_code, activated_code, stopped_code, abnormal_code
 
@@ -32,6 +32,8 @@ def test():
         else:
             log.logger.error(msg)
             return error_code
+    elif softname=="kingbase":
+        test_command=f"su -l {system_user} -c 'ksql -V'"
     log.logger.debug(f"test db comand: {test_command}")
     result, msg=common.exec_command(test_command)
     if result and msg.strip()==result_value:
@@ -59,35 +61,54 @@ def run():
         create_command=f"su -l {system_user} -c 'disql -S -L {dba_user}/{dba_password} \`{sql_file}'"
         exit_sql="exit;"
         create_sql_list=["set TIMING off;"]
-    for user, password in zip(business_user, business_password):
-        create_sql=create_sql_template % (user, password, user)
-        create_sql_list.append(create_sql)
-    else:
-        create_sql_list.append(exit_sql)
+        for user, password in zip(business_user, business_password):
+            create_sql=create_sql_template % (user, password, user)
+            create_sql_list.append(create_sql)
+        else:
+            create_sql_list.append(exit_sql)
 
-    config_dict={
-            "create_config":{
-                "config_file": sql_file, 
-                "config_context": "\n".join(create_sql_list), 
-                "mode": "w"
+        config_dict={
+                "create_config":{
+                    "config_file": sql_file,
+                    "config_context": "\n".join(create_sql_list),
+                    "mode": "w"
+                    }
                 }
-            }
-    result, msg=common.config(config_dict)
-    if not result:
-        log.logger.error(msg)
-        return error_code
-
-    log.logger.debug(f"create user command: {create_command}")
-    result, msg=common.exec_command(create_command, timeout=600)
-    if result:
-        if "错误" in msg or "error" in msg.lower():
+        result, msg=common.config(config_dict)
+        if not result:
+            log.logger.error(msg)
+            return error_code
+        log.logger.debug(f"create user command: {create_command}")
+        result, msg=common.exec_command(create_command, timeout=600)
+        if result:
+            if "错误" in msg or "error" in msg.lower():
+                log.logger.error(msg)
+                return_value=error_code
+        else:
             log.logger.error(msg)
             return_value=error_code
-    else:
-        log.logger.error(msg)
-        return_value=error_code
-    return return_value
-
+        return return_value
+    elif softname=="kingbase":
+        for user, password in zip(business_user, business_password):
+            child = pexpect.spawn(f"su -l {system_user} -c 'createuser -U{dba_user} -p{db_port} -P {user}'", maxread=10000,
+                                  timeout=120)
+            for i in range(13):
+                index = child.expect(["Enter password for new role:", 'Enter it again:', pexpect.TIMEOUT, pexpect.EOF])
+                if index == 0:
+                    child.sendline(password)
+                elif index == 1:
+                    child.sendline(password)
+            time.sleep(10)
+            create_command=f'''su -l {system_user} -c "ksql -U{dba_user} -p{db_port} -c'\du' -dtest | grep {user}"'''
+            result, msg = common.exec_command(create_command, timeout=600)
+            if result:
+                if user not in msg:
+                    log.logger.error(f"{user}用户未创建成功")
+                    return_value = error_code
+            else:
+                log.logger.error(msg)
+                return_value = error_code
+            return return_value
 def start():
     """启动
     """
@@ -125,6 +146,34 @@ def monitor():
 
 if __name__ == "__main__":
     softname, action, conf_json=sys.argv[1:]
+    # softname="kingbase"
+    # action="run"
+    # conf_json = """
+    # {
+    #     "software": ["kingbase", "program_graduate_sql"],
+    #     "located": "/dream/",
+    #     "ip": "127.0.0.1",
+    #     "kingbase_info": {
+    # 	  "business_user": ["dream1"],
+    #       "business_password": ["DreamSoft_123"],
+    #       "system_user": "kingbase",
+    #       "db_host": "127.0.0.1",
+    #       "dba_user": "system",
+    #       "dba_password": "dreamsoft",
+    #       "db_port": 54321,
+    #       "start_command": "su -l kingbase 'sys_ctl start -D /data/kingbase/data/'",
+    #       "stop_command": "su -l kingbase 'sys_ctl stop -D /data/kingbase/data'"
+    #     },
+    #     "program_graduate_sql_info": {
+    # 	  "db_type": "kingbase",
+    #       "db_port": 54321,
+    #       "sql_dir": "/dream/sql" ,
+    #       "db_type": "kingbase",
+    #       "to_user": "dream1",
+    #       "db_name": "db3"
+    #     }
+    # }
+    #     """
     conf_dict=json.loads(conf_json)
 
     log=common.Logger({"remote": log_remote_level}, loggger_name=softname)
@@ -134,9 +183,9 @@ if __name__ == "__main__":
             db_port
             ]
     sql_file=test_sql_file % softname
+    system_user = localization_info_dict["system_user"]
+    dba_user = localization_info_dict["dba_user"]
     if softname=="dameng":
-        system_user=localization_info_dict["system_user"]
-        dba_user=localization_info_dict["dba_user"]
         dba_password=localization_info_dict["dba_password"]
         db_port=localization_info_dict["db_port"]
         start_command=localization_info_dict["start_command"]
