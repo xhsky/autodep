@@ -108,7 +108,7 @@ def run():
             else:
                 log.logger.error(msg)
                 return_value = error_code
-            return return_value
+        return return_value
 def start():
     """启动
     """
