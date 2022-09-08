@@ -65,7 +65,7 @@ def run():
             log.logger.error(msg)
             return error_code
     elif db_type=="kingbase":
-        from_user=sql_info_dict["from_user"].lower()
+        to_user=sql_info_dict["to_user"].lower()
 
         system_user=conf_dict[f"{db_type}_info"]["system_user"]
         dba_user=conf_dict[f"{db_type}_info"]["dba_user"]
@@ -73,7 +73,7 @@ def run():
         db_port=conf_dict[f"{db_type}_info"]["db_port"]
         db_name=conf_dict[f"{softname}_info"]["db_name"]
 
-        source_db_command=f"chown -R {system_user} {sql_dir} && su -l {system_user} -c 'sys_restore -p{db_port} -U{dba_user} -w{dba_password} -d{db_name} {db_abs_file}'"
+        source_db_command=f"chown -R {system_user} {sql_dir} && su -l {system_user} -c 'createdb -O{to_user} -p{db_port} -U{dba_user} {db_name};sys_restore -p{db_port} -U{dba_user} -d{db_name} {db_abs_file}"
         source_db_command=f"{source_db_command}'"
         log.logger.debug(f"{source_db_command=}")
         log.logger.info(f"{softname}: 数据导入中, 请稍后...")
@@ -157,7 +157,7 @@ if __name__ == "__main__":
       "db_port": 54321,  
       "sql_dir": "/dream/sql" ,
       "db_type": "kingbase", 
-      "from_user": "SYSTEM", 
+      "to_user": "dream1", 
       "db_name": "db3"	  
     }
 }
