@@ -64,6 +64,28 @@ def run():
         else:
             log.logger.error(msg)
             return error_code
+    elif db_type=="kingbase":
+        from_user=sql_info_dict["from_user"].lower()
+
+        system_user=conf_dict[f"{db_type}_info"]["system_user"]
+        dba_user=conf_dict[f"{db_type}_info"]["dba_user"]
+        dba_password=conf_dict[f"{db_type}_info"]["dba_password"]
+        db_port=conf_dict[f"{db_type}_info"]["db_port"]
+        db_name=conf_dict[f"{softname}_info"]["db_name"]
+
+        source_db_command=f"chown -R {system_user} {sql_dir} && su -l {system_user} -c 'sys_restore -p{db_port} -U{dba_user} -w{dba_password} -d{db_name} {db_abs_file}'"
+        source_db_command=f"{source_db_command}'"
+        log.logger.debug(f"{source_db_command=}")
+        log.logger.info(f"{softname}: 数据导入中, 请稍后...")
+        result, msg=common.exec_command(source_db_command, timeout=3600)
+        if result:
+            if os.path.exists(db_abs_file):
+                log.logger.info("清理数据包...")
+                os.remove(db_abs_file)
+            return normal_code
+        else:
+            log.logger.error(msg)
+            return error_code
 
 def start():
     """启动
@@ -109,8 +131,37 @@ def backup():
         log.logger.error(msg)
         return error_code
 
+
 if __name__ == "__main__":
-    softname, action, conf_json=sys.argv[1:]
+    # softname, action, conf_json=sys.argv[1:]
+    softname="program_graduate_sql"
+    action="run"
+    conf_json="""
+{
+    "software": ["kingbase", "program_graduate_sql"],   
+    "located": "/dream/", 
+    "ip": "127.0.0.1",
+    "kingbase_info": {
+	  "business_user": ["dream1"],                 
+      "business_password": ["DreamSoft_123"], 
+      "system_user": "kingbase", 
+      "db_host": "127.0.0.1", 
+      "dba_user": "system", 
+      "dba_password": "dreamsoft", 
+      "db_port": 54321, 
+      "start_command": "su -l kingbase 'sys_ctl start -D /data/kingbase/data/'", 
+      "stop_command": "su -l kingbase 'sys_ctl stop -D /data/kingbase/data'"
+    },  
+    "program_graduate_sql_info": {
+	  "db_type": "kingbase", 
+      "db_port": 54321,  
+      "sql_dir": "/dream/sql" ,
+      "db_type": "kingbase", 
+      "from_user": "SYSTEM", 
+      "db_name": "db3"	  
+    }
+}
+    """
     conf_dict=json.loads(conf_json)
     log=common.Logger({"remote": log_remote_level}, logger_name="sql")
 
