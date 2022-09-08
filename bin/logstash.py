@@ -122,69 +122,69 @@ def monitor():
 
 
 if __name__ == "__main__":
-    # softname, action, conf_json = sys.argv[1:]
-    softname = "elasticsearch"
-    action = "stop"
-    conf_json = '''
-    {
-    "ip": "127.0.0.1",
-    "pkg_file": "/opt/python3/pkgs/logstash-7.17.5-linux-x86_64.tar.gz",
-    "software": ["logstash"],
-    "located": "/dream/",
-    "logstash_info": {
-        "api_http_port": 9600,
-        "pipeline_workers": 4,
-        "jvm_mem": "2G",
-        "confs": {
-            "index_nc": {
-                "input": {
-                    "jdbc": {
-                        "jdbc_connection_string": "jdbc:mysql://192.168.0.178:3306/dsfa_ky?characterEncoding=UTF-8&useSSL=false&autoReconnect=true&serverTimezone=UTC",
-                        "jdbc_user": "duan",
-                        "jdbc_password": "duanxinyi",
-                        "jdbc_driver_library": "/duan/softwares/logstash/jdbcDriver/mysql-connector-java-8.0.19.jar",
-                        "jdbc_driver_class": "com.mysql.jdbc.Driver",
-                        "jdbc_default_timezone": "Asia/Shanghai",
-                        "jdbc_paging_enabled": "true",
-                        "jdbc_page_size": "1000",
-                        "statement_filepath": "/duan/softwares/logstash/config/dsfa_ky.sql",
-                        "schedule": "*/2 * * * *",
-                        "use_column_value": "false",
-                        "tracking_column": "update_date"
-                    }
-                },
-                "output": {
-                    "elasticsearch": {
-                        "hosts": "192.168.0.178:9200",
-                        "index": "dsfa_syslog_operate_%{+YYYY-MM-dd}",
-                        "user": "elastic",
-                        "password": "DreamSoft_123"
-                    },
-                    "stdout": {
-                        "codec": "json_lines"
-                    }
-                }
-            },
-            "web_log": {
-                "input": {
-                    "tcp": {"port": 9400}
-                },
-                "filter": {
-                    "kv": {"field_split_pattern": "&{3}"}
-                },
-                "output": {
-                    "elasticsearch": {
-                        "hosts": "192.168.0.178:9200",
-                        "index": "dsfa_syslog_operate_%{+YYYY-MM-dd}",
-                        "user": "elastic",
-                        "password": "DreamSoft_123"
-                    }
-                }
-            }
-        }
-    }
-}
-    '''
+    softname, action, conf_json = sys.argv[1:]
+#     softname = "elasticsearch"
+#     action = "stop"
+#     conf_json = '''
+#     {
+#     "ip": "127.0.0.1",
+#     "pkg_file": "/opt/python3/pkgs/logstash-7.17.5-linux-x86_64.tar.gz",
+#     "software": ["logstash"],
+#     "located": "/dream/",
+#     "logstash_info": {
+#         "api_http_port": 9600,
+#         "pipeline_workers": 4,
+#         "jvm_mem": "2G",
+#         "confs": {
+#             "index_nc": {
+#                 "input": {
+#                     "jdbc": {
+#                         "jdbc_connection_string": "jdbc:mysql://192.168.0.178:3306/dsfa_ky?characterEncoding=UTF-8&useSSL=false&autoReconnect=true&serverTimezone=UTC",
+#                         "jdbc_user": "duan",
+#                         "jdbc_password": "duanxinyi",
+#                         "jdbc_driver_library": "/duan/softwares/logstash/jdbcDriver/mysql-connector-java-8.0.19.jar",
+#                         "jdbc_driver_class": "com.mysql.jdbc.Driver",
+#                         "jdbc_default_timezone": "Asia/Shanghai",
+#                         "jdbc_paging_enabled": "true",
+#                         "jdbc_page_size": "1000",
+#                         "statement_filepath": "/duan/softwares/logstash/config/dsfa_ky.sql",
+#                         "schedule": "*/2 * * * *",
+#                         "use_column_value": "false",
+#                         "tracking_column": "update_date"
+#                     }
+#                 },
+#                 "output": {
+#                     "elasticsearch": {
+#                         "hosts": "192.168.0.178:9200",
+#                         "index": "dsfa_syslog_operate_%{+YYYY-MM-dd}",
+#                         "user": "elastic",
+#                         "password": "DreamSoft_123"
+#                     },
+#                     "stdout": {
+#                         "codec": "json_lines"
+#                     }
+#                 }
+#             },
+#             "web_log": {
+#                 "input": {
+#                     "tcp": {"port": 9400}
+#                 },
+#                 "filter": {
+#                     "kv": {"field_split_pattern": "&{3}"}
+#                 },
+#                 "output": {
+#                     "elasticsearch": {
+#                         "hosts": "192.168.0.178:9200",
+#                         "index": "dsfa_syslog_operate_%{+YYYY-MM-dd}",
+#                         "user": "elastic",
+#                         "password": "DreamSoft_123"
+#                     }
+#                 }
+#             }
+#         }
+#     }
+# }
+#     '''
 
     conf_dict = json.loads(conf_json)
     log = common.Logger({"remote": log_remote_level}, loggger_name="logstash")
