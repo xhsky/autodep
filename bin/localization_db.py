@@ -34,6 +34,8 @@ def test():
             return error_code
     elif softname=="kingbase":
         test_command=f"su -l {system_user} -c 'ksql -V'"
+    elif softname=="highgo":
+        test_command=f"su -l {system_user} -c 'psql -V'"
     log.logger.debug(f"test db comand: {test_command}")
     result, msg=common.exec_command(test_command)
     if result and msg.strip()==result_value:
