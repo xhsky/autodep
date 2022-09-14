@@ -111,6 +111,27 @@ def run():
                 log.logger.error(msg)
                 return_value = error_code
         return return_value
+    elif softname=="highgo":
+        for user, password in zip(business_user, business_password):
+            child = pexpect.spawn(f"su -l {system_user} -c 'createuser -U{dba_user} -p{db_port} -P {user}'", maxread=10000,
+                                  timeout=120)
+            for i in range(13):
+                index = child.expect(["Enter password for new role:", 'Enter it again:', pexpect.TIMEOUT, pexpect.EOF])
+                if index == 0:
+                    child.sendline(password)
+                elif index == 1:
+                    child.sendline(password)
+            time.sleep(10)
+            create_command=f'''su -l {system_user} -c "psql -U{dba_user} -p{db_port} -c'\du' -dtest | grep {user}"'''
+            result, msg = common.exec_command(create_command, timeout=600)
+            if result:
+                if user not in msg:
+                    log.logger.error(f"{user}用户未创建成功")
+                    return_value = error_code
+            else:
+                log.logger.error(msg)
+                return_value = error_code
+        return return_value
 def start():
     """启动
     """
