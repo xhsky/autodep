@@ -94,7 +94,7 @@ def run():
         for user, password in zip(business_user, business_password):
             child = pexpect.spawn(f"su -l {system_user} -c 'createuser -U{dba_user} -p{db_port} -P {user}'", maxread=10000,
                                   timeout=120)
-            for i in range(13):
+            for i in range(4):
                 index = child.expect(["Enter password for new role:", 'Enter it again:', pexpect.TIMEOUT, pexpect.EOF])
                 if index == 0:
                     child.sendline(password)
@@ -115,12 +115,12 @@ def run():
         for user, password in zip(business_user, business_password):
             child = pexpect.spawn(f"su -l {system_user} -c 'createuser -U{dba_user} -p{db_port} -P {user}'", maxread=10000,
                                   timeout=120)
-            for i in range(13):
-                index = child.expect(["Enter password for new role:", 'Enter it again:', pexpect.TIMEOUT, pexpect.EOF])
-                if index == 0:
+            for i in range(4):
+                index = child.expect(["为新角色输入口令", "再输入一遍", "^口令", pexpect.TIMEOUT, pexpect.EOF])
+                if index == 0 or index == 1:
                     child.sendline(password)
-                elif index == 1:
-                    child.sendline(password)
+                elif index == 2:
+                    child.sendline(dba_password)
             time.sleep(10)
             create_command=f'''su -l {system_user} -c "psql -U{dba_user} -p{db_port} -c'\du' -dtest | grep {user}"'''
             result, msg = common.exec_command(create_command, timeout=600)
@@ -208,8 +208,8 @@ if __name__ == "__main__":
     sql_file=test_sql_file % softname
     system_user = localization_info_dict["system_user"]
     dba_user = localization_info_dict["dba_user"]
+    dba_password = localization_info_dict["dba_password"]
     if softname=="dameng":
-        dba_password=localization_info_dict["dba_password"]
         db_port=localization_info_dict["db_port"]
         start_command=localization_info_dict["start_command"]
         stop_command=localization_info_dict["stop_command"]

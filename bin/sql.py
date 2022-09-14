@@ -2,7 +2,7 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, json, os, tarfile
+import sys, json, os, tarfile, pexpect, time
 from libs import common
 from libs.env import log_remote_level, backup_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
@@ -78,6 +78,43 @@ def run():
         log.logger.debug(f"{source_db_command=}")
         log.logger.info(f"{softname}: 数据导入中, 请稍后...")
         result, msg=common.exec_command(source_db_command, timeout=3600)
+        if result:
+            if os.path.exists(db_abs_file):
+                log.logger.info("清理数据包...")
+                os.remove(db_abs_file)
+            return normal_code
+        else:
+            log.logger.error(msg)
+            return error_code
+    elif db_type=="highgo":
+        from_user=sql_info_dict["from_user"].lower()
+
+        system_user=conf_dict[f"{db_type}_info"]["system_user"]
+        dba_user=conf_dict[f"{db_type}_info"]["dba_user"]
+        dba_password=conf_dict[f"{db_type}_info"]["dba_password"]
+        db_port=conf_dict[f"{db_type}_info"]["db_port"]
+        db_name=conf_dict[f"{softname}_info"]["db_name"]
+
+        source_db_command=f'''su -l {system_user} -c "createdb -O{from_user} -p{db_port} -U{dba_user} {db_name};psql -U {dba_user} -d {db_name} -c 'create schema {db_name}';psql -U {dba_user} -n {db_name} < {db_abs_file}"'''
+        log.logger.debug(f"{source_db_command=}")
+        log.logger.info(f"{softname}: 数据导入中, 请稍后...")
+        child = pexpect.spawn(source_db_command, maxread=10000, timeout=120)
+        for i in range(4):
+            index = child.expect(["口令", pexpect.TIMEOUT, pexpect.EOF])
+            if index == 0:
+                child.sendline(dba_password)
+        time.sleep(10)
+        check_db_command=f'''su -l {system_user} -c "psql -U {dba_user} -c '\l' | grep {db_name}"'''
+        child1 = pexpect.spawn(check_db_command, maxread=10000, timeout=120)
+        index = child1.expect(["口令", pexpect.TIMEOUT, pexpect.EOF])
+        if index == 0:
+            result = True
+            child1.sendline(dba_password)
+        else:
+            result = False
+            msg = "数据库未创建成功。"
+        print("---------------------------------------------------")
+        print(child1.before)
         if result:
             if os.path.exists(db_abs_file):
                 log.logger.info("清理数据包...")
