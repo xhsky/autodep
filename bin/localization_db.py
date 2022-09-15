@@ -114,13 +114,17 @@ def run():
     elif softname=="highgo":
         for user, password in zip(business_user, business_password):
             child = pexpect.spawn(f"su -l {system_user} -c 'createuser -U{dba_user} -p{db_port} -P {user}'", maxread=10000,
-                                  timeout=120)
+                                  timeout=120, encoding="utf-8")
             for i in range(4):
-                index = child.expect(["为新角色输入口令", "再输入一遍", "^口令", pexpect.TIMEOUT, pexpect.EOF])
-                if index == 0 or index == 1:
-                    child.sendline(password)
-                elif index == 2:
-                    child.sendline(dba_password)
+                index = child.expect(['[\u4e00-\u9fa5]+', pexpect.TIMEOUT, pexpect.EOF])
+                if index == 0:
+                    if child.after in ['为新角色输入的口令', '再输入一遍']:
+                        child.sendline(password)
+                    elif child.after == '口令':
+                        child.sendline(dba_password)
+                else:
+                    log.logger.error(f"{user}用户未创建成功")
+                    return error_code
             time.sleep(10)
             create_command=f'''su -l {system_user} -c "psql -U{dba_user} -p{db_port} -c'\du' -dtest | grep {user}"'''
             result, msg = common.exec_command(create_command, timeout=600)
@@ -168,35 +172,34 @@ def monitor():
     return common.soft_monitor("localhost", port_list)
 
 if __name__ == "__main__":
-    softname, action, conf_json=sys.argv[1:]
-    # softname="kingbase"
-    # action="run"
-    # conf_json = """
-    # {
-    #     "software": ["kingbase", "program_graduate_sql"],
-    #     "located": "/dream/",
-    #     "ip": "127.0.0.1",
-    #     "kingbase_info": {
-    # 	  "business_user": ["dream1"],
-    #       "business_password": ["DreamSoft_123"],
-    #       "system_user": "kingbase",
-    #       "db_host": "127.0.0.1",
-    #       "dba_user": "system",
-    #       "dba_password": "dreamsoft",
-    #       "db_port": 54321,
-    #       "start_command": "su -l kingbase 'sys_ctl start -D /data/kingbase/data/'",
-    #       "stop_command": "su -l kingbase 'sys_ctl stop -D /data/kingbase/data'"
-    #     },
-    #     "program_graduate_sql_info": {
-    # 	  "db_type": "kingbase",
-    #       "db_port": 54321,
-    #       "sql_dir": "/dream/sql" ,
-    #       "db_type": "kingbase",
-    #       "to_user": "dream1",
-    #       "db_name": "db3"
-    #     }
-    # }
-    #     """
+    # softname, action, conf_json=sys.argv[1:]
+    softname="highgo"
+    action="run"
+    conf_json = """
+    {
+        "software": ["highgo", "program_graduate_sql"],
+        "located": "/dream/",
+        "ip": "127.0.0.1",
+        "highgo_info": {
+    	  "business_user": ["dsfa510"],
+          "business_password": ["Dream#123"],
+          "system_user": "highgo",
+          "db_host": "127.0.0.1",
+          "dba_user": "sysdba",
+          "dba_password": "Dream#123",
+          "db_port": 5866,
+          "start_command": "su -l highgo 'pg_ctl start'",
+          "stop_command": "su -l highgo 'pg_ctl stop'"
+        },
+        "program_graduate_sql_info": {
+    	  "db_type": "highgo",
+          "db_port": 5866,
+          "sql_dir": "/dream/sql" ,
+          "from_user": "dsfa510",
+          "db_name": "dsfa510"
+        }
+    }
+        """
     conf_dict=json.loads(conf_json)
 
     log=common.Logger({"remote": log_remote_level}, loggger_name=softname)
