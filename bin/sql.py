@@ -113,8 +113,6 @@ def run():
         else:
             result = False
             msg = "数据库未创建成功。"
-        print("---------------------------------------------------")
-        print(child1.before)
         if result:
             if os.path.exists(db_abs_file):
                 log.logger.info("清理数据包...")
