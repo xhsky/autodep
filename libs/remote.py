@@ -216,14 +216,17 @@ class ssh(object):
             else:
                 self.ssh.connect(ip, port=port, username=user, key_filename=self.key_file, timeout=60, banner_timeout=60, auth_timeout=60, allow_agent=False, look_for_keys=False)
                 sftp=self.ssh.open_sftp()
-                for local_file in self._get_listdir(local_path):
-                    remote_file=os.path.join(remote_path, local_file)
-                    remote_dir=os.path.dirname(remote_file)
-                    try:
-                        sftp.stat(remote_dir)
-                    except:
-                        self.ssh.exec_command(f"mkdir -p {remote_dir}", get_pty=get_pty)
-                    result=sftp.put(local_file, remote_file, confirm=True)
+                if not is_file:
+                    for local_file in self._get_listdir(local_path):
+                        remote_file=os.path.join(remote_path, local_file)
+                        remote_dir=os.path.dirname(remote_file)
+                        try:
+                            sftp.stat(remote_dir)
+                        except:
+                            self.ssh.exec_command(f"mkdir -p {remote_dir}", get_pty=get_pty)
+                        result=sftp.put(local_file, remote_file, confirm=True)
+                else:
+                    result=sftp.put(local_path, remote_path, confirm=True)
                 sftp.close()
             return True, result
         except Exception as e:
