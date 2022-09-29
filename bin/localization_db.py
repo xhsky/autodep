@@ -172,34 +172,34 @@ def monitor():
     return common.soft_monitor("localhost", port_list)
 
 if __name__ == "__main__":
-    # softname, action, conf_json=sys.argv[1:]
-    softname="highgo"
-    action="run"
-    conf_json = """
-    {
-        "software": ["highgo", "program_graduate_sql"],
-        "located": "/dream/",
-        "ip": "127.0.0.1",
-        "highgo_info": {
-    	  "business_user": ["dsfa510"],
-          "business_password": ["Dream#123"],
-          "system_user": "highgo",
-          "db_host": "127.0.0.1",
-          "dba_user": "sysdba",
-          "dba_password": "Dream#123",
-          "db_port": 5866,
-          "start_command": "su -l highgo 'pg_ctl start'",
-          "stop_command": "su -l highgo 'pg_ctl stop'"
-        },
-        "program_graduate_sql_info": {
-    	  "db_type": "highgo",
-          "db_port": 5866,
-          "sql_dir": "/dream/sql" ,
-          "from_user": "dsfa510",
-          "db_name": "dsfa510"
-        }
-    }
-        """
+    softname, action, conf_json=sys.argv[1:]
+    # softname="highgo"
+    # action="run"
+    # conf_json = """
+    # {
+    #     "software": ["highgo", "program_graduate_sql"],
+    #     "located": "/dream/",
+    #     "ip": "127.0.0.1",
+    #     "highgo_info": {
+    # 	  "business_user": ["dsfa510"],
+    #       "business_password": ["Dream#123"],
+    #       "system_user": "highgo",
+    #       "db_host": "127.0.0.1",
+    #       "dba_user": "sysdba",
+    #       "dba_password": "Dream#123",
+    #       "db_port": 5866,
+    #       "start_command": "su -l highgo 'pg_ctl start'",
+    #       "stop_command": "su -l highgo 'pg_ctl stop'"
+    #     },
+    #     "program_graduate_sql_info": {
+    # 	  "db_type": "highgo",
+    #       "db_port": 5866,
+    #       "sql_dir": "/dream/sql" ,
+    #       "from_user": "dsfa510",
+    #       "db_name": "dsfa510"
+    #     }
+    # }
+    #     """
     conf_dict=json.loads(conf_json)
 
     log=common.Logger({"remote": log_remote_level}, loggger_name=softname)
