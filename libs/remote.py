@@ -8,6 +8,7 @@ import os, json
 from shutil import copy, copytree
 import subprocess
 from libs.common import Logger
+from libs.tools import json_judge_single
 from libs.env import log_file, log_file_level, remote_python_exec, \
         located_dir_link, autocheck_dst
 
@@ -38,7 +39,7 @@ class soft(object):
         """
         用于install, run, start, stop, test, 非init
         """
-        command=f"{remote_python_exec} {py_file} {softname} {action} '{json.dumps(args_dict)}'"
+        command=f"{remote_python_exec} {py_file} {softname} {action} $'{json_judge_single(args_dict)}'"
         log.logger.debug(f"{action=}: {command}")
         obj, status=self.ssh_client.exec(command, ip=self.ip, port=self.port)
         return obj, status
