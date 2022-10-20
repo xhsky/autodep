@@ -18,7 +18,11 @@
       "business_password": ["Dreamdb_111", "Dreamdb_222"],  // 相应密码, 需符合复杂度规则. 数据库-用户-密码 一一对应
       "system_user": "kingbase", 
       "db_host": "ip",
+<<<<<<< HEAD
+      "db_name": "dsfa_jw",
+=======
       "db_name": "dream",
+>>>>>>> e8b9129a5e47094d5efad9c99ee7baba513900e8
       "dba_user": "system", 
       "dba_password": "DreamSoft_123", 
       "db_port": 54321, 

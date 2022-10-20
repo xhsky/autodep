@@ -3369,12 +3369,12 @@ class graphics_deploy(Deploy):
                     elif softname=="kingbase":
                         soft_default_info={
                                 "db_ip": "", 
-                                "system_user": "dmdba", 
-                                "dba_user": "kingbase",
+                                "system_user": "kingbase",
+                                "dba_user": "system",
                                 "dba_password": "", 
                                 "db_port": localization_soft_port[softname], 
-                                "start_command": "su -l kingbase ''" , 
-                                "stop_command": "su -l kingbase ''"
+                                "start_command": "su -l kingbase 'sys_ctl start -D /data/kingbase/data/'" ,
+                                "stop_command": "su -l kingbase 'sys_ctl stop -D /data/kingbase/data/'"
                                 }
                     elif softname=="shentong":
                         soft_default_info={

@@ -1,150 +1,32 @@
 {
     "web1": {
-        "program_teas_dsf5_info": {
-            "db_type": "mysql", 
-            "program_dir": "/dream/program_teas_dsf5", 
-            "port": 8081, 
-            "upload_dir": "/dream/upload", 
-            "jvm_mem": "1G", 
-            "nacos_config": {
-                "file-extension": "yaml", 
-                "nacos_namespace": "teas", 
-                "service_name": "dsf5", 
-                "nacos_group": "teas", 
-                "active": "prod", 
-                "nacos_port": 9050, 
-                "nacos_host": "na"
-            }
-        }, 
         "software": [
-            "jdk", 
-            "mysql", 
-            "nacos_mysql_sql", 
-            "rabbitmq", 
-            "erlang", 
-            "redis", 
-            "nacos", 
-            "rocketmq", 
-            "program_teas_sql-mysql", 
-            "program_teas_teas5", 
-            "program_teas_gateway", 
-            "program_teas_dsf5"
-        ], 
-		"ip": "127.0.0.1", 
+           "kingbase",
+           "program_teas_sql_info"
+        ],
+        "ip": "192.168.0.178", 
         "located": "/data/dream",
-        "program_teas_sql-mysql_info": {
-            "db_type": "mysql", 
-            "db_name": "dream", 
-            "root_password": "Dream_Soft@2022", 
-            "db_port": 3306
-        }, 
-        "rocketmq_info": {
-            "cluster_name": "dream", 
-            "namesrv_mem": "204M", 
-            "namesrvs": [
-                "na:9876"
-            ], 
-            "port": {
-                "fast_remote_port": 10909, 
-                "remote_port": 10911, 
-                "ha_port": 10912, 
-                "namesrv_port": 9876
-            }, 
-            "replica_role": "master", 
-            "replica_name": "na", 
-            "broker_mem": "819M"
-        }, 
-        "program_teas_gateway_info": {
-            "db_type": "mysql", 
-            "program_dir": "/dream/program_teas_gateway", 
-            "port": 8080, 
-            "jvm_mem": "2G", 
-            "nacos_config": {
-                "file-extension": "yaml", 
-                "nacos_namespace": "teas", 
-                "service_name": "gateway", 
-                "nacos_group": "teas", 
-                "active": "prod", 
-                "nacos_port": 9050, 
-                "nacos_host": "na"
-            }
-        }, 
-        "jdk_info": { }, 
-        "redis_info": {
-            "db_info": {
-                "redis_port": 6379, 
-                "redis_password": "aafcc2313938019abfcdb840fc02d524045429941cc15f59e41cb7be6c599", 
-                "redis_mem": "1G"
-            }
-        }, 
-        "mysql_info": {
-            "db_info": {
-                "mysql_port": 3306, 
-                "max_connections": 1500, 
-                "business_user": [
-                    "dream", 
-                    "nacos"
-                ], 
-                "root_password": "Dream_Soft@2022", 
-                "innodb_mem": "1G", 
-                "business_db": [
-                    "dream", 
-                    "nacos"
-                ], 
-                "server_id": 1, 
-                "business_password": [
-                    "Dream_Soft@2022", 
-                    "Dream_Soft@2022"
-                ]
-            }
-        }, 
-        "nacos_info": {
-            "web_port": 9050, 
-            "jvm_mem": "1G", 
-            "data_source": {
-                "mode": "mysql", 
-                "mysql_info": {
-                    "db_name": "nacos", 
-                    "db_user": "nacos", 
-                    "db_port": 3306, 
-                    "db_host": "na", 
-                    "db_password": "Dream_Soft@2022"
-                }
-            }
-        }, 
-        "program_teas_teas5_info": {
-            "frontend_dir": "/dream/program_teas_teas5"
-        }, 
         "located": "/dream", 
-        "rabbitmq_info": {
-            "cluster_name": "dream", 
-            "node_type": "disc", 
-            "port": {
-                "epmd_port": 4369, 
-                "rabbitmq_port": 5672, 
-                "beam_port": 25672
-            }, 
-            "members": [
-                "na"
-            ], 
-            "erlang_mem": "1G", 
-            "account": {
-                "passwords": [
-                    "Dream_Soft123"
-                ], 
-                "vhosts": [
-                    "dream"
-                ], 
-                "users": [
-                    "dream"
-                ]
-            }
-        }, 
-        "nacos_mysql_sql_info": {
-            "db_type": "mysql", 
-            "db_name": "nacos", 
-            "root_password": "Dream_Soft@2022", 
-            "db_port": 3306
-        }
+        "kingbase_info": {
+           "business_user": ["dream"],                  
+           "business_password": ["Dreamdb_111"], 
+           "system_user": "kingbase", 
+           "db_host": "ip",
+           "db_name": "dream",
+           "dba_user": "system", 
+           "dba_password": "DreamSoft_123", 
+           "db_port": 54321, 
+           "start_command": "su -l kingbase 'sys_ctl start -D /data/kingbase/data/'", 
+           "stop_command": "su -l kingbase 'sys_ctl stop -D /data/kingbase/data/'"
+        },
+        "program_teas_sql_info": {
+           "db_type": "kingbase", 
+           "db_port": 54321, 
+           "db_name": "dsfa_teas", 
+           "dba_password": "DreamSoft_123", 
+           "sql_dir": "/dream/sql",
+		   "from_user": "dream",
+		   "to_user": "dream"
+	  }
     }
 }

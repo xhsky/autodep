@@ -65,11 +65,20 @@ def run():
             log.logger.error(msg)
             return error_code
     elif db_type=="kingbase":
+        from_user=sql_info_dict["from_user"].lower()
         to_user=sql_info_dict["to_user"].lower()
 
         system_user=conf_dict[f"{db_type}_info"]["system_user"]
         dba_user=conf_dict[f"{db_type}_info"]["dba_user"]
         dba_password=conf_dict[f"{db_type}_info"]["dba_password"]
+        db_name=conf_dict[f"{db_type}_info"]["db_name"]
+        db_port=conf_dict[f"{db_type}_info"]["db_port"]
+
+        source_db_command=f"chown -R {system_user} {sql_dir} && su -l {system_user} -c 'sys_restore -U{system_user} -w{dba_password} -p{db_port} -d{db_name}'"
+        if from_user!=to_user:
+            source_db_command=f"{source_db_command} remap_schema={from_user.upper()}:{to_user.upper()}'"
+        else:
+            source_db_command=f"{source_db_command}'"
         db_port=conf_dict[f"{db_type}_info"]["db_port"]
         db_name=conf_dict[f"{softname}_info"]["db_name"]
 
