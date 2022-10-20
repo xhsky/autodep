@@ -1,0 +1,11 @@
+{
+  "web1":{
+    "software": ["python3", "jupyter"], 
+    "located": "/data/", 
+    "jupyter_info":{
+      "token": "dreamsoft",      
+      "port": 8889
+    }
+  } 
+}
+
