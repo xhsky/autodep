@@ -3,8 +3,8 @@
 # Date: 2020年 08月 11日 星期二 15:28:06 CST
 # sky
 
-import sys, json
-from libs import common
+import sys, json, pexpect, time, requests
+from libs import common, tools
 from libs.env import log_remote_level, elasticsearch_src, elasticsearch_dst, elasticsearch_pkg_dir, \
         normal_code, error_code, activated_code, stopped_code, abnormal_code
 
@@ -30,22 +30,7 @@ def install():
     cluster_name=conf_dict["elasticsearch_info"]["cluster_name"]
     members_list=conf_dict["elasticsearch_info"]["members"]
 
-    es_config_text=f"""\
-        cluster.name: {cluster_name}
-        #"node.name: es_node
-        node.master: true
-        node.voting_only: false
-        node.data: true
-        node.ingest: true
-        bootstrap.memory_lock: true
-        network.host: 0.0.0.0
-        http.port: {http_port}
-        discovery.seed_hosts: {members_list}
-        transport.tcp.port: {transport}
-        cluster.initial_master_nodes: {members_list}
-        gateway.recover_after_nodes: 1
-        action.destructive_requires_name: true
-    """
+    es_config_text=tools.render("config/templates/elasticsearch/es.config.tem", conf_dict=conf_dict)
 
     jvm_config_file=f"{es_dir}/config/jvm.options.d/jvm_mem.options"
     jvm_context=f"""\
@@ -121,25 +106,43 @@ def install():
 def run():
     """运行
     """
-    return_value=normal_code
-    #command=f"su elastic --session-command 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'" 
-    command=f"su elastic -lc 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'" 
-    log.logger.debug(f"{command=}")
+    return_value=start()
+    # return_value = normal_code
 
-    result, msg=common.exec_command(command, timeout=80)
-    if result:
-        log.logger.debug(f"检测端口: {port_list=}")
-        if not common.port_exist(port_list):
-            return_value=error_code
-    else:
-        log.logger.error(msg)
-        return_value=error_code
+    password = conf_dict["elasticsearch_info"]["password"]
+    req = requests.get("http://127.0.0.1:9200", auth=('elastic', password))
+    if req.status_code != 200:
+        child = pexpect.spawn(f"{es_dir}/bin/elasticsearch-setup-passwords interactive", maxread=100000, timeout=120)
+        for i in range(13):
+            index = child.expect(["\[y/N\]$", 'nter password for \[.*\]: ', pexpect.TIMEOUT, pexpect.EOF])
+            if index == 0:
+                child.sendline('y')
+            elif index == 1:
+                child.sendline(password)
+        time.sleep(10)
+        req = requests.get("http://127.0.0.1:9200", auth=('elastic', password))
+        if req.status_code != 200:
+            log.logger.warning("初始化es集群密码未成功!")
+
     return return_value
 
 def start():
     """启动
     """
-    return run()
+    return_value = normal_code
+    # command=f"su elastic --session-command 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'"
+    command = f"su elastic -lc 'cd {es_dir} && ./bin/elasticsearch -d -p elasticsearch.pid &> /dev/null'"
+    log.logger.debug(f"{command=}")
+
+    result, msg = common.exec_command(command, timeout=80)
+    if result:
+        log.logger.debug(f"检测端口: {port_list=}")
+        if not common.port_exist(port_list):
+            return_value = error_code
+    else:
+        log.logger.error(msg)
+        return_value = error_code
+    return return_value
 
 def stop():
     """停止
@@ -168,6 +171,10 @@ def monitor():
 
 if __name__ == "__main__":
     softname, action, conf_json=sys.argv[1:]
+    # softname = "elasticsearch"
+    # action = "run"
+    # conf_json = '{"ip": "127.0.0.1","pkg_file": "/opt/python3/pkgs/elasticsearch-7.17.5-linux-x86_64.tar.gz", "software": ["elasticsearch"],"located": "/dream/","elasticsearch_info":{"cluster_name": "es_cluster","jvm_mem": "2G", "password":"DreamSoft_123", "node_name": "elk101","port": {"http_port": 9200, "transport": 9300},"members":["elk101"]}}'
+
     conf_dict=json.loads(conf_json)
     log=common.Logger({"remote": log_remote_level}, loggger_name="es")
 
