@@ -4,6 +4,7 @@
     "located": "/data/", 
     "elasticsearch_info":{
       "cluster_name": "es_cluster",       // 指定集群名称, 同一集群的名称需相同
+      "node_name": "es1",                 // 节点名称
       "jvm_mem": "2G",                    // 制定es的jvm内存
       "port": {
         "http_port": 9200,                // 服务端口
@@ -17,6 +18,7 @@
     "located": "/data/", 
     "elasticsearch_info":{
       "cluster_name": "es_cluster", 
+      "node_name": "es2",                 // 节点名称
       "jvm_mem": "2G",                    // 制定es的jvm内存
       "port": {
         "http_port": 9200,                // 服务端口
@@ -30,6 +32,7 @@
     "located": "/data/", 
     "elasticsearch_info":{
       "cluster_name": "es_cluster", 
+      "node_name": "es3",                 // 节点名称
       "jvm_mem": "2G",                    // 制定es的jvm内存
       "port": {
         "http_port": 9200,                // 服务端口

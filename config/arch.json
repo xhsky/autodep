@@ -6,7 +6,8 @@
       "python", 
       "program_standalone_main", 
       "program_standalone_sql", 
-      "mysql"
+      "mysql",
+      "elasticsearch"
     ],
     "ip": "127.0.0.1",
     "located": "/dream",
@@ -18,18 +19,31 @@
         "dch_io_threads": 1
       }
     }, 
-		"mysql_info": {
-			"db_info": {
-				"root_password": "DreamSoft_135",
-				"mysql_port": 13306,
-				"innodb_mem": "2G",
-				"max_connections": 500,
-				"server_id": 1,
-				"business_db": ["dsfa_zhpt"],
-				"business_user": ["zhpt"],
-				"business_password": ["Study_111111"]
-			}
-		}, 
+    "mysql_info": {
+      "db_info": {
+        "root_password": "DreamSoft_135",
+        "mysql_port": 13306,
+        "innodb_mem": "2G",
+        "max_connections": 500,
+        "server_id": 1,
+        "business_db": ["dsfa_gdtz"],
+        "business_user": ["gdtz"],
+        "business_password": ["Study_111111"]
+      }
+    },
+    "elasticsearch_info": {
+      "cluster_name": "es_cluster",
+      "jvm_mem": "2G",
+      "node_name": "elk101",
+      "password": "DreamSoft_123",
+      "port": {
+        "http_port": 9200,
+        "transport": 9300
+      },
+      "members": [
+        "elk101"
+      ]
+    }
     "program_standalone_sql_info":{
       "db_type": "mysql", 
       "db_port": 13306, 
