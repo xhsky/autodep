@@ -1,0 +1,62 @@
+{
+  "192.168.0.45": {
+    "os_name": "CentOS Linux 7.9.2009 (Core)-(Supported)",
+    "kernel_version": "Linux-3.10.0-862.el7.x86_64-x86_64-with-glibc2.17",
+    "cpu_arch": "x86_64",
+    "adapter": {
+      "lo": {
+        "127.0.0.1": "00:00:00:00:00:00"
+      },
+      "ens192": {
+        "192.168.0.45": "00:0c:29:74:62:46"
+      }
+    },
+    "Disk": {
+      "/": [
+        100989353984,
+        68.0
+      ],
+      "/boot": [
+        2136997888,
+        6.8
+      ]
+    },
+    "CPU": [
+      10,
+      0.0
+    ],
+    "Mem": [
+      8201142272,
+      11.6
+    ],
+    "Port": {
+      "323": [
+        850,
+        "chronyd"
+      ],
+      "22": [
+        1126,
+        "sshd"
+      ],
+      "25": [
+        1336,
+        "master"
+      ],
+      "5236": [
+        874,
+        "dmserver"
+      ]
+    },
+    "Interface": {
+      "mail": true,
+      "sms": true,
+      "platform_log": true,
+      "platform_info": true,
+      "platform_check": true
+    },
+    "NTP": {
+      "result": false,
+      "msg": "No response received from ntp.ntsc.ac.cn."
+    }
+  }
+}

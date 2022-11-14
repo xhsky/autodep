@@ -32,7 +32,7 @@ def main():
         elif arg=="start":
             d.start()
         elif arg=="update":
-            d.update(args)
+            d.update()
         elif arg=="deploy":
             d.deploy()
         elif arg=="show_project_url":

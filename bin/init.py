@@ -2,7 +2,7 @@
 # *-* coding:utf8 *-*
 # sky
 
-import sys, os, stat, json, shutil
+import sys, os, json, shutil
 from libs.common import Logger
 from libs.env import log_remote_level, normal_code, error_code, deps_dir
 

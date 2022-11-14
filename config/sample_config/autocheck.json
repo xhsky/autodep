@@ -20,9 +20,7 @@
 				"inspection_receive": ["x1@dreamdt.cn", "x2@dreamdt.cn"], // 巡检信息接收者邮件
 				"inspection_subject": "xx项目邮件预警" // 巡检信息主题
 			},
-			"matching_info": {
-					"matching_keys": ["Error"] // 关键字列表
-			}, 
+			"matching_info": ["Error"],  // 关键字列表
       "project_name": "xxx"
 		}
 	}

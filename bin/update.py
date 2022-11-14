@@ -51,7 +51,7 @@ def code_update(args_dict, log):
                         code_dir_name=i.name
                         break
                     code_dir_abs=f"{dest}/{code_dir_name}"
-                    self.log.logger.debug(f"删除原目录{code_dir_abs}")
+                    log.logger.debug(f"删除原目录{code_dir_abs}")
                     shutil.rmtree(code_dir_abs)
                 log.logger.debug(f"解压'{pkg_file}'至'{dest}'")
                 tar.extractall(dest)
@@ -100,7 +100,7 @@ def db_update(args_dict, log):
                 log.logger.debug(f"{drop_db_command=}")
                 result, msg=common.exec_command(drop_db_command, timeout=3600)
                 if not result:
-                    self.log.logger.error(msg)
+                    log.logger.error(msg)
                     return error_code
             source_db_command=f"mysql -uroot -p{password} {db_name} < {db_file}"
             log.logger.debug(f"{source_db_command=}")
@@ -165,7 +165,7 @@ def db_backup(args_dict, log):
         if result:
             db_file_size=os.path.getsize(db_file)
             if  db_file_size < 1024 * 1024 * 10:
-                self.log.logger.warning(f"导出文件过小, {db_file}: {common.format_size(db_file_size)}")
+                log.logger.warning(f"导出文件过小, {db_file}: {common.format_size(db_file_size)}")
                 return error_code
             db_gz_file=f"{rollback_dir}/{backup_name}"
             try:

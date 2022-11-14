@@ -1,0 +1,238 @@
+{
+  "project_id": "3e33b0510a794f04bf40eafb601e083e",
+  "project_name": "网络学院内部演示版",
+  "mode": "deploy",
+  "stats": {
+    "init": {
+      "192.168.0.45": {
+        "root_password": "dreamsoft",
+        "port": 22
+      }
+    },
+    "arch": {
+      "node": {
+        "software": [
+          "jdk"
+        ],
+        "nginx_info": {
+          "worker_processes": 2,
+          "vhosts_info": {
+            "80": {
+              "/": {
+                "mode": "proxy",
+                "proxy_name": "jar",
+                "proxy_hosts": [
+                  "node:8080"
+                ]
+              }
+            }
+          }
+        },
+        "dps_info": {
+          "worker_processes": 2,
+          "vhosts_info": {
+            "80": {
+              "/": {
+                "mode": "proxy",
+                "proxy_name": "jar",
+                "proxy_hosts": [
+                  "node:8080"
+                ]
+              }
+            }
+          }
+        },
+        "backup_tool_info": {
+          "mysql_backup": {
+            "type": "mysql",
+            "dreamdb": {
+              "root_password": "DreamSoft_135",
+              "backup_dir": "/dream/mysql_backup/dreamdb",
+              "timing": "0 1 * * *",
+              "keep_days": 7
+            }
+          }
+        },
+        "redis_info": {
+          "db_info": {
+            "redis_password": "b840fc02d524045429941cc15f59e41cb7be6c599",
+            "redis_port": 6379,
+            "redis_mem": "1G"
+          }
+        },
+        "dch_info": {
+          "db_info": {
+            "dch_password": "b840fc02d524045429941cc15f59e41cb7be6c599",
+            "dch_port": 6379,
+            "dch_mem": "1G",
+            "dch_io_threads": 4
+          }
+        },
+        "elasticsearch_info": {
+          "cluster_name": "es_cluster",
+          "jvm_mem": "1G",
+          "port": {
+            "http_port": 9200,
+            "transport": 9300
+          },
+          "members": [
+            "node"
+          ]
+        },
+        "mysql_info": {
+          "db_info": {
+            "root_password": "DreamSoft_135",
+            "mysql_port": 3306,
+            "innodb_mem": "4G",
+            "max_connections": 500,
+            "server_id": 1,
+            "business_db": [
+              "dreamdb"
+            ],
+            "business_user": [
+              "dream"
+            ],
+            "business_password": [
+              "Dreamdb_111"
+            ]
+          }
+        },
+        "nacos_info": {
+          "web_port": 9050,
+          "jvm_mem": "1G",
+          "data_source": {
+            "mode": "derby"
+          }
+        },
+        "rabbitmq_info": {
+          "cluster_name": "mq_cluster",
+          "port": {
+            "rabbitmq_port": 5672,
+            "epmd_port": 4369,
+            "beam_port": 25672
+          },
+          "erlang_mem": "2G",
+          "node_type": "disc",
+          "members": [
+            "node"
+          ],
+          "account": {
+            "vhosts": [
+              "/vhost"
+            ],
+            "users": [
+              "dream"
+            ],
+            "passwords": [
+              "DreamSoft_111"
+            ]
+          }
+        },
+        "rocketmq_info": {
+          "cluster_name": "mq_cluster",
+          "replica_name": "node",
+          "replica_role": "master",
+          "port": {
+            "namesrv_port": 9876,
+            "fast_remote_port": 10909,
+            "remote_port": 10911,
+            "ha_port": 10912
+          },
+          "namesrv_mem": "256M",
+          "broker_mem": "1G",
+          "namesrvs": [
+            "node:9876"
+          ]
+        },
+        "ip": "192.168.0.45",
+        "located": "/dream"
+      }
+    },
+    "host": {
+      "192.168.0.45": {
+        "os_name": "CentOS Linux 7.9.2009 (Core)-(Supported)",
+        "kernel_version": "Linux-3.10.0-862.el7.x86_64-x86_64-with-glibc2.17",
+        "cpu_arch": "x86_64",
+        "adapter": {
+          "lo": {
+            "127.0.0.1": "00:00:00:00:00:00"
+          },
+          "ens192": {
+            "192.168.0.45": "00:0c:29:74:62:46"
+          }
+        },
+        "Disk": {
+          "/": [
+            100989353984,
+            65.4
+          ],
+          "/boot": [
+            2136997888,
+            6.8
+          ]
+        },
+        "CPU": [
+          10,
+          0.9
+        ],
+        "Mem": [
+          8201134080,
+          29.5
+        ],
+        "Port": {
+          "9005": [
+            30450,
+            "dreamdb-server"
+          ],
+          "323": [
+            817,
+            "chronyd"
+          ],
+          "8123": [
+            30450,
+            "dreamdb-server"
+          ],
+          "22": [
+            1088,
+            "sshd"
+          ],
+          "33060": [
+            17977,
+            "mysqld"
+          ],
+          "25": [
+            1369,
+            "master"
+          ],
+          "9009": [
+            30450,
+            "dreamdb-server"
+          ],
+          "9000": [
+            30450,
+            "dreamdb-server"
+          ],
+          "9004": [
+            30450,
+            "dreamdb-server"
+          ],
+          "3306": [
+            17977,
+            "mysqld"
+          ]
+        },
+        "Interface": {
+          "mail": true,
+          "sms": true,
+          "platform_log": true,
+          "platform_info": true,
+          "platform_check": true
+        },
+        "NTP": {
+          "result": true,
+          "msg": "Thu Mar 31 16:50:05 CST 2022\n"
+        }
+      }
+    }
+  }
+}
