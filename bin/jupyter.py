@@ -18,7 +18,7 @@ def run():
     """运行
     """
     return_value = normal_code
-    token = conf_dict["token"]
+    token = conf_dict["jupyter_info"]["token"]
     jupyter_server_config_py_text = f'''
 c.ServerApp.allow_remote_access = True
 c.ServerApp.shutdown_no_activity_timeout = 0
@@ -159,8 +159,8 @@ def monitor():
 if __name__ == "__main__":
     softname, action, conf_json = sys.argv[1:]
     conf_dict = json.loads(conf_json)
-    jupyter_path = conf_dict["jupyter_path"]
-    port = conf_dict["port"]
+    jupyter_path = conf_dict["jupyter_info"]["jupyter_path"]
+    port = conf_dict["jupyter_info"]["port"]
     port_list = [port,]
     log = common.Logger({"remote": log_remote_level}, loggger_name="python")
 
