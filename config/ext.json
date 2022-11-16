@@ -9,8 +9,11 @@
     "file": "python3.tar.gz",
     "version": "3.10"
   }, 
+  "jupyter": {
+    "py": "jupyter.py"
+  },
   "jdk": {
-    "file": "jdk-8u271-linux-aarch64.tar.gz", 
+    "file": "jdk-8u271-linux-x64.tar.gz", 
     "version": "1.8.271", 
     "py": "jdk.py", 
     "type": "env"
@@ -22,13 +25,13 @@
      "type": "env"
   }, 
   "python": {
-     "file":"Python-3.8.10-aarch64-ky10-desktop-zhuhu.tar.gz", 
+     "file":"Python-3.6.8-x86-desktop-taizhang.tar.gz", 
      "version": "3.8.10", 
      "py": "python.py", 
      "type": "env"
   }, 
   "mysql": {
-    "file": "mysql-8.0.28-aarch64-ky10-desktop.tar.gz", 
+    "file": "mysql-8.0.28-x64-Centos7.tar.gz", 
     "version": "8.0.28", 
     "py": "mysql.py", 
     "type": "env"
