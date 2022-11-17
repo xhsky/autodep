@@ -158,7 +158,7 @@ def stop():
     """关闭
     """
     return_value = normal_code
-    stop_command = f"bash {jupyter_path}/jupyter_server.sh stop'"
+    stop_command = f"bash {jupyter_path}/jupyter_server.sh stop"
     log.logger.debug(f"{stop_command=}")
     result, msg = common.exec_command(stop_command)
     if result:
