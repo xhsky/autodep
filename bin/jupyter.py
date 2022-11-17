@@ -11,7 +11,7 @@ from libs.env import log_remote_level, python_src, python_dst, python_pkg_dir, \
 def install():
     """安装
     """
-    create_dir_command = f"mkdir -p {jupyter_path}/{{conf,logs}}"
+    create_dir_command = f"mkdir -p {jupyter_path}"
     log.logger.debug(f"{create_dir_command=}")
     result, msg = common.exec_command(create_dir_command)
     if result:
@@ -42,8 +42,8 @@ c.ServerApp.token = {token}
 action=$1
 python_path={located}/python-3.6.8
 jupyter_path={jupyter_path}
-config_file=${{jupyter_path}}/conf/jupyter_server_config.py
-log_file=${{jupyter_path}}/logs/jupyter_server.log
+config_file=${{jupyter_path}}/jupyter_server_config.py
+log_file=${{jupyter_path}}/jupyter_server.log
 pid_file=${{jupyter_path}}/jupyter_server.pid
 
 
@@ -106,7 +106,7 @@ fi
 '''
     config_dict = {
         "jupyter_conf": {
-            "config_file": f"{jupyter_path}/conf/jupyter_server_config.py",
+            "config_file": f"{jupyter_path}/jupyter_server_config.py",
             "config_context": jupyter_server_config_py_text,
             "mode": "w"
         },
@@ -116,6 +116,18 @@ fi
             "mode": "w"
         }
     }
+
+    jupyter_enabled_text = start_command
+    config_dict.update(
+        {
+            "dch_sentinel_enabled": {
+                "config_file": "/etc/rc.local",
+                "config_context": jupyter_enabled_text,
+                "mode": "r+"
+            }
+        }
+    )
+
     log.logger.debug(f"写入配置文件: {json.dumps(config_dict)}")
     result, msg = common.config(config_dict)
     if not result:
@@ -130,7 +142,6 @@ def start():
     """启动
     """
     return_value = normal_code
-    start_command = f"bash {jupyter_path}/jupyter_server.sh start"
     log.logger.debug(f"{start_command=}")
     result, msg = common.exec_command(start_command)
     if result:
@@ -174,6 +185,7 @@ if __name__ == "__main__":
     port = conf_dict["jupyter_info"]["port"]
     port_list = [port,]
     log = common.Logger({"remote": log_remote_level}, loggger_name="python")
+    start_command = f"bash {jupyter_path}/jupyter_server.sh start"
 
     func_dict = {
         "install": install,
