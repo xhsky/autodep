@@ -11,7 +11,15 @@ from libs.env import log_remote_level, python_src, python_dst, python_pkg_dir, \
 def install():
     """安装
     """
-    return normal_code
+    create_dir_command = f"mkdir -p {jupyter_path}/{{conf,logs}}"
+    log.logger.debug(f"{create_dir_command=}")
+    result, msg = common.exec_command(create_dir_command)
+    if result:
+        return_value = normal_code
+    else:
+        log.logger.error(msg)
+        return_value = error_code
+    return return_value
 
 
 def run():
@@ -32,10 +40,10 @@ c.ServerApp.token = {token}
 
 
 action=$1
-python_path=/dream/python3.6.8
+python_path=/{located}/python3.6.8
 jupyter_path={jupyter_path}
 config_file=${{jupyter_path}}/conf/jupyter_server_config.py
-log_file=${{jupyter_path}}/jupyter_server.log
+log_file=${{jupyter_path}}/logs/jupyter_server.log
 pid_file=${{jupyter_path}}/jupyter_server.pid
 
 
@@ -100,7 +108,7 @@ fi
         "jupyter_conf": {
             "config_file": f"{jupyter_path}/conf/jupyter_server_config.py",
             "config_context": jupyter_server_config_py_text,
-            "mode": "r+"
+            "mode": "w"
         },
         "jupyter_sh": {
             "config_file": f"{jupyter_path}/jupyter_server.sh",
@@ -161,7 +169,8 @@ def monitor():
 if __name__ == "__main__":
     softname, action, conf_json = sys.argv[1:]
     conf_dict = json.loads(conf_json)
-    jupyter_path = conf_dict["jupyter_info"]["jupyter_path"]
+    located = conf_dict["located"]
+    jupyter_path = f"{located}/jupyter_server"
     port = conf_dict["jupyter_info"]["port"]
     port_list = [port,]
     log = common.Logger({"remote": log_remote_level}, loggger_name="python")
