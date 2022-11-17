@@ -33,7 +33,7 @@ c.ServerApp.shutdown_no_activity_timeout = 0
 c.ServerApp.port = {port}
 c.ServerApp.ip = '*'
 c.ServerApp.disable_check_xsrf = True
-c.ServerApp.token = {token}
+c.ServerApp.token = "{token}"
     '''
     jupyter_server_sh_text = f'''
 #!/bin/bash
