@@ -40,7 +40,7 @@ c.ServerApp.token = {token}
 
 
 action=$1
-python_path={located}/python-3.6.8
+python_path={located}/python3.10.1
 jupyter_path={jupyter_path}
 config_file=${{jupyter_path}}/jupyter_server_config.py
 log_file=${{jupyter_path}}/jupyter_server.log
