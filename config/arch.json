@@ -35,7 +35,7 @@
     "program_standalone_main_info":{
       "program_dir": "/dream/standalone", 
       "jvm_mem": "2G",
-      "port": 18008
+      "port": 9090
     }
   }
 }
