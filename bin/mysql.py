@@ -254,7 +254,7 @@ def run():
                 [mysqld]
                 # plugin
                 plugin-load-add=connection_control.so
-                connection_control_failed_connections_threshold=10
+                #connection_control_failed_connections_threshold=10
                 connection_control_min_connection_delay=1000
                 """
         config_dict={
