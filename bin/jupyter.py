@@ -32,10 +32,10 @@ c.ServerApp.token = {token}
 
 
 action=$1
-python_path=/opt/python3.6.8
+python_path=/dream/python3.6.8
 jupyter_path={jupyter_path}
-config_file=${{jupyter_path}}/config/jupyter_server_config.py
-log_file=${{jupyter_path}}/logs/jupyter_server.log
+config_file=${{jupyter_path}}/conf/jupyter_server_config.py
+log_file=${{jupyter_path}}/jupyter_server.log
 pid_file=${{jupyter_path}}/jupyter_server.pid
 
 
@@ -90,13 +90,15 @@ elif [ "$action" == "stop" ]; then
 elif [ "$action" == "restart" ]; then
   stop
   start
+elif [ "$action" == "check" ]; then
+  start
 else
-  echo "Usage: $0 start|stop|restart"
+  echo "Usage: $0 start|stop|restart|check"
 fi
 '''
     config_dict = {
         "jupyter_conf": {
-            "config_file": f"{jupyter_path}/jupyter_server_config.py",
+            "config_file": f"{jupyter_path}/conf/jupyter_server_config.py",
             "config_context": jupyter_server_config_py_text,
             "mode": "r+"
         },
