@@ -59,7 +59,7 @@ function start() {{
             exit 0
         fi
     fi
-    export LD_LIBRARY_PATH={{python_path}}/lib:$LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH=${{python_path}}/lib:$LD_LIBRARY_PATH
     nohup ${{python_path}}/bin/jupyter server --config=${{config_file}} --allow-root > ${{log_file}} 2>&1 & echo $! > ${{pid_file}}
     pid=`cat ${{pid_file}}`
     PID=`ps ax | grep ${{pid}} | grep jupyter | grep -v grep | awk '{{print $1}}'`
