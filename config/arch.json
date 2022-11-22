@@ -32,7 +32,7 @@
         "type":"mysql", 
         "dsfa_gdtz":{
           "root_password": "DreamSoft_135",
-          "backup_dir": "/dream/mysql_backup/dsfa_gdtz",
+          "backup_dir": "/opt/mysql_backup/dsfa_gdtz",
           "timing": "0 1 * * *", 
           "keep_days": 2
         }
