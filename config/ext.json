@@ -9,12 +9,12 @@
     "file": "python3.tar.gz",
     "version": "3.10"
   }, 
-  "jupyter": {
+    "jupyter": {
     "py": "jupyter.py",
     "type": "env"
   },
   "jdk": {
-    "file": "jdk-8u271-linux-x64.tar.gz", 
+    "file": "jdk-8u271-linux-aarch64.tar.gz", 
     "version": "1.8.271", 
     "py": "jdk.py", 
     "type": "env"
@@ -26,17 +26,23 @@
      "type": "env"
   }, 
   "python": {
-     "file":"Python-3.6.8-x86-desktop-taizhang.tar.gz", 
-     "version": "3.8.10", 
+     "file":"Python-3.10.1-aarch64-ky10-desktop-taizhang.tar.gz", 
+     "version": "3.10.1", 
      "py": "python.py", 
      "type": "env"
   }, 
   "mysql": {
-    "file": "mysql-8.0.28-x64-Centos7.tar.gz", 
+    "file": "mysql-8.0.28-aarch64-ky10-desktop.tar.gz", 
     "version": "8.0.28", 
     "py": "mysql.py", 
     "type": "env"
   }, 
+  "backup_tool": {
+    "file": "backup_tool-1.0.tar.gz",
+    "version": "1.0",
+    "py": "backup_tool.py",
+    "type": "env"
+  },
   "program": {
     "standalone": {
       "main": {
