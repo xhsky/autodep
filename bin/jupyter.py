@@ -19,92 +19,86 @@ def install():
     else:
         log.logger.error(msg)
         return_value = error_code
-    return return_value
-
-
-def run():
-    """运行
-    """
-    return_value = normal_code
     token = conf_dict["jupyter_info"]["token"]
     jupyter_server_config_py_text = f'''
-c.ServerApp.allow_remote_access = True
-c.ServerApp.shutdown_no_activity_timeout = 0
-c.ServerApp.port = {port}
-c.ServerApp.ip = '*'
-c.ServerApp.disable_check_xsrf = True
-c.ServerApp.token = "{token}"
-    '''
+    c.ServerApp.allow_remote_access = True
+    c.ServerApp.shutdown_no_activity_timeout = 0
+    c.ServerApp.port = {port}
+    c.ServerApp.ip = '*'
+    c.ServerApp.disable_check_xsrf = True
+    c.ServerApp.token = "{token}"
+        '''
     jupyter_server_sh_text = f'''
-#!/bin/bash
+    #!/bin/bash
 
 
-action=$1
-python_path={located}/python3.10.1
-jupyter_path={jupyter_path}
-config_file=${{jupyter_path}}/jupyter_server_config.py
-log_file=${{jupyter_path}}/jupyter_server.log
-pid_file=${{jupyter_path}}/jupyter_server.pid
+    action=$1
+    python_path={located}/python3.10.1
+    jupyter_path={jupyter_path}
+    config_file=${{jupyter_path}}/jupyter_server_config.py
+    log_file=${{jupyter_path}}/jupyter_server.log
+    pid_file=${{jupyter_path}}/jupyter_server.pid
 
 
 
 
-function start() {{
-    if [ -f "${{pid_file}}" ];then
+    function start() {{
+        if [ -f "${{pid_file}}" ];then
+            pid=`cat ${{pid_file}}`
+            PID=`ps ax | grep ${{pid}} | grep jupyter | grep -v grep | awk '{{print $1}}'`
+            if [ $PID ]; then
+                echo "jupyter server进程已存在。"
+                echo "Pid: ${{pid}}"
+                exit 0
+            fi
+        fi
+        export LD_LIBRARY_PATH=${{python_path}}/lib:$LD_LIBRARY_PATH
+        export PYTHONPATH=${{jupyter_path}}/python-dsfa:$PYTHONPATH
+        nohup ${{python_path}}/bin/jupyter server --config=${{config_file}} --allow-root > ${{log_file}} 2>&1 & echo $! > ${{pid_file}}
         pid=`cat ${{pid_file}}`
         PID=`ps ax | grep ${{pid}} | grep jupyter | grep -v grep | awk '{{print $1}}'`
         if [ $PID ]; then
-            echo "jupyter server进程已存在。"
+            echo "jupyter server已启动成功。"
             echo "Pid: ${{pid}}"
-            exit 0
+        else 
+            echo "未启动成功。请检查配置是否正确。"
         fi
-    fi
-    export LD_LIBRARY_PATH=${{python_path}}/lib:$LD_LIBRARY_PATH
-    nohup ${{python_path}}/bin/jupyter server --config=${{config_file}} --allow-root > ${{log_file}} 2>&1 & echo $! > ${{pid_file}}
-    pid=`cat ${{pid_file}}`
-    PID=`ps ax | grep ${{pid}} | grep jupyter | grep -v grep | awk '{{print $1}}'`
-    if [ $PID ]; then
-        echo "jupyter server已启动成功。"
-        echo "Pid: ${{pid}}"
-    else 
-        echo "未启动成功。请检查配置是否正确。"
-    fi
-    exit 0
+        exit 0
 
-}}
+    }}
 
 
-function stop() {{
-    if [ -f "${{pid_file}}" ];then
-        pid=`cat ${{pid_file}}`
-        kill $pid > /dev/null
-        rm -f ${{pid_file}}
-        echo "程序已关闭"
-        return 0
+    function stop() {{
+        if [ -f "${{pid_file}}" ];then
+            pid=`cat ${{pid_file}}`
+            kill $pid > /dev/null
+            rm -f ${{pid_file}}
+            echo "程序已关闭"
+            return 0
+        else
+            echo "程序未启动"
+            return 0
+        fi
+    }}
+
+
+    if [ -z "$1" ]; then
+      echo "Usage: $0 start|restart|stop"
+      exit 127
+    elif [ "$action" == "start" ]; then
+      start
+    elif [ "$action" == "stop" ]; then
+      stop
+      exit $?
+    elif [ "$action" == "restart" ]; then
+      stop
+      start
+    elif [ "$action" == "check" ]; then
+      start
     else
-        echo "程序未启动"
-        return 0
+      echo "Usage: $0 start|stop|restart|check"
     fi
-}}
-
-
-if [ -z "$1" ]; then
-  echo "Usage: $0 start|restart|stop"
-  exit 127
-elif [ "$action" == "start" ]; then
-  start
-elif [ "$action" == "stop" ]; then
-  stop
-  exit $?
-elif [ "$action" == "restart" ]; then
-  stop
-  start
-elif [ "$action" == "check" ]; then
-  start
-else
-  echo "Usage: $0 start|stop|restart|check"
-fi
-'''
+    '''
     config_dict = {
         "jupyter_conf": {
             "config_file": f"{jupyter_path}/jupyter_server_config.py",
@@ -134,7 +128,12 @@ fi
     if not result:
         log.logger.error(msg)
         return_value = error_code
+    return return_value
 
+
+def run():
+    """运行
+    """
     return_value = start()
     return return_value
 
