@@ -139,7 +139,6 @@ def run():
 def start():
     """启动
     """
-    return_value = normal_code
     log.logger.debug(f"{start_command=}")
     result, msg = common.exec_command(start_command)
     if result:
@@ -184,6 +183,7 @@ if __name__ == "__main__":
     port_list = [port,]
     log = common.Logger({"remote": log_remote_level}, loggger_name="python")
     start_command = f"bash {jupyter_path}/jupyter_server.sh start"
+    return_value = normal_code
 
     func_dict = {
         "install": install,
