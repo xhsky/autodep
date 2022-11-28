@@ -4,21 +4,19 @@
 
 import sys, json
 from libs import common
-from libs.env import log_remote_level, python_src, python_dst, python_pkg_dir, \
+from libs.env import log_remote_level, jupyter_src, jupyter_dst, jupyter_pkg_dir, \
     normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 
 def install():
     """安装
     """
-    create_dir_command = f"mkdir -p {jupyter_path}"
-    log.logger.debug(f"{create_dir_command=}")
-    result, msg = common.exec_command(create_dir_command)
-    if result:
-        return_value = normal_code
-    else:
+    located = conf_dict.get("located")
+    pkg_file = conf_dict["pkg_file"]
+    value, msg = common.install(pkg_file, jupyter_src, jupyter_dst, jupyter_pkg_dir, located)
+    if not value:
         log.logger.error(msg)
-        return_value = error_code
+        sys.exit(error_code)
     token = conf_dict["jupyter_info"]["token"]
     jupyter_server_config_py_text = f'''
     c.ServerApp.allow_remote_access = True
