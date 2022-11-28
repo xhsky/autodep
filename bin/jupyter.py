@@ -11,6 +11,7 @@ from libs.env import log_remote_level, jupyter_src, jupyter_dst, jupyter_pkg_dir
 def install():
     """安装
     """
+    return_value = normal_code
     located = conf_dict.get("located")
     pkg_file = conf_dict["pkg_file"]
     value, msg = common.install(pkg_file, jupyter_src, jupyter_dst, jupyter_pkg_dir, located)
@@ -139,6 +140,7 @@ def run():
 def start():
     """启动
     """
+    return_value = normal_code
     log.logger.debug(f"{start_command=}")
     result, msg = common.exec_command(start_command)
     if result:
@@ -183,7 +185,6 @@ if __name__ == "__main__":
     port_list = [port,]
     log = common.Logger({"remote": log_remote_level}, loggger_name="python")
     start_command = f"bash {jupyter_path}/jupyter_server.sh start"
-    return_value = normal_code
 
     func_dict = {
         "install": install,
