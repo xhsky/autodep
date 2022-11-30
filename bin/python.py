@@ -18,10 +18,13 @@ def install():
         sys.exit(error_code)
 
     # 配置
-    python_dir=f"{located}/{python_dst}"
+    python_dir=f"{located}/python3.10.1"
     python_sh_context=f"""\
             export PYTHON_HOME={python_dir}
             export PATH=$PYTHON_HOME/bin:$PATH
+            export LD_LIBRARY_PATH={python_dir}/lib:$LD_LIBRARY_PATH
+            export PYTHONPATH={located}/jupyter_server/python-dsfa:$PYTHONPATH
+            
     """
     config_dict={
             "python_sh":{
