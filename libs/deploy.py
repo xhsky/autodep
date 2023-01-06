@@ -1099,7 +1099,7 @@ class Deploy(object):
         return stop_result, stop_stats_dict
 
     def _get_program_above_type_dict(self, arch_dict, ext_dict):
-        """获取program类型以上的软件结构
+        """获取sql类型以上的软件结构
         """
         control_dict={}
         for node in arch_dict:
@@ -1109,7 +1109,7 @@ class Deploy(object):
         program_above_type_dict={}
         flag=0
         for soft_type in soft_type_dict:
-            if soft_type=="program" or flag==1:
+            if soft_type=="sql" or soft_type=="program" or flag==1:
                 flag=1
                 program_above_type_dict[soft_type]=soft_type_dict[soft_type]
         return program_above_type_dict
@@ -1674,6 +1674,7 @@ class text_deploy(Deploy):
             self.log.logger.info("项目关闭完成")
         else:
             self.log.logger.error("项目关闭失败")
+        return result, dict_
 
     def program_start(self):
         result, dict_=super(text_deploy, self).program_start(self.init_dict, self.arch_dict, self.ext_dict)
@@ -1681,12 +1682,15 @@ class text_deploy(Deploy):
             self.log.logger.info("项目关闭完成")
         else:
             self.log.logger.error("项目关闭失败")
+        return result, dict_
+
     def program_run(self):
         result, dict_=super(text_deploy, self).program_run(self.init_dict, self.arch_dict, self.ext_dict)
         if result:
             self.log.logger.info("项目运行完成")
         else:
             self.log.logger.error("项目运行失败")
+        return result, dict_
 
     def program_update(self):
         result, dict_=super(text_deploy, self).program_update(self.init_dict, self.arch_dict, self.ext_dict, self.update_arch_dict, False)
@@ -1694,6 +1698,7 @@ class text_deploy(Deploy):
             self.log.logger.info("项目更新完成")
         else:
             self.log.logger.error("项目更新失败")
+        return result, dict_
 
     def update(self):
         self.log.logger.info("开始更新...")
