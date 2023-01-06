@@ -1674,6 +1674,7 @@ class text_deploy(Deploy):
             self.log.logger.info("项目关闭完成")
         else:
             self.log.logger.error("项目关闭失败")
+        return result, dict_
 
     def program_start(self):
         result, dict_=super(text_deploy, self).program_start(self.init_dict, self.arch_dict, self.ext_dict)
@@ -1681,12 +1682,15 @@ class text_deploy(Deploy):
             self.log.logger.info("项目关闭完成")
         else:
             self.log.logger.error("项目关闭失败")
+        return result, dict_
+
     def program_run(self):
         result, dict_=super(text_deploy, self).program_run(self.init_dict, self.arch_dict, self.ext_dict)
         if result:
             self.log.logger.info("项目运行完成")
         else:
             self.log.logger.error("项目运行失败")
+        return result, dict_
 
     def program_update(self):
         result, dict_=super(text_deploy, self).program_update(self.init_dict, self.arch_dict, self.ext_dict, self.update_arch_dict, False)
