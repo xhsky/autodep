@@ -1338,6 +1338,24 @@ class Deploy(object):
                     break
         return start_result, start_stats_dict
 
+    def program_run(self, init_dict, arch_dict, ext_dict):
+        """项目启动
+        """
+        program_above_type_dict=self._get_program_above_type_dict(arch_dict, ext_dict)
+        self.log.logger.debug(f"{program_above_type_dict=}")
+        run_result=True
+        run_stats_dict={}
+        for soft_type in program_above_type_dict:
+            if len(program_above_type_dict[soft_type]) != 0:
+                self.log.logger.info(self.str_to_title(f"{soft_type}服务运行", 2))
+                run_result, type_stats_dict=self.nodes_control(program_above_type_dict[soft_type], "run", "运行", init_dict, arch_dict, ext_dict)
+                run_stats_dict[soft_type]=type_stats_dict
+                if run_result:
+                    continue
+                else:
+                    break
+        return run_result, run_stats_dict
+
     def get_soft_status(self, init_dict, arch_dict, ext_dict):
         """获取软件状态
         return:
@@ -1656,7 +1674,6 @@ class text_deploy(Deploy):
             self.log.logger.info("项目关闭完成")
         else:
             self.log.logger.error("项目关闭失败")
-        return result, dict_
 
     def program_start(self):
         result, dict_=super(text_deploy, self).program_start(self.init_dict, self.arch_dict, self.ext_dict)
@@ -1664,7 +1681,12 @@ class text_deploy(Deploy):
             self.log.logger.info("项目关闭完成")
         else:
             self.log.logger.error("项目关闭失败")
-        return result, dict_
+    def program_run(self):
+        result, dict_=super(text_deploy, self).program_run(self.init_dict, self.arch_dict, self.ext_dict)
+        if result:
+            self.log.logger.info("项目运行完成")
+        else:
+            self.log.logger.error("项目运行失败")
 
     def program_update(self):
         result, dict_=super(text_deploy, self).program_update(self.init_dict, self.arch_dict, self.ext_dict, self.update_arch_dict, False)
@@ -1672,7 +1694,6 @@ class text_deploy(Deploy):
             self.log.logger.info("项目更新完成")
         else:
             self.log.logger.error("项目更新失败")
-        return result, dict_
 
     def update(self):
         self.log.logger.info("开始更新...")
@@ -1688,7 +1709,7 @@ class text_deploy(Deploy):
         stage_method={
                 "program_stop": self.program_stop, 
                 "program_update": self.program_update, 
-                "program_start": self.program_start, 
+                "program_run": self.program_run, 
                 }
         for stage in stage_method:
             result, dict_=stage_method[stage]()
