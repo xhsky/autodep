@@ -58,11 +58,14 @@ def main():
 
     result, msg=exec_command("bash -c 'ulimit -n'")
     if result:
-        nofile_value=int(msg)
-        if nofile_value < value:
-            with open(ulimit_conf_file, "a") as f:
-                f.write("root - nofile 65536\n")
-            log.logger.info(f"设置nofile值为{value}")
+        if msg.isdigit():
+            nofile_value=int(msg)
+            if nofile_value < value:
+                with open(ulimit_conf_file, "a") as f:
+                    f.write("root - nofile 65536\n")
+                log.logger.info(f"设置nofile值为{value}")
+        else:
+            log.logger.info(f"nofile值为{msg}")
     else:
         log.logger.error(f"获取nofile失败: {msg}")
         return_value=error_code
