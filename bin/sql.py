@@ -177,35 +177,35 @@ def backup():
 
 
 if __name__ == "__main__":
-    # softname, action, conf_json=sys.argv[1:]
-    softname="program_graduate_sql"
-    action="run"
-    conf_json="""
-{
-    "software": ["kingbase", "program_graduate_sql"],   
-    "located": "/dream/", 
-    "ip": "127.0.0.1",
-    "kingbase_info": {
-	  "business_user": ["dream1"],                 
-      "business_password": ["DreamSoft_123"], 
-      "system_user": "kingbase", 
-      "db_host": "127.0.0.1", 
-      "dba_user": "system", 
-      "dba_password": "dreamsoft", 
-      "db_port": 54321, 
-      "start_command": "su -l kingbase 'sys_ctl start -D /data/kingbase/data/'", 
-      "stop_command": "su -l kingbase 'sys_ctl stop -D /data/kingbase/data'"
-    },  
-    "program_graduate_sql_info": {
-	  "db_type": "kingbase", 
-      "db_port": 54321,  
-      "sql_dir": "/dream/sql" ,
-      "db_type": "kingbase", 
-      "to_user": "dream1", 
-      "db_name": "db3"	  
-    }
-}
-    """
+    softname, action, conf_json=sys.argv[1:]
+#     softname="program_graduate_sql"
+#     action="run"
+#     conf_json="""
+# {
+#     "software": ["kingbase", "program_graduate_sql"],
+#     "located": "/dream/",
+#     "ip": "127.0.0.1",
+#     "kingbase_info": {
+# 	  "business_user": ["dream1"],
+#       "business_password": ["DreamSoft_123"],
+#       "system_user": "kingbase",
+#       "db_host": "127.0.0.1",
+#       "dba_user": "system",
+#       "dba_password": "dreamsoft",
+#       "db_port": 54321,
+#       "start_command": "su -l kingbase 'sys_ctl start -D /data/kingbase/data/'",
+#       "stop_command": "su -l kingbase 'sys_ctl stop -D /data/kingbase/data'"
+#     },
+#     "program_graduate_sql_info": {
+# 	  "db_type": "kingbase",
+#       "db_port": 54321,
+#       "sql_dir": "/dream/sql" ,
+#       "db_type": "kingbase",
+#       "to_user": "dream1",
+#       "db_name": "db3"
+#     }
+# }
+#     """
     conf_dict=json.loads(conf_json)
     log=common.Logger({"remote": log_remote_level}, logger_name="sql")
 
