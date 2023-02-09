@@ -33,12 +33,30 @@ def test():
             log.logger.error(msg)
             return error_code
     elif softname=="kingbase":
-        test_command=f"su -l {system_user} -c 'ksql -V'"
+        sql_text="""\
+        show work_mem;
+        select 0;
+        exit;
+        """
+        config_dict={
+                "test_config": {
+                    "config_file": sql_file,
+                    "config_context": sql_text,
+                    "mode": "w"
+                    }
+                }
+        result, msg=common.config(config_dict)
+        if result:
+            test_command=f"ksql -U{dba_user} -d test -p{db_port} -w {dba_password} -f {sql_file}"
+        else:
+            log.logger.error(msg)
+            return error_code
     elif softname=="highgo":
         test_command=f"su -l {system_user} -c 'psql -V'"
     log.logger.debug(f"test db comand: {test_command}")
     result, msg=common.exec_command(test_command)
-    if result and msg.strip()==result_value:
+    log.logger.debug(f"test db comand result: 1.result***{result}; 2.msg***{msg}")
+    if result:
         return normal_code
     else:
         log.logger.error(msg)
@@ -208,7 +226,7 @@ if __name__ == "__main__":
     port_list=[
             db_port
             ]
-    sql_file=test_sql_file % softname
+    sql_file=f"test_sql_file%{softname}"
     system_user = localization_info_dict["system_user"]
     dba_user = localization_info_dict["dba_user"]
     dba_password = localization_info_dict["dba_password"]
