@@ -55,7 +55,7 @@ def run():
             source_db_command=f"{source_db_command}'"
         log.logger.debug(f"{source_db_command=}")
         log.logger.info(f"{softname}: 数据导入中, 请稍后...")
-        result, msg=common.exec_command(source_db_command, timeout=3600)
+        result, msg=common.exec_command(source_db_command, timeout=100)
         if result:
             if os.path.exists(db_abs_file):
                 log.logger.info("清理数据包...")
@@ -74,16 +74,15 @@ def run():
         db_name=conf_dict[f"{db_type}_info"]["db_name"]
         db_port=conf_dict[f"{db_type}_info"]["db_port"]
 
-        source_db_command=f"chown -R {system_user} {sql_dir} && su -l {system_user} -c 'sys_restore -U{system_user} -w{dba_password} -p{db_port} -d{db_name}'"
+        source_db_command=f"chown -R {system_user} {sql_dir} && createdb -O{to_user} -p{db_port} -U{dba_user} {db_name};ksql -U{dba_user} -w {dba_password} -d{db_name} -f {db_abs_file} -p{db_port}"
         if from_user!=to_user:
-            source_db_command=f"{source_db_command} remap_schema={from_user.upper()}:{to_user.upper()}'"
+            source_db_command=f"{source_db_command} remap_schema={from_user.upper()}:{to_user.upper()}"
         else:
-            source_db_command=f"{source_db_command}'"
+            source_db_command=f"{source_db_command}"
         db_port=conf_dict[f"{db_type}_info"]["db_port"]
         db_name=conf_dict[f"{softname}_info"]["db_name"]
 
-        source_db_command=f"chown -R {system_user} {sql_dir} && su -l {system_user} -c 'createdb -O{to_user} -p{db_port} -U{dba_user} {db_name};sys_restore -p{db_port} -U{dba_user} -d{db_name} {db_abs_file}"
-        source_db_command=f"{source_db_command}'"
+        #source_db_command=f"{source_db_command}"
         log.logger.debug(f"{source_db_command=}")
         log.logger.info(f"{softname}: 数据导入中, 请稍后...")
         result, msg=common.exec_command(source_db_command, timeout=3600)
