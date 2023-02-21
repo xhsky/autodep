@@ -2766,6 +2766,7 @@ class graphics_deploy(Deploy):
             elements.append(("端口:", 6, 1, str(soft_manaul_dict["db_port"]), 6, first_xi_length, 0, 0))
             elements.append((f"{softname}启动命令:", 7, 1, soft_manaul_dict["start_command"], 7, first_xi_length, command_field_length, 0))
             elements.append((f"{softname}关闭命令:", 8, 1, soft_manaul_dict["stop_command"], 8, first_xi_length, command_field_length, 0))
+            elements.append((f"是否需安装{softname}软件(填true为安装，false为不安装):", 9, 1, soft_manaul_dict["soft_install"], 9, first_xi_length, port_field_length, 0))
             msg=f"{node}填写软件信息:"
         elif softname=="autocheck":
             field_length=15
@@ -2791,6 +2792,7 @@ class graphics_deploy(Deploy):
                 soft_manaul_dict["dba_password"]=fields[3]
                 soft_manaul_dict["start_command"]=fields[4]
                 soft_manaul_dict["stop_command"]=fields[5]
+                soft_manaul_dict["soft_install"]=fields[6]
             elif softname=="autocheck":
                 soft_manaul_dict["project_name"]=fields[0]
                 soft_manaul_dict["timing"]=fields[1]
@@ -3373,8 +3375,9 @@ class graphics_deploy(Deploy):
                                 "dba_user": "system",
                                 "dba_password": "", 
                                 "db_port": localization_soft_port[softname], 
-                                "start_command": "su -l kingbase 'sys_ctl start -D /data/kingbase/data/'" ,
-                                "stop_command": "su -l kingbase 'sys_ctl stop -D /data/kingbase/data/'"
+                                "start_command": "su -l kingbase 'sys_ctl start -D /data/kingbase/data/'",
+                                "stop_command": "su -l kingbase 'sys_ctl stop -D /data/kingbase/data/'",
+                                "soft_install": "false"
                                 }
                     elif softname=="shentong":
                         soft_default_info={
@@ -3409,6 +3412,7 @@ class graphics_deploy(Deploy):
             for num in temp_dict:
                 node=temp_dict[num][0]
                 softname=temp_dict[num][1]
+                self.log.logger.debug(f"{node}: {softname}: {localization_dict[node]}")
                 result, soft_manaul_dict=self.edit_localization_config(title, f"{num}/{N}", node, softname, localization_dict[node][f"{softname}_info"])
                 self.log.logger.debug(f"{node}: {softname}: {soft_manaul_dict}")
                 if result:
