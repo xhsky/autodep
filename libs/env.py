@@ -167,6 +167,10 @@ python_src="python"
 python_dst=None
 python_pkg_dir=None
 
+jupyter_src="jupyter_server"
+jupyter_dst=None
+jupyter_pkg_dir=None
+
 erl_src="erlang-"
 erl_dst="erlang"
 erl_pkg_dir=None

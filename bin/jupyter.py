@@ -4,101 +4,105 @@
 
 import sys, json
 from libs import common
-from libs.env import log_remote_level, python_src, python_dst, python_pkg_dir, \
+from libs.env import log_remote_level, jupyter_src, jupyter_dst, jupyter_pkg_dir, \
     normal_code, error_code, activated_code, stopped_code, abnormal_code
 
 
 def install():
     """安装
     """
-    return normal_code
-
-
-def run():
-    """运行
-    """
     return_value = normal_code
-    token = conf_dict["token"]
+    located = conf_dict.get("located")
+    pkg_file = conf_dict["pkg_file"]
+    value, msg = common.install(pkg_file, jupyter_src, jupyter_dst, jupyter_pkg_dir, located)
+    if not value:
+        log.logger.error(msg)
+        sys.exit(error_code)
+    token = conf_dict["jupyter_info"]["token"]
     jupyter_server_config_py_text = f'''
-c.ServerApp.allow_remote_access = True
-c.ServerApp.shutdown_no_activity_timeout = 0
-c.ServerApp.port = {port}
-c.ServerApp.ip = '*'
-c.ServerApp.disable_check_xsrf = True
-c.ServerApp.token = {token}
-    '''
+    c.ServerApp.allow_remote_access = True
+    c.ServerApp.shutdown_no_activity_timeout = 0
+    c.ServerApp.port = {port}
+    c.ServerApp.ip = '*'
+    c.ServerApp.disable_check_xsrf = True
+    c.ServerApp.token = "{token}"
+        '''
     jupyter_server_sh_text = f'''
-#!/bin/bash
+    #!/bin/bash
 
 
-action=$1
-python_path=/opt/python3.6.8
-jupyter_path={jupyter_path}
-config_file=${{jupyter_path}}/config/jupyter_server_config.py
-log_file=${{jupyter_path}}/logs/jupyter_server.log
-pid_file=${{jupyter_path}}/jupyter_server.pid
+    action=$1
+    python_path={located}/python3
+    jupyter_path={jupyter_path}
+    config_file=${{jupyter_path}}/jupyter_server_config.py
+    log_file=${{jupyter_path}}/jupyter_server.log
+    pid_file=${{jupyter_path}}/jupyter_server.pid
 
 
 
 
-function start() {{
-    if [ -f "${{pid_file}}" ];then
+    function start() {{
+        if [ -f "${{pid_file}}" ];then
+            pid=`cat ${{pid_file}}`
+            PID=`ps ax | grep ${{pid}} | grep jupyter | grep -v grep | awk '{{print $1}}'`
+            if [ $PID ]; then
+                echo "jupyter server进程已存在。"
+                echo "Pid: ${{pid}}"
+                exit 0
+            fi
+        fi
+        export LD_LIBRARY_PATH=${{python_path}}/lib:$LD_LIBRARY_PATH
+        export PYTHONPATH=${{jupyter_path}}/python-dsfa:$PYTHONPATH
+        nohup ${{python_path}}/bin/jupyter server --config=${{config_file}} --allow-root > ${{log_file}} 2>&1 & echo $! > ${{pid_file}}
         pid=`cat ${{pid_file}}`
         PID=`ps ax | grep ${{pid}} | grep jupyter | grep -v grep | awk '{{print $1}}'`
         if [ $PID ]; then
-            echo "jupyter server进程已存在。"
+            echo "jupyter server已启动成功。"
             echo "Pid: ${{pid}}"
-            exit 0
+        else 
+            echo "未启动成功。请检查配置是否正确。"
         fi
-    fi
-    nohup ${{python_path}}/bin/jupyter server --config=${{config_file}} --allow-root > ${{log_file}} 2>&1 & echo $! > ${{pid_file}}
-    pid=`cat ${{pid_file}}`
-    PID=`ps ax | grep ${{pid}} | grep jupyter | grep -v grep | awk '{{print $1}}'`
-    if [ $PID ]; then
-        echo "jupyter server已启动成功。"
-        echo "Pid: ${{pid}}"
-    else 
-        echo "未启动成功。请检查配置是否正确。"
-    fi
-    exit 0
+        exit 0
 
-}}
+    }}
 
 
-function stop() {{
-    if [ -f "${{pid_file}}" ];then
-        pid=`cat ${{pid_file}}`
-        kill $pid > /dev/null
-        rm -f ${{pid_file}}
-        echo "程序已关闭"
-        return 0
+    function stop() {{
+        if [ -f "${{pid_file}}" ];then
+            pid=`cat ${{pid_file}}`
+            kill $pid > /dev/null
+            rm -f ${{pid_file}}
+            echo "程序已关闭"
+            return 0
+        else
+            echo "程序未启动"
+            return 0
+        fi
+    }}
+
+
+    if [ -z "$1" ]; then
+      echo "Usage: $0 start|restart|stop"
+      exit 127
+    elif [ "$action" == "start" ]; then
+      start
+    elif [ "$action" == "stop" ]; then
+      stop
+      exit $?
+    elif [ "$action" == "restart" ]; then
+      stop
+      start
+    elif [ "$action" == "check" ]; then
+      start
     else
-        echo "程序未启动"
-        return 0
+      echo "Usage: $0 start|stop|restart|check"
     fi
-}}
-
-
-if [ -z "$1" ]; then
-  echo "Usage: $0 start|restart|stop"
-  exit 127
-elif [ "$action" == "start" ]; then
-  start
-elif [ "$action" == "stop" ]; then
-  stop
-  exit $?
-elif [ "$action" == "restart" ]; then
-  stop
-  start
-else
-  echo "Usage: $0 start|stop|restart"
-fi
-'''
+    '''
     config_dict = {
         "jupyter_conf": {
             "config_file": f"{jupyter_path}/jupyter_server_config.py",
             "config_context": jupyter_server_config_py_text,
-            "mode": "r+"
+            "mode": "w"
         },
         "jupyter_sh": {
             "config_file": f"{jupyter_path}/jupyter_server.sh",
@@ -106,12 +110,29 @@ fi
             "mode": "w"
         }
     }
+
+    jupyter_enabled_text = start_command
+    config_dict.update(
+        {
+            "dch_sentinel_enabled": {
+                "config_file": "/etc/rc.local",
+                "config_context": jupyter_enabled_text,
+                "mode": "r+"
+            }
+        }
+    )
+
     log.logger.debug(f"写入配置文件: {json.dumps(config_dict)}")
     result, msg = common.config(config_dict)
     if not result:
         log.logger.error(msg)
         return_value = error_code
+    return return_value
 
+
+def run():
+    """运行
+    """
     return_value = start()
     return return_value
 
@@ -120,7 +141,6 @@ def start():
     """启动
     """
     return_value = normal_code
-    start_command = f"bash {jupyter_path}/jupyter_server.sh start"
     log.logger.debug(f"{start_command=}")
     result, msg = common.exec_command(start_command)
     if result:
@@ -137,7 +157,7 @@ def stop():
     """关闭
     """
     return_value = normal_code
-    stop_command = f"bash {jupyter_path}/jupyter_server.sh stop'"
+    stop_command = f"bash {jupyter_path}/jupyter_server.sh stop"
     log.logger.debug(f"{stop_command=}")
     result, msg = common.exec_command(stop_command)
     if result:
@@ -159,10 +179,12 @@ def monitor():
 if __name__ == "__main__":
     softname, action, conf_json = sys.argv[1:]
     conf_dict = json.loads(conf_json)
-    jupyter_path = conf_dict["jupyter_path"]
-    port = conf_dict["port"]
+    located = conf_dict["located"]
+    jupyter_path = f"{located}/jupyter_server"
+    port = conf_dict["jupyter_info"]["port"]
     port_list = [port,]
     log = common.Logger({"remote": log_remote_level}, loggger_name="python")
+    start_command = f"bash {jupyter_path}/jupyter_server.sh start"
 
     func_dict = {
         "install": install,
